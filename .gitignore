@@ -35,9 +35,17 @@ yarn-error.log
 /connect.lock
 /coverage
 /libpeerconnection.log
-testem.log
+/testem.log
 /typings
 __screenshots__/
+
+# Backend
+backend/node_modules/
+backend/dist/
+
+# Environment
+.env
+.env.*
 
 # System files
 .DS_Store

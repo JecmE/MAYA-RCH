@@ -6,15 +6,11 @@
   <main class="login-main">
     <div class="login-card">
       <div class="login-card__intro">
-        <div class="login-card__icon">
-          🔒
-        </div>
+        <div class="login-card__icon">🔒</div>
 
         <h2 class="login-title">Autenticación</h2>
 
-        <p class="login-subtitle">
-          Ingresa tus credenciales para acceder a la plataforma
-        </p>
+        <p class="login-subtitle">Ingresa tus credenciales para acceder a la plataforma</p>
 
         <p class="login-tip">
           Tip: Escribe "empleado", "supervisor", "rrhh" o "admin" para ver diferentes vistas.
@@ -23,14 +19,10 @@
 
       <form (ngSubmit)="handleLogin($event)" class="login-form">
         <div class="form-group">
-          <label class="form-label">
-            Usuario
-          </label>
+          <label class="form-label"> Usuario </label>
 
           <div class="input-with-icon">
-            <div class="input-icon">
-              👤
-            </div>
+            <div class="input-icon">👤</div>
 
             <input
               type="text"
@@ -44,14 +36,10 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">
-            Contraseña
-          </label>
+          <label class="form-label"> Contraseña </label>
 
           <div class="input-with-icon">
-            <div class="input-icon">
-              🔒
-            </div>
+            <div class="input-icon">🔒</div>
 
             <input
               type="password"
@@ -65,30 +53,18 @@
 
         @if (error) {
           <div class="login-error">
-            Usuario no reconocido. Prueba con "empleado", "supervisor", "rrhh" o "admin".
+            {{ errorMessage }}
           </div>
         }
 
-        <button
-          type="submit"
-          class="primary-button"
-        >
-          Ingresar
-        </button>
+        <button type="submit" class="primary-button">Ingresar</button>
 
         <div class="login-forgot">
-          <a
-            routerLink="/forgot-password"
-            class="forgot-link"
-          >
-            ¿Olvidaste tu contraseña?
-          </a>
+          <a routerLink="/forgot-password" class="forgot-link"> ¿Olvidaste tu contraseña? </a>
         </div>
       </form>
     </div>
   </main>
 
-  <footer class="login-footer">
-    Copyright © MAYA RCH | v1.0.0
-  </footer>
+  <footer class="login-footer">Copyright © MAYA RCH | v1.0.0</footer>
 </div>

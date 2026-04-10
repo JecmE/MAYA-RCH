@@ -6,7 +6,7 @@ import { ForgotPassword } from './pages/forgot-password/forgot-password';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { KpiDashboard } from './pages/kpi-dashboard/kpi-dashboard';
 import { Asistencia } from './pages/asistencia/asistencia';
-import { Solicitudes } from './pages/solicitudes/solicitudes';
+import { SolicitudPermiso } from './pages/solicitud-permiso/solicitud-permiso';
 import { Timesheet } from './pages/timesheet/timesheet';
 import { Boleta } from './pages/boleta/boleta';
 import { Perfil } from './pages/perfil/perfil';
@@ -45,7 +45,7 @@ export const appRoutes: Routes = [
       { path: '', component: Dashboard },
       { path: 'kpi', component: KpiDashboard },
       { path: 'asistencia', component: Asistencia },
-      { path: 'solicitudes', component: Solicitudes },
+      { path: 'solicitudes', component: SolicitudPermiso },
       { path: 'timesheet', component: Timesheet },
       { path: 'boleta', component: Boleta },
       { path: 'perfil', component: Perfil },
@@ -71,9 +71,9 @@ export const appRoutes: Routes = [
       { path: 'admin/parametros', component: ParametrosGlobales },
       { path: 'admin/auditoria', component: AuditoriaLogs },
       { path: 'admin/seguridad', component: Seguridad },
-      { path: 'admin/soporte', component: SoporteMantenimiento }
-    ]
+      { path: 'admin/soporte', component: SoporteMantenimiento },
+    ],
   },
 
-  { path: '**', redirectTo: '' }
+  { path: '**', redirectTo: '' },
 ];

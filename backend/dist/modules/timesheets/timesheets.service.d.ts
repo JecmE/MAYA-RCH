@@ -1,0 +1,61 @@
+import { Repository } from 'typeorm';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
+import { Proyecto } from '../../entities/proyecto.entity';
+import { Empleado } from '../../entities/empleado.entity';
+import { AprobacionTiempo } from '../../entities/aprobacion-tiempo.entity';
+import { AuditLog } from '../../entities/audit-log.entity';
+export declare class TimesheetsService {
+    private tiempoRepository;
+    private proyectoRepository;
+    private empleadoRepository;
+    private aprobacionRepository;
+    private auditRepository;
+    constructor(tiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, empleadoRepository: Repository<Empleado>, aprobacionRepository: Repository<AprobacionTiempo>, auditRepository: Repository<AuditLog>);
+    getMyTimesheets(empleadoId: number, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
+        tiempoId: number;
+        fecha: Date;
+        proyecto: {
+            proyectoId: number;
+            nombre: string;
+            codigo: string;
+        };
+        horas: number;
+        horasValidadas: number;
+        actividadDescripcion: string;
+        estado: string;
+        fechaRegistro: Date;
+    }[]>;
+    createEntry(createDto: any, empleadoId: number): Promise<{
+        tiempoId: number;
+        estado: string;
+        mensaje: string;
+    }>;
+    getTeamTimesheets(supervisorEmpleadoId: number, fechaInicio?: string, fechaFin?: string): Promise<{
+        tiempoId: number;
+        empleado: {
+            empleadoId: number;
+            nombreCompleto: string;
+            codigoEmpleado: string;
+        };
+        proyecto: {
+            proyectoId: number;
+            nombre: string;
+        };
+        fecha: Date;
+        horas: number;
+        horasValidadas: number;
+        actividadDescripcion: string;
+        estado: string;
+    }[]>;
+    approve(id: number, comentario: string, usuarioId: number): Promise<{
+        message: string;
+    }>;
+    reject(id: number, comentario: string, usuarioId: number): Promise<{
+        message: string;
+    }>;
+    getProjectSummary(fechaInicio: string, fechaFin: string): Promise<{
+        proyecto: any;
+        totalHoras: any;
+        empleados: unknown[];
+    }[]>;
+}
