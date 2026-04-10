@@ -1,0 +1,333 @@
+<div class="permissions-page">
+  <main class="permissions-main">
+
+    <div class="page-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="page-header__content">
+        <h2 class="page-title">Solicitud de permisos</h2>
+        <p class="page-subtitle">
+          Registra nuevas solicitudes y consulta el historial de permisos enviados.
+        </p>
+      </div>
+    </div>
+
+    <div class="card card-form">
+      <div class="card-label">Nueva solicitud</div>
+
+      <div class="form-layout">
+        <div class="form-section">
+          <div class="form-grid form-grid-3">
+            <div class="form-group">
+              <label class="form-label">
+                Tipo de permiso <span class="required">*</span>
+              </label>
+              <select
+                [(ngModel)]="tipoPermiso"
+                name="tipoPermiso"
+                class="form-control"
+              >
+                <option value="">Seleccione...</option>
+                <option value="vacaciones">Vacaciones</option>
+                <option value="medico">Permiso Médico</option>
+                <option value="personal">Día Personal</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                Fecha inicio <span class="required">*</span>
+              </label>
+              <input
+                type="date"
+                [(ngModel)]="fechaInicio"
+                name="fechaInicio"
+                class="form-control"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                Fecha fin <span class="required">*</span>
+              </label>
+              <input
+                type="date"
+                [(ngModel)]="fechaFin"
+                name="fechaFin"
+                class="form-control"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              Motivo del permiso <span class="required">*</span>
+            </label>
+            <textarea
+              rows="3"
+              [(ngModel)]="motivo"
+              name="motivo"
+              class="form-control textarea-control"
+              placeholder="Detalle el motivo de la solicitud..."
+            ></textarea>
+          </div>
+
+          <div class="action-row">
+            <div class="time-group">
+              <label class="form-label">
+                Tiempo <span class="required">*</span>
+              </label>
+
+              <div class="time-controls">
+                <input
+                  type="number"
+                  [(ngModel)]="tiempo"
+                  name="tiempo"
+                  placeholder="0"
+                  class="form-control input-time"
+                />
+
+                <select
+                  [(ngModel)]="unidadTiempo"
+                  name="unidadTiempo"
+                  class="form-control select-time"
+                >
+                  <option value="dias">Días</option>
+                  <option value="horas">Horas</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              (click)="openAttachModal()"
+              class="btn btn-attach"
+            >
+              📎 Adjuntar archivo
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div>
+            <h3 class="sidebar-title">Saldo de vacaciones</h3>
+
+            <div class="vacation-balance">
+              12 <span>días</span>
+            </div>
+
+            <h3 class="sidebar-title sidebar-title-spacing">
+              Mensaje de regla
+            </h3>
+
+            <p class="rule-box">
+              Recuerde que las solicitudes deben realizarse con al menos
+              <span>48 horas</span>
+              de anticipación a la fecha de inicio.
+            </p>
+          </div>
+
+          <div class="sidebar-actions">
+            <button
+              type="button"
+              (click)="limpiarFormulario()"
+              class="btn btn-cancel"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              (click)="openSuccessModal()"
+              class="btn btn-submit"
+            >
+              ✈ Enviar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-table">
+      <div class="card-label">Mis solicitudes</div>
+
+      <div class="table-topbar">
+        <div class="filter-group">
+          <span class="filter-label">Filtrar por estado:</span>
+
+          <select
+            [(ngModel)]="filtroEstado"
+            name="filtroEstado"
+            class="filter-select"
+          >
+            <option value="Todas">Todas</option>
+            <option value="Pendiente">Pendientes</option>
+            <option value="Aprobada">Aprobadas</option>
+            <option value="Rechazada">Rechazadas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="requests-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Período solicitado</th>
+              <th>Estado</th>
+              <th>Comentario</th>
+              <th class="text-center">Adjunto / Ver</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (row of solicitudesFiltradas; track row.id) {
+              <tr>
+                <td class="font-medium">{{ row.date }}</td>
+                <td>{{ row.type }}</td>
+                <td>{{ row.period }}</td>
+                <td>
+                  <span class="status-badge" [ngClass]="getStatusClass(row.status)">
+                    {{ row.status }}
+                  </span>
+                </td>
+                <td class="comment-cell">{{ row.comments }}</td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      type="button"
+                      class="icon-button"
+                      title="Ver adjunto"
+                    >
+                      📎
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="openDetailsModal(row)"
+                      class="icon-button"
+                      title="Ver detalles"
+                    >
+                      📄
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  @if (modalOpen) {
+    <div class="modal-overlay">
+      <div class="modal modal-md">
+        <div class="modal-header modal-header-light">
+          <h3 class="modal-title">Adjuntar archivo</h3>
+
+          <button
+            type="button"
+            (click)="closeAttachModal()"
+            class="modal-close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="upload-box">
+          <div class="upload-icon">📎</div>
+          <p class="upload-text">Arrastra y suelta tu archivo aquí</p>
+          <p class="upload-subtext">o selecciona un archivo de tu equipo</p>
+
+          <button
+            type="button"
+            class="btn btn-upload"
+          >
+            Cargar dispositivo
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (successModalOpen) {
+    <div class="modal-overlay">
+      <div class="modal modal-sm">
+        <div class="modal-header modal-header-simple">
+          <button
+            type="button"
+            (click)="closeSuccessModal()"
+            class="modal-close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="success-content">
+          <div class="success-icon">✓</div>
+          <h3 class="success-title">Solicitud enviada con éxito</h3>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (detailsModalOpen && selectedRequest) {
+    <div class="modal-overlay">
+      <div class="modal modal-lg">
+        <div class="modal-header details-header">
+          <h3 class="modal-title modal-title-light">Detalle de solicitud</h3>
+
+          <button
+            type="button"
+            (click)="closeDetailsModal()"
+            class="modal-close modal-close-light"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="details-body">
+          <div class="details-grid">
+            <div class="details-label">Tipo de permiso:</div>
+            <div class="details-value">{{ selectedRequest.type }}</div>
+
+            <div class="details-label">Fecha de solicitud:</div>
+            <div class="details-value">{{ selectedRequest.date }}</div>
+
+            <div class="details-label">Período solicitado:</div>
+            <div class="details-value">{{ selectedRequest.period }}</div>
+
+            <div class="details-label">Estado:</div>
+            <div class="details-value details-value-strong">
+              {{ selectedRequest.status }}
+            </div>
+
+            <div class="details-label">Motivo:</div>
+            <div class="details-value">Asunto personal</div>
+
+            <div class="details-label">Revisado por:</div>
+            <div class="details-value">Supervisor Juan Pérez</div>
+
+            <div class="details-label">Comentario:</div>
+            <div class="details-value">{{ selectedRequest.comments }}</div>
+
+            <div class="details-label">Adjunto:</div>
+            <div class="details-value attachment-value">📎 constancia.pdf</div>
+
+            <div class="details-label">Saldo afectado:</div>
+            <div class="details-value">3 días</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

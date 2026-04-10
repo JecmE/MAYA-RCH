@@ -1,0 +1,397 @@
+<div class="employees-page">
+  <main class="employees-main">
+
+    @if (mostrarMensajeExito) {
+      <div class="success-alert">
+        <span class="success-alert__icon">✓</span>
+        <span>{{ mensajeExito }}</span>
+      </div>
+    }
+
+    <div class="page-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="page-header__content">
+        <h2 class="page-title">Empleados</h2>
+        <p class="page-subtitle">
+          Gestiona la información general de colaboradores.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="new-employee-button"
+        (click)="abrirModalNuevoEmpleado()"
+      >
+        Nuevo empleado
+      </button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-card__label">Total empleados</p>
+        <p class="stat-card__value stat-card__value--default">{{ totalEmpleados }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Activos</p>
+        <p class="stat-card__value stat-card__value--green">{{ totalActivos }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Inactivos</p>
+        <p class="stat-card__value stat-card__value--slate">{{ totalInactivos }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Departamentos</p>
+        <p class="stat-card__value stat-card__value--blue">{{ totalDepartamentos }}</p>
+      </div>
+    </div>
+
+    <div class="employees-card">
+      <div class="employees-card__filters">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Buscar por nombre, código o correo..."
+            class="form-control"
+            [(ngModel)]="filtroBusqueda"
+          />
+        </div>
+
+        <div class="filters-group">
+          <select
+            class="form-control form-control--auto"
+            [(ngModel)]="filtroDepartamento"
+          >
+            <option value="Todos los departamentos">Todos los departamentos</option>
+            @for (departamento of departamentosDisponibles; track departamento) {
+              <option [value]="departamento">{{ departamento }}</option>
+            }
+          </select>
+
+          <select
+            class="form-control form-control--auto"
+            [(ngModel)]="filtroEstado"
+          >
+            <option value="Todos los estados">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+
+          <button
+            type="button"
+            class="clear-filters-button"
+            (click)="limpiarFiltros()"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="employees-table">
+          <thead>
+            <tr class="employees-table__head-row">
+              <th class="table-head table-head--first">Código</th>
+              <th class="table-head">Nombre</th>
+              <th class="table-head">Puesto</th>
+              <th class="table-head">Departamento</th>
+              <th class="table-head">Correo</th>
+              <th class="table-head table-head--center">Estado</th>
+              <th class="table-head table-head--last table-head--center">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody class="employees-table__body">
+            @if (empleadosFiltrados.length > 0) {
+              @for (row of empleadosFiltrados; track row.id) {
+                <tr class="employees-table__row">
+                  <td class="table-cell table-cell--first table-cell--mono">{{ row.codigo }}</td>
+                  <td class="table-cell table-cell--strong">{{ row.nombre }}</td>
+                  <td class="table-cell">{{ row.puesto }}</td>
+                  <td class="table-cell table-cell--muted">{{ row.departamento }}</td>
+                  <td class="table-cell table-cell--muted">{{ row.correo }}</td>
+                  <td class="table-cell table-cell--center">
+                    <span class="status-badge" [class]="getEstadoClass(row.estado)">
+                      {{ row.estado }}
+                    </span>
+                  </td>
+                  <td class="table-cell table-cell--last table-cell--center">
+                    <div class="table-actions">
+                      <button
+                        type="button"
+                        class="table-button table-button--neutral"
+                        (click)="verEmpleado(row)"
+                      >
+                        Ver
+                      </button>
+
+                      <button
+                        type="button"
+                        class="table-button table-button--blue"
+                        (click)="editarEmpleado(row)"
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="7" class="empty-state-cell">
+                  No se encontraron empleados con los filtros seleccionados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="employees-card__footer">
+        <span>Mostrando {{ empleadosFiltrados.length }} de {{ totalEmpleados }} registros</span>
+        <div class="pagination-actions">
+          <button type="button" class="pagination-button pagination-button--disabled">
+            Anterior
+          </button>
+          <button type="button" class="pagination-button">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+    @if (modalNuevoEmpleado) {
+      <div class="modal-backdrop">
+        <div class="employee-modal">
+          <div class="employee-modal__header">
+            <h3>{{ modoEdicion ? 'Editar Empleado' : 'Nuevo Empleado' }}</h3>
+            <button
+              type="button"
+              class="employee-modal__close"
+              (click)="cerrarModalNuevoEmpleado()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="employee-modal__body">
+            <div class="form-grid form-grid--2">
+              <div class="form-field">
+                <label>Nombres</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Ingrese los nombres"
+                  [(ngModel)]="nuevoEmpleado.nombres"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Apellidos</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Ingrese los apellidos"
+                  [(ngModel)]="nuevoEmpleado.apellidos"
+                />
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>Documento o Identificación</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Ej: 1234567890123"
+                [(ngModel)]="nuevoEmpleado.documento"
+              />
+            </div>
+
+            <div class="form-grid form-grid--2">
+              <div class="form-field">
+                <label>Correo Electrónico</label>
+                <input
+                  type="email"
+                  class="form-control"
+                  placeholder="correo@ejemplo.com"
+                  [(ngModel)]="nuevoEmpleado.correo"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Teléfono</label>
+                <input
+                  type="tel"
+                  class="form-control"
+                  placeholder="5555-5555"
+                  [(ngModel)]="nuevoEmpleado.telefono"
+                />
+              </div>
+            </div>
+
+            <div class="form-grid form-grid--2">
+              <div class="form-field">
+                <label>Puesto</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevoEmpleado.puesto"
+                >
+                  <option value="">Seleccione un puesto</option>
+                  <option>Desarrollador Sr.</option>
+                  <option>Analista QA</option>
+                  <option>Diseñador UI/UX</option>
+                  <option>Especialista MKT</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>Departamento</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevoEmpleado.departamento"
+                >
+                  <option value="">Seleccione un departamento</option>
+                  <option>Tecnología</option>
+                  <option>Marketing</option>
+                  <option>RRHH</option>
+                  <option>Administración</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>Supervisor</label>
+              <select
+                class="form-control"
+                [(ngModel)]="nuevoEmpleado.supervisor"
+              >
+                <option value="">Seleccione un supervisor</option>
+                <option>Ana López</option>
+                <option>José Ruiz</option>
+                <option>Carlos Martínez</option>
+              </select>
+            </div>
+
+            <div class="form-grid form-grid--2">
+              <div class="form-field">
+                <label>Turno Asignado</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevoEmpleado.turno"
+                >
+                  <option value="">Seleccione un turno</option>
+                  <option>Matutino (8:00 - 17:00)</option>
+                  <option>Vespertino (14:00 - 22:00)</option>
+                  <option>Nocturno (22:00 - 6:00)</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>Fecha de Ingreso</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  [(ngModel)]="nuevoEmpleado.fechaIngreso"
+                />
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>Estado</label>
+              <select
+                class="form-control"
+                [(ngModel)]="nuevoEmpleado.estado"
+              >
+                <option>Activo</option>
+                <option>Inactivo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="employee-modal__footer">
+            <button
+              type="button"
+              class="modal-button modal-button--secondary"
+              (click)="cancelarNuevoEmpleado()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              class="modal-button modal-button--primary"
+              (click)="guardarEmpleado()"
+            >
+              {{ modoEdicion ? 'Guardar Cambios' : 'Guardar Empleado' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (modalVerEmpleado && empleadoSeleccionado) {
+      <div class="modal-backdrop">
+        <div class="employee-modal employee-modal--detail">
+          <div class="employee-modal__header">
+            <h3>Detalle del Empleado</h3>
+            <button
+              type="button"
+              class="employee-modal__close"
+              (click)="cerrarModalVerEmpleado()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="employee-modal__body">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Código</span>
+                <span class="detail-value">{{ empleadoSeleccionado.codigo }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Nombre</span>
+                <span class="detail-value">{{ empleadoSeleccionado.nombre }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Puesto</span>
+                <span class="detail-value">{{ empleadoSeleccionado.puesto }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Departamento</span>
+                <span class="detail-value">{{ empleadoSeleccionado.departamento }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Correo</span>
+                <span class="detail-value">{{ empleadoSeleccionado.correo }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value">
+                  <span class="status-badge" [class]="getEstadoClass(empleadoSeleccionado.estado)">
+                    {{ empleadoSeleccionado.estado }}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

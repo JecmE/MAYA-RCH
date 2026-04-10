@@ -1,0 +1,64 @@
+<div class="kpi-page">
+  <main class="kpi-main">
+
+    <div class="page-header">
+      <button
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="page-header__content">
+        <h2 class="page-title">Vista de KPIs Personales</h2>
+        <p class="page-subtitle">
+          Muestra de forma clara el desempeño mensual del colaborador.
+        </p>
+      </div>
+    </div>
+
+    <app-top-cards></app-top-cards>
+
+    <div class="content-grid">
+      <app-charts-section></app-charts-section>
+      <app-monthly-history></app-monthly-history>
+    </div>
+
+    <div class="classification-card">
+      <h3 class="section-title">
+        Explicación de clasificación
+      </h3>
+
+      <div class="classification-grid">
+        <div class="classification-box classification-box--excellent">
+          <p class="classification-title classification-title--excellent">Excelente</p>
+          <p class="classification-text">
+            Cumplimiento sobresaliente, pocas incidencias y alto rendimiento.
+          </p>
+        </div>
+
+        <div class="classification-box classification-box--good">
+          <p class="classification-title classification-title--good">Bueno</p>
+          <p class="classification-text">
+            Cumplimiento adecuado con pequeñas oportunidades de mejora.
+          </p>
+        </div>
+
+        <div class="classification-box classification-box--warning">
+          <p class="classification-title classification-title--warning">Observación</p>
+          <p class="classification-text">
+            Se detectan tardías, faltas o métricas por debajo de la meta.
+          </p>
+        </div>
+
+        <div class="classification-box classification-box--risk">
+          <p class="classification-title classification-title--risk">Riesgo</p>
+          <p class="classification-text">
+            Desempeño bajo o incidencias recurrentes que requieren seguimiento.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

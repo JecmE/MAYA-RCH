@@ -1,0 +1,354 @@
+<div class="turnos-page">
+  <main class="turnos-main">
+
+    @if (mostrarMensajeExito) {
+      <div class="success-alert">
+        <span class="success-alert__icon">✓</span>
+        <span>{{ mensajeExito }}</span>
+      </div>
+    }
+
+    <div class="turnos-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="header-content">
+        <h2 class="page-title">Turnos</h2>
+        <p class="page-subtitle">
+          Administra horarios, tolerancias y disponibilidad de turnos.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="new-button"
+        (click)="abrirModalNuevoTurno()"
+      >
+        Nuevo turno
+      </button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">Total turnos</p>
+        <p class="stat-value">{{ totalTurnos }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Activos</p>
+        <p class="stat-value active">{{ totalActivos }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Inactivos</p>
+        <p class="stat-value inactive">{{ totalInactivos }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Promedio tolerancia</p>
+        <p class="stat-value average">{{ promedioTolerancia }}</p>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Buscar turno..."
+            class="search-input"
+            [(ngModel)]="filtroBusqueda"
+          />
+        </div>
+
+        <div class="filters">
+          <select
+            class="status-select"
+            [(ngModel)]="filtroEstado"
+          >
+            <option value="Todos los estados">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+
+          <button
+            type="button"
+            class="clear-btn"
+            (click)="limpiarFiltros()"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="turnos-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Hora entrada</th>
+              <th>Hora salida</th>
+              <th>Tolerancia</th>
+              <th>Horas esperadas</th>
+              <th>Días</th>
+              <th class="center">Estado</th>
+              <th class="center">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @if (turnosFiltrados.length > 0) {
+              @for (row of turnosFiltrados; track row.id) {
+                <tr>
+                  <td class="nombre-cell">
+                    <div class="turno-name-block">
+                      <span>{{ row.nombre }}</span>
+                      <span class="turno-code">{{ row.codigo }}</span>
+                    </div>
+                  </td>
+                  <td>{{ row.entrada }}</td>
+                  <td>{{ row.salida }}</td>
+                  <td>{{ row.tolerancia }}</td>
+                  <td>{{ row.horas }}</td>
+                  <td>{{ row.dias }}</td>
+                  <td class="center">
+                    <span
+                      class="estado-badge"
+                      [class]="getEstadoClass(row.estado)"
+                    >
+                      {{ row.estado }}
+                    </span>
+                  </td>
+                  <td class="center">
+                    <div class="acciones">
+                      <button
+                        type="button"
+                        class="btn btn-outline"
+                        (click)="verTurno(row)"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-edit"
+                        (click)="editarTurno(row)"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-secondary"
+                        (click)="cambiarEstado(row)"
+                      >
+                        Cambiar estado
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="8" class="empty-state-cell">
+                  No se encontraron turnos con los filtros seleccionados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>Mostrando {{ turnosFiltrados.length }} de {{ totalTurnos }} turnos</span>
+
+        <div class="pagination">
+          <button type="button" class="page-btn disabled">
+            Anterior
+          </button>
+          <button type="button" class="page-btn">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+    @if (modalNuevoTurno) {
+      <div class="modal-backdrop">
+        <div class="turno-modal">
+          <div class="turno-modal__header">
+            <h3>{{ modoEdicion ? 'Editar Turno' : 'Nuevo Turno' }}</h3>
+            <button
+              type="button"
+              class="turno-modal__close"
+              (click)="cerrarModalNuevoTurno()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="turno-modal__body">
+            <div class="form-field">
+              <label>Nombre del Turno</label>
+              <input
+                type="text"
+                class="modal-input"
+                placeholder="Ej: Matutino, Vespertino, Nocturno"
+                [(ngModel)]="nuevoTurno.nombre"
+              />
+            </div>
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Hora de Entrada</label>
+                <input
+                  type="time"
+                  class="modal-input"
+                  [(ngModel)]="nuevoTurno.entrada"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Hora de Salida</label>
+                <input
+                  type="time"
+                  class="modal-input"
+                  [(ngModel)]="nuevoTurno.salida"
+                />
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>Tolerancia (minutos)</label>
+              <input
+                type="number"
+                min="0"
+                max="60"
+                class="modal-input"
+                placeholder="Ej: 15"
+                [(ngModel)]="nuevoTurno.tolerancia"
+              />
+            </div>
+
+            <div class="form-field">
+              <label>Días Aplicables</label>
+              <div class="dias-grid">
+                @for (dia of diasSemana; track dia) {
+                  <label class="dia-item">
+                    <input
+                      type="checkbox"
+                      [checked]="estaDiaSeleccionado(dia)"
+                      (change)="toggleDia(dia, $event)"
+                    />
+                    <span>{{ dia }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label>Estado</label>
+              <select
+                class="modal-input"
+                [(ngModel)]="nuevoTurno.estado"
+              >
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="turno-modal__footer">
+            <button
+              type="button"
+              class="modal-btn modal-btn--secondary"
+              (click)="cancelarTurno()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              class="modal-btn modal-btn--primary"
+              (click)="guardarTurno()"
+            >
+              {{ modoEdicion ? 'Guardar Cambios' : 'Guardar Turno' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (modalVerTurno && turnoSeleccionado) {
+      <div class="modal-backdrop">
+        <div class="turno-modal turno-modal--detail">
+          <div class="turno-modal__header">
+            <h3>Detalle del Turno</h3>
+            <button
+              type="button"
+              class="turno-modal__close"
+              (click)="cerrarModalVerTurno()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="turno-modal__body">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Código</span>
+                <span class="detail-value">{{ turnoSeleccionado.codigo }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Nombre</span>
+                <span class="detail-value">{{ turnoSeleccionado.nombre }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Hora de entrada</span>
+                <span class="detail-value">{{ turnoSeleccionado.entrada }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Hora de salida</span>
+                <span class="detail-value">{{ turnoSeleccionado.salida }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Tolerancia</span>
+                <span class="detail-value">{{ turnoSeleccionado.tolerancia }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Horas esperadas</span>
+                <span class="detail-value">{{ turnoSeleccionado.horas }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Días</span>
+                <span class="detail-value">{{ turnoSeleccionado.dias }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value">
+                  <span
+                    class="estado-badge"
+                    [class]="getEstadoClass(turnoSeleccionado.estado)"
+                  >
+                    {{ turnoSeleccionado.estado }}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

@@ -1,0 +1,343 @@
+<div class="roles-page">
+  <div class="success-alert" *ngIf="mostrarMensajeExito">
+    <span class="success-alert__icon">✓</span>
+    <span>{{ mensajeExito }}</span>
+  </div>
+
+  <div class="roles-header">
+    <button
+      type="button"
+      (click)="goBack()"
+      class="back-button"
+    >
+      ←
+    </button>
+
+    <div class="roles-header__content">
+      <h2 class="roles-title">Roles y Permisos</h2>
+      <p class="roles-subtitle">
+        Gestiona el acceso por rol y las acciones permitidas en el sistema.
+      </p>
+    </div>
+  </div>
+
+  <div class="roles-layout">
+    <div class="roles-sidebar">
+      <div class="roles-list-card">
+        <h3 class="section-title">Perfiles de Sistema</h3>
+
+        <div class="roles-list">
+          @for (rol of roles; track rol) {
+            <button
+              type="button"
+              (click)="setActiveRole(rol)"
+              class="role-item"
+              [class.role-item--active]="activeRole === rol"
+              [class.role-item--inactive]="activeRole !== rol"
+            >
+              <span class="role-item__content">
+                <span
+                  class="role-item__icon"
+                  [class.role-item__icon--active]="activeRole === rol"
+                  [class.role-item__icon--inactive]="activeRole !== rol"
+                >
+                  🛡
+                </span>
+                {{ rol }}
+              </span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="create-role-button"
+        (click)="abrirModalNuevoRol()"
+      >
+        + Crear nuevo rol
+      </button>
+
+      <button
+        type="button"
+        class="delete-role-button"
+        (click)="abrirModalEliminarRol()"
+        [disabled]="!puedeEliminarRolActivo"
+      >
+        🗑 Borrar rol
+      </button>
+    </div>
+
+    <div class="roles-main">
+      <div class="permissions-card">
+        <div class="permissions-card__header">
+          <div>
+            <h3 class="permissions-title">
+              Permisos: <span class="permissions-title__accent">{{ activeRole }}</span>
+            </h3>
+            <p class="permissions-subtitle">
+              Configuración de acceso a módulos y acciones.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="edit-matrix-button"
+            (click)="toggleEditarMatriz()"
+          >
+            {{ editandoMatriz ? 'Guardar Cambios' : 'Editar Matriz' }}
+          </button>
+        </div>
+
+        <div class="permissions-table-wrapper">
+          <table class="permissions-table">
+            <thead>
+              <tr class="permissions-table__head-row">
+                <th class="table-head table-head--first table-head--module">Módulo</th>
+                <th class="table-head table-head--center">Ver</th>
+                <th class="table-head table-head--center">Crear</th>
+                <th class="table-head table-head--center">Editar</th>
+                <th class="table-head table-head--center">Aprobar</th>
+                <th class="table-head table-head--center">Exportar</th>
+                <th class="table-head table-head--center table-head--last">Administrar</th>
+              </tr>
+            </thead>
+
+            <tbody class="permissions-table__body">
+              @for (row of permisosData; track row.modulo) {
+                <tr class="permissions-table__row">
+                  <td class="table-cell table-cell--first table-cell--module">
+                    {{ row.modulo }}
+                  </td>
+
+                  <td class="table-cell table-cell--center">
+                    <div class="permission-check-wrapper">
+                      <button
+                        type="button"
+                        class="permission-check"
+                        [class.permission-check--enabled]="row.ver"
+                        [class.permission-check--disabled]="!row.ver"
+                        [class.permission-check--editable]="editandoMatriz"
+                        (click)="togglePermiso(row, 'ver')"
+                      >
+                        {{ row.ver ? '✓' : '✕' }}
+                      </button>
+                    </div>
+                  </td>
+
+                  <td class="table-cell table-cell--center">
+                    <div class="permission-check-wrapper">
+                      <button
+                        type="button"
+                        class="permission-check"
+                        [class.permission-check--enabled]="row.crear"
+                        [class.permission-check--disabled]="!row.crear"
+                        [class.permission-check--editable]="editandoMatriz"
+                        (click)="togglePermiso(row, 'crear')"
+                      >
+                        {{ row.crear ? '✓' : '✕' }}
+                      </button>
+                    </div>
+                  </td>
+
+                  <td class="table-cell table-cell--center">
+                    <div class="permission-check-wrapper">
+                      <button
+                        type="button"
+                        class="permission-check"
+                        [class.permission-check--enabled]="row.editar"
+                        [class.permission-check--disabled]="!row.editar"
+                        [class.permission-check--editable]="editandoMatriz"
+                        (click)="togglePermiso(row, 'editar')"
+                      >
+                        {{ row.editar ? '✓' : '✕' }}
+                      </button>
+                    </div>
+                  </td>
+
+                  <td class="table-cell table-cell--center">
+                    <div class="permission-check-wrapper">
+                      <button
+                        type="button"
+                        class="permission-check"
+                        [class.permission-check--enabled]="row.aprobar"
+                        [class.permission-check--disabled]="!row.aprobar"
+                        [class.permission-check--editable]="editandoMatriz"
+                        (click)="togglePermiso(row, 'aprobar')"
+                      >
+                        {{ row.aprobar ? '✓' : '✕' }}
+                      </button>
+                    </div>
+                  </td>
+
+                  <td class="table-cell table-cell--center">
+                    <div class="permission-check-wrapper">
+                      <button
+                        type="button"
+                        class="permission-check"
+                        [class.permission-check--enabled]="row.exportar"
+                        [class.permission-check--disabled]="!row.exportar"
+                        [class.permission-check--editable]="editandoMatriz"
+                        (click)="togglePermiso(row, 'exportar')"
+                      >
+                        {{ row.exportar ? '✓' : '✕' }}
+                      </button>
+                    </div>
+                  </td>
+
+                  <td class="table-cell table-cell--center table-cell--last">
+                    <div class="permission-check-wrapper">
+                      <button
+                        type="button"
+                        class="permission-check"
+                        [class.permission-check--enabled]="row.administrar"
+                        [class.permission-check--disabled]="!row.administrar"
+                        [class.permission-check--editable]="editandoMatriz"
+                        (click)="togglePermiso(row, 'administrar')"
+                      >
+                        {{ row.administrar ? '✓' : '✕' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="restrictions-section">
+          <h3 class="section-title">
+            Restricciones Específicas para {{ activeRole }}
+          </h3>
+
+          <div class="restriction-list">
+            <div class="restriction-card">
+              <div class="restriction-dot restriction-dot--blue"></div>
+              <div>
+                <p class="restriction-title">Acceso limitado por departamento</p>
+                <p class="restriction-text">
+                  Solo puede visualizar y editar datos de empleados de su departamento asignado.
+                </p>
+              </div>
+            </div>
+
+            <div class="restriction-card">
+              <div class="restriction-dot restriction-dot--amber"></div>
+              <div>
+                <p class="restriction-title">Aprobaciones con límite de monto</p>
+                <p class="restriction-text">
+                  Puede aprobar bonos e incentivos hasta Q5,000 por empleado sin aprobación adicional.
+                </p>
+              </div>
+            </div>
+
+            <div class="restriction-card">
+              <div class="restriction-dot restriction-dot--purple"></div>
+              <div>
+                <p class="restriction-title">Exportación con auditoría</p>
+                <p class="restriction-text">
+                  Todas las exportaciones de datos quedan registradas en auditoría con fecha y usuario.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="security-note">
+          <div class="security-note__icon">⚠</div>
+          <div class="security-note__text">
+            <strong>Nota de seguridad:</strong> Los cambios en la matriz de permisos aplicarán en el próximo inicio de sesión para los usuarios con el rol
+            <strong>{{ activeRole }}</strong>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal nuevo rol -->
+  <div class="modal-backdrop" *ngIf="mostrarModalNuevoRol">
+    <div class="role-modal">
+      <div class="role-modal__header">
+        <h3>Crear nuevo rol</h3>
+        <button
+          type="button"
+          class="role-modal__close"
+          (click)="cerrarModalNuevoRol()"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="role-modal__body">
+        <label class="role-modal__label">Nombre del rol</label>
+        <input
+          type="text"
+          class="role-modal__input"
+          placeholder="Ej: Contador"
+          [(ngModel)]="nuevoRol"
+        />
+      </div>
+
+      <div class="role-modal__footer">
+        <button
+          type="button"
+          class="role-modal__button role-modal__button--secondary"
+          (click)="cerrarModalNuevoRol()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="role-modal__button role-modal__button--primary"
+          (click)="crearNuevoRol()"
+        >
+          Crear rol
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal eliminar rol -->
+  <div class="modal-backdrop" *ngIf="mostrarModalEliminarRol">
+    <div class="role-modal">
+      <div class="role-modal__header">
+        <h3>Eliminar rol</h3>
+        <button
+          type="button"
+          class="role-modal__close"
+          (click)="cerrarModalEliminarRol()"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="role-modal__body">
+        <p class="role-modal__text">
+          ¿Deseas eliminar el rol <strong>{{ rolAEliminar }}</strong>?
+        </p>
+        <p class="role-modal__text role-modal__text--muted">
+          Esta acción quitará el rol de la lista y su matriz de permisos.
+        </p>
+      </div>
+
+      <div class="role-modal__footer">
+        <button
+          type="button"
+          class="role-modal__button role-modal__button--secondary"
+          (click)="cerrarModalEliminarRol()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="role-modal__button role-modal__button--danger"
+          (click)="eliminarRol()"
+        >
+          Eliminar rol
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

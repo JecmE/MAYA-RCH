@@ -1,0 +1,275 @@
+<div class="layout-shell">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <h1 class="sidebar__title">MAYA RCH</h1>
+      <p class="sidebar__role">
+        {{ role }}
+      </p>
+    </div>
+
+    <nav class="sidebar__nav">
+
+      <div class="sidebar__section">
+        <p class="sidebar__section-title">
+          General
+        </p>
+
+        <a
+          routerLink="/"
+          routerLinkActive="sidebar__link--active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="sidebar__link"
+        >
+          Dashboard
+        </a>
+
+        @if (showEmpleadoMenu) {
+          <a
+            routerLink="/asistencia"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Asistencia
+          </a>
+
+          <a
+            routerLink="/solicitudes"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Solicitudes
+          </a>
+
+          <a
+            routerLink="/timesheet"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Timesheet
+          </a>
+
+          <a
+            routerLink="/boleta"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Boleta
+          </a>
+
+          <a
+            routerLink="/perfil"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Perfil
+          </a>
+
+          <a
+            routerLink="/kpi"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            KPIs
+          </a>
+        }
+      </div>
+
+      @if (isSupervisor) {
+        <div class="sidebar__section">
+          <p class="sidebar__section-title">
+            Supervisor
+          </p>
+
+          <a
+            routerLink="/supervisor/pendientes"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Pendientes
+          </a>
+
+          <a
+            routerLink="/supervisor/asistencia"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Asistencia equipo
+          </a>
+
+          <a
+            routerLink="/supervisor/timesheet"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Timesheet equipo
+          </a>
+
+          <a
+            routerLink="/supervisor/kpi"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            KPI equipo
+          </a>
+        </div>
+      }
+
+      @if (isRrhh) {
+        <div class="sidebar__section">
+          <p class="sidebar__section-title">
+            RRHH
+          </p>
+
+          <a
+            routerLink="/rrhh/empleados"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Empleados
+          </a>
+
+          <a
+            routerLink="/rrhh/planilla"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Planilla
+          </a>
+
+          <a
+            routerLink="/rrhh/turnos"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Turnos
+          </a>
+
+          <a
+            routerLink="/rrhh/asistencia"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Asistencia general
+          </a>
+
+          <a
+            routerLink="/rrhh/permisos"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Permisos
+          </a>
+
+          <a
+            routerLink="/rrhh/proyectos"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Proyectos
+          </a>
+
+          <a
+            routerLink="/rrhh/bonos"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Bonos
+          </a>
+
+          <a
+            routerLink="/rrhh/reportes"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Reportes
+          </a>
+
+          <a
+            routerLink="/rrhh/auditoria"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Auditoría
+          </a>
+
+          <a
+            routerLink="/rrhh/kpis"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            KPIs globales
+          </a>
+        </div>
+      }
+
+      @if (isAdmin) {
+        <div class="sidebar__section">
+          <p class="sidebar__section-title">
+            Admin
+          </p>
+
+          <a
+            routerLink="/admin/usuarios"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Usuarios
+          </a>
+
+          <a
+            routerLink="/admin/roles"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Roles y permisos
+          </a>
+
+          <a
+            routerLink="/admin/parametros"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Parámetros
+          </a>
+
+          <a
+            routerLink="/admin/auditoria"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Auditoría logs
+          </a>
+
+          <a
+            routerLink="/admin/seguridad"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Seguridad
+          </a>
+
+          <a
+            routerLink="/admin/soporte"
+            routerLinkActive="sidebar__link--active"
+            class="sidebar__link"
+          >
+            Soporte
+          </a>
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar__footer">
+      <button
+        (click)="logout()"
+        class="logout-button"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  </aside>
+
+  <main class="layout-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

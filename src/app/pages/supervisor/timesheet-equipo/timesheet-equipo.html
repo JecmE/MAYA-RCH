@@ -1,0 +1,186 @@
+<div class="timesheet-page">
+  <main class="timesheet-main">
+    <div class="page-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="header-content">
+        <h2 class="page-title">Timesheet del Equipo</h2>
+        <p class="page-subtitle">
+          Revisa y valida los registros de horas enviados por tu equipo.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">Pendientes</p>
+        <p class="stat-value stat-amber">{{ totalPendientes }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Aprobados</p>
+        <p class="stat-value stat-green">{{ totalAprobados }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Con observación</p>
+        <p class="stat-value stat-red">{{ totalObservacion }}</p>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-toolbar">
+        <div class="toolbar-row">
+          <div class="search-box">
+            <input
+              type="text"
+              placeholder="Buscar por empleado o proyecto..."
+              class="search-input"
+              [(ngModel)]="searchTerm"
+            />
+          </div>
+
+          <div class="filters-box">
+            <select class="filter-control" [(ngModel)]="selectedEstado">
+              <option>Todos los estados</option>
+              <option>Pendiente</option>
+              <option>Aprobado</option>
+              <option>Observación</option>
+              <option>Rechazado</option>
+            </select>
+
+            <select class="filter-control" [(ngModel)]="selectedProyecto">
+              <option>Todos los proyectos</option>
+              <option>CRH</option>
+              <option>RRHH</option>
+              <option>MKT</option>
+            </select>
+
+            <button
+              type="button"
+              class="filter-button"
+              (click)="aplicarFiltros()"
+            >
+              Filtrar
+            </button>
+
+            <button
+              type="button"
+              class="clear-button"
+              (click)="limpiarFiltros()"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="timesheet-table">
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Proyecto</th>
+              <th>Fecha</th>
+              <th>Actividad</th>
+              <th class="text-center">Horas</th>
+              <th class="text-center">Estado</th>
+              <th>Comentario</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (row of registrosPaginados; track row.id) {
+              <tr>
+                <td class="employee-name">{{ row.empleado }}</td>
+                <td>
+                  <span class="project-badge">{{ row.proyecto }}</span>
+                </td>
+                <td class="muted-text">{{ row.fecha }}</td>
+                <td class="activity-text">{{ row.actividad }}</td>
+                <td class="text-center hours-text">{{ row.horas }} h</td>
+                <td class="text-center">
+                  <span class="status-badge" [ngClass]="getStatusClass(row.estado)">
+                    {{ row.estado }}
+                  </span>
+                </td>
+                <td class="comment-text">{{ row.comentario }}</td>
+                <td class="text-center">
+                  @if (row.estado === 'Pendiente') {
+                    <div class="actions-group">
+                      <button
+                        type="button"
+                        class="action-icon approve-icon"
+                        title="Aprobar"
+                        (click)="aprobarRegistro(row.id)"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        type="button"
+                        class="action-icon reject-icon"
+                        title="Rechazar"
+                        (click)="rechazarRegistro(row.id)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="managed-text">Gestionado</span>
+                  }
+                </td>
+              </tr>
+            }
+
+            @if (registrosPaginados.length === 0) {
+              <tr>
+                <td colspan="8" class="empty-row">
+                  No se encontraron registros con los filtros seleccionados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>
+          Mostrando {{ registrosPaginados.length }} de {{ registrosFiltrados.length }} registros
+        </span>
+
+        <div class="pagination">
+          <button
+            type="button"
+            class="page-button"
+            [disabled]="paginaActual === 1"
+            [class.disabled-button]="paginaActual === 1"
+            (click)="paginaAnterior()"
+          >
+            Anterior
+          </button>
+
+          <span class="page-indicator">
+            Página {{ paginaActual }} de {{ totalPaginas }}
+          </span>
+
+          <button
+            type="button"
+            class="page-button"
+            [disabled]="paginaActual === totalPaginas"
+            [class.disabled-button]="paginaActual === totalPaginas"
+            (click)="paginaSiguiente()"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

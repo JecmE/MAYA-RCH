@@ -1,0 +1,530 @@
+<div class="settings-page">
+  <div class="success-alert" *ngIf="mostrarMensajeExito">
+    <span class="success-alert__icon">✓</span>
+    <span>{{ mensajeExito }}</span>
+  </div>
+
+  <div class="settings-header settings-header--top">
+    <div class="settings-header__left">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="settings-header__content">
+        <h2 class="settings-title">Parámetros Globales</h2>
+        <p class="settings-subtitle">
+          Configuración de reglas generales y límites operativos del sistema.
+        </p>
+      </div>
+    </div>
+
+    <div class="settings-top-actions">
+      <button
+        type="button"
+        class="top-action-button top-action-button--secondary"
+        (click)="abrirHistorial()"
+      >
+        🕘 Historial
+      </button>
+
+      <button
+        type="button"
+        class="top-action-button top-action-button--secondary"
+        (click)="restablecer()"
+      >
+        ↺ Restablecer
+      </button>
+
+      <button
+        type="button"
+        class="top-action-button top-action-button--primary"
+        (click)="guardarCambios()"
+      >
+        💾 Guardar Cambios
+      </button>
+    </div>
+  </div>
+
+  <div class="settings-shell">
+    <aside class="settings-sidebar">
+      <div class="settings-sidebar__title">
+        Categorías
+      </div>
+
+      <div class="settings-sidebar__nav">
+        <button
+          type="button"
+          class="settings-nav-item"
+          [class.settings-nav-item--active]="activeTab === 'horas'"
+          (click)="setTab('horas')"
+        >
+          <span class="settings-nav-item__icon">🕒</span>
+          <span>Horas y validaciones</span>
+        </button>
+
+        <button
+          type="button"
+          class="settings-nav-item"
+          [class.settings-nav-item--active]="activeTab === 'vacaciones'"
+          (click)="setTab('vacaciones')"
+        >
+          <span class="settings-nav-item__icon">📅</span>
+          <span>Vacaciones</span>
+        </button>
+
+        <button
+          type="button"
+          class="settings-nav-item"
+          [class.settings-nav-item--active]="activeTab === 'kpis'"
+          (click)="setTab('kpis')"
+        >
+          <span class="settings-nav-item__icon">📈</span>
+          <span>KPIs y Metas</span>
+        </button>
+
+        <button
+          type="button"
+          class="settings-nav-item"
+          [class.settings-nav-item--active]="activeTab === 'planilla'"
+          (click)="setTab('planilla')"
+        >
+          <span class="settings-nav-item__icon">🧮</span>
+          <span>Planilla</span>
+        </button>
+
+        <button
+          type="button"
+          class="settings-nav-item"
+          [class.settings-nav-item--active]="activeTab === 'generales'"
+          (click)="setTab('generales')"
+        >
+          <span class="settings-nav-item__icon">⚙</span>
+          <span>Generales</span>
+        </button>
+      </div>
+    </aside>
+
+    <section class="settings-content-card">
+      <div class="settings-content">
+
+        @if (activeTab === 'horas') {
+          <div class="content-block">
+            <h3 class="content-title">Horas y Validaciones</h3>
+
+            <div class="form-stack">
+              <div class="form-group">
+                <label class="form-label">Límite diario de horas (máximo permitido)</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="limiteDiarioHoras"
+                  />
+                  <span class="inline-field__text">horas</span>
+                </div>
+                <p class="field-help">
+                  El sistema alertará si un empleado registra más horas que este límite en un solo día.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Límite semanal de horas extra</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="limiteSemanalHorasExtra"
+                  />
+                  <span class="inline-field__text">horas</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Tolerancia de marcaje (minutos)</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="toleranciaMarcaje"
+                  />
+                  <span class="inline-field__text">minutos</span>
+                </div>
+                <p class="field-help">
+                  Tiempo de gracia antes de marcar tardanza al empleado.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Días laborables estándar de la organización</label>
+                <div class="day-chips">
+                  @for (dia of diasLaborables; track dia) {
+                    <span class="day-chip day-chip--active">{{ dia }}</span>
+                  }
+                  @for (dia of diasNoLaborables; track dia) {
+                    <span class="day-chip day-chip--inactive">{{ dia }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab === 'vacaciones') {
+          <div class="content-block">
+            <h3 class="content-title">Vacaciones y Políticas</h3>
+
+            <div class="form-stack">
+              <div class="form-group">
+                <label class="form-label">Días de vacaciones anuales por defecto</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="diasVacacionesAnuales"
+                  />
+                  <span class="inline-field__text">días</span>
+                </div>
+                <p class="field-help">
+                  Cantidad base que se asigna a cada empleado al inicio del período.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Días adicionales por antigüedad</label>
+                <div class="rule-box">
+                  <input
+                    type="number"
+                    class="form-control form-control--tiny"
+                    [(ngModel)]="diasAdicionales"
+                  />
+                  <span class="inline-field__text">días cada</span>
+                  <input
+                    type="number"
+                    class="form-control form-control--tiny"
+                    [(ngModel)]="aniosAntiguedad"
+                  />
+                  <span class="inline-field__text">años</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Período de caducidad de vacaciones</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="caducidadVacaciones"
+                >
+                  <option>No caducan</option>
+                  <option>31 de Diciembre del año siguiente</option>
+                  <option>6 meses después de ganarlas</option>
+                  <option>12 meses después de ganarlas</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Anticipación mínima para solicitar vacaciones</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="anticipacionVacaciones"
+                  />
+                  <span class="inline-field__text">días hábiles</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab === 'kpis') {
+          <div class="content-block">
+            <h3 class="content-title">KPIs y Metas</h3>
+
+            <div class="form-stack">
+              <div class="form-group">
+                <label class="form-label">Meta de cumplimiento organizacional</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="metaCumplimiento"
+                  />
+                  <span class="inline-field__text">%</span>
+                </div>
+                <p class="field-help">
+                  Objetivo de cumplimiento general para toda la organización.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Criterios de clasificación de empleados</label>
+
+                <div class="classification-list">
+                  <div class="classification-item classification-item--green">
+                    <span class="classification-item__label">Excelente:</span>
+                    <input
+                      type="number"
+                      class="form-control form-control--tiny"
+                      [(ngModel)]="clasificacionExcelente"
+                    />
+                    <span class="inline-field__text">% - 100%</span>
+                  </div>
+
+                  <div class="classification-item classification-item--blue">
+                    <span class="classification-item__label">Bueno:</span>
+                    <input
+                      type="number"
+                      class="form-control form-control--tiny"
+                      [(ngModel)]="clasificacionBueno"
+                    />
+                    <span class="inline-field__text">% - 94%</span>
+                  </div>
+
+                  <div class="classification-item classification-item--amber">
+                    <span class="classification-item__label">Regular:</span>
+                    <input
+                      type="number"
+                      class="form-control form-control--tiny"
+                      [(ngModel)]="clasificacionRegular"
+                    />
+                    <span class="inline-field__text">% - 84%</span>
+                  </div>
+
+                  <div class="classification-item classification-item--red">
+                    <span class="classification-item__label">En Riesgo:</span>
+                    <span class="inline-field__text">Menos de 70%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Máximo de tardías mensuales permitidas</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="maxTardiasMensuales"
+                  />
+                  <span class="inline-field__text">tardías</span>
+                </div>
+                <p class="field-help">
+                  Si se supera este límite, el empleado se clasifica como "En Riesgo".
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab === 'planilla') {
+          <div class="content-block">
+            <h3 class="content-title">Planilla y Criterios de Cálculo</h3>
+
+            <div class="form-stack">
+              <div class="form-group">
+                <label class="form-label">Tasa de IGSS Laboral</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    step="0.01"
+                    class="form-control form-control--short"
+                    [(ngModel)]="igssLaboral"
+                  />
+                  <span class="inline-field__text">%</span>
+                </div>
+                <p class="field-help">
+                  Porcentaje de descuento al salario del empleado.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Tasa de IGSS Patronal</label>
+                <div class="inline-field">
+                  <input
+                    type="number"
+                    step="0.01"
+                    class="form-control form-control--short"
+                    [(ngModel)]="igssPatronal"
+                  />
+                  <span class="inline-field__text">%</span>
+                </div>
+                <p class="field-help">
+                  Aporte patronal al IGSS.
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Tabla de ISR (renta mensual)</label>
+                <div class="rule-panel">
+                  <div class="rule-panel__row">
+                    <span>De Q0.01 a Q5,000</span>
+                    <span>Exento</span>
+                  </div>
+                  <div class="rule-panel__row">
+                    <span>De Q5,000.01 a Q15,000</span>
+                    <span>5%</span>
+                  </div>
+                  <div class="rule-panel__row">
+                    <span>De Q15,000.01 en adelante</span>
+                    <span>7%</span>
+                  </div>
+                  <p class="field-help field-help--inside">
+                    Tabla simplificada para cálculo automático de ISR.
+                  </p>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Bonificación Decreto 37-2001</label>
+                <div class="inline-field">
+                  <span class="inline-field__text">Q</span>
+                  <input
+                    type="number"
+                    class="form-control form-control--short"
+                    [(ngModel)]="bonificacionDecreto"
+                  />
+                </div>
+                <p class="field-help">
+                  Bonificación mensual según legislación guatemalteca.
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab === 'generales') {
+          <div class="content-block">
+            <h3 class="content-title">Parámetros de Cálculo Generales</h3>
+
+            <div class="form-stack">
+              <div class="form-group">
+                <label class="form-label">Moneda del sistema</label>
+                <select class="form-control" [(ngModel)]="monedaSistema">
+                  <option>GTQ - Quetzal Guatemalteco</option>
+                  <option>USD - Dólar Americano</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Zona horaria</label>
+                <select class="form-control" [(ngModel)]="zonaHoraria">
+                  <option>America/Guatemala (GMT-6)</option>
+                  <option>America/New_York (GMT-5)</option>
+                  <option>America/Los_Angeles (GMT-8)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Formato de fecha</label>
+                <select class="form-control" [(ngModel)]="formatoFecha">
+                  <option>DD/MM/YYYY</option>
+                  <option>MM/DD/YYYY</option>
+                  <option>YYYY-MM-DD</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Idioma del sistema</label>
+                <select class="form-control" [(ngModel)]="idiomaSistema">
+                  <option>Español</option>
+                  <option>English</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Ciclo de planilla</label>
+                <select class="form-control" [(ngModel)]="cicloPlanilla">
+                  <option>Mensual (del 1 al último día del mes)</option>
+                  <option>Quincenal</option>
+                  <option>Semanal</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <div class="history-card">
+    <div class="history-card__header">
+      <h3 class="history-card__title">Historial de Cambios</h3>
+      <p class="history-card__subtitle">
+        Registro de modificaciones realizadas en la configuración de parámetros
+      </p>
+    </div>
+
+    <div class="history-table-wrapper">
+      <table class="history-table">
+        <thead>
+          <tr class="history-table__head-row">
+            <th class="table-head table-head--first">Fecha y Hora</th>
+            <th class="table-head">Usuario</th>
+            <th class="table-head">Categoría</th>
+            <th class="table-head table-head--last">Descripción del Cambio</th>
+          </tr>
+        </thead>
+
+        <tbody class="history-table__body">
+          @for (row of historialData; track row.id) {
+            <tr class="history-table__row">
+              <td class="table-cell table-cell--first table-cell--mono">{{ row.fecha }}</td>
+              <td class="table-cell table-cell--strong">{{ row.usuario }}</td>
+              <td class="table-cell">
+                <span [class]="getCategoriaClass(row.categoria)">
+                  {{ row.categoria }}
+                </span>
+              </td>
+              <td class="table-cell table-cell--last table-cell--muted">{{ row.cambio }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="showHistorial">
+    <div class="history-modal">
+      <div class="history-modal__header">
+        <h3>Historial Completo de Cambios</h3>
+        <button
+          type="button"
+          class="history-modal__close"
+          (click)="cerrarHistorial()"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="history-modal__body">
+        <div class="history-modal__list">
+          @for (row of historialData; track row.id) {
+            <div class="history-log-card">
+              <div class="history-log-card__meta">
+                <span [class]="getCategoriaClass(row.categoria)">
+                  {{ row.categoria }}
+                </span>
+                <span class="history-log-card__date">{{ row.fecha }}</span>
+              </div>
+
+              <p class="history-log-card__change">{{ row.cambio }}</p>
+              <p class="history-log-card__user">Por: {{ row.usuario }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="history-modal__footer">
+        <button
+          type="button"
+          class="top-action-button top-action-button--secondary"
+          (click)="cerrarHistorial()"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

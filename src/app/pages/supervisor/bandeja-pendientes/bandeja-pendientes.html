@@ -1,0 +1,175 @@
+<div class="contenedor">
+  <div class="encabezado">
+    <div>
+      <h2>Bandeja de Pendientes</h2>
+      <p>Gestiona las solicitudes y tiempos de tu equipo.</p>
+    </div>
+  </div>
+
+  <div class="card-principal">
+    <div class="tabs">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="tab === 'permisos'"
+        (click)="setTab('permisos')"
+      >
+        <span>📄</span>
+        <span>Permisos y Vacaciones</span>
+        <span class="badge">{{ permisosData.length }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="tab === 'horas'"
+        (click)="setTab('horas')"
+      >
+        <span>⏰</span>
+        <span>Horas de Proyecto</span>
+        <span class="badge">{{ horasData.length }}</span>
+      </button>
+    </div>
+
+    <div class="contenido">
+      <div class="filtros">
+        <select>
+          <option>Todos los empleados</option>
+          <option>Carlos Mérida</option>
+          <option>Lucía Torres</option>
+        </select>
+
+        <select>
+          <option>Todas las fechas</option>
+          <option>Esta semana</option>
+        </select>
+
+        <select [(ngModel)]="filtroEstado">
+          <option value="Todos">Todos</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Aprobado">Aprobado</option>
+          <option value="Rechazado">Rechazado</option>
+        </select>
+      </div>
+
+      <div class="tabla-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>{{ tab === 'permisos' ? 'Tipo' : 'Proyecto' }}</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th *ngIf="tab === 'permisos'">Urgencia</th>
+              <th *ngIf="tab === 'horas'" class="centrado">Horas</th>
+              <th class="centrado">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr *ngFor="let row of datosFiltrados">
+              <td class="fw-600">{{ row.empleado }}</td>
+
+              <td>
+                {{ tab === 'permisos' ? $any(row).tipo : $any(row).proyecto }}
+              </td>
+
+              <td>{{ row.fecha }}</td>
+
+              <td>
+                <span [ngClass]="getEstadoClass(row.estado)">
+                  {{ row.estado }}
+                </span>
+              </td>
+
+              <td *ngIf="tab === 'permisos'">
+                <span [ngClass]="getUrgenciaClass($any(row).urgencia)">
+                  <span *ngIf="$any(row).urgencia === 'Alta'">⚠️</span>
+                  {{ $any(row).urgencia }}
+                </span>
+              </td>
+
+              <td *ngIf="tab === 'horas'" class="centrado fw-700">
+                {{ $any(row).horas }}
+              </td>
+
+              <td class="centrado">
+                <button
+                  type="button"
+                  class="btn-detalle"
+                  (click)="handleVerDetalle(row)"
+                >
+                  Ver detalle
+                </button>
+              </td>
+            </tr>
+
+            <tr *ngIf="datosFiltrados.length === 0">
+              <td [attr.colspan]="tab === 'permisos' ? 6 : 6" class="sin-registros">
+                No hay registros para el filtro seleccionado.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" *ngIf="modalOpen && selectedItem">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Detalle de Solicitud</h3>
+        <button type="button" class="btn-close" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detalle-grid">
+          <div class="label">Empleado:</div>
+          <div class="value strong">{{ selectedItem.empleado }}</div>
+
+          <ng-container *ngIf="tab === 'permisos'; else horasDetalle">
+            <div class="label">Tipo:</div>
+            <div class="value">{{ $any(selectedItem).tipo }}</div>
+
+            <div class="label">Fechas:</div>
+            <div class="value">
+              {{ selectedItem.fecha }} (Total: {{ $any(selectedItem).dias }} días)
+            </div>
+
+            <div class="label">Adjunto:</div>
+            <div class="value link">Ver documento</div>
+          </ng-container>
+
+          <ng-template #horasDetalle>
+            <div class="label">Proyecto:</div>
+            <div class="value">{{ $any(selectedItem).proyecto }}</div>
+
+            <div class="label">Fecha:</div>
+            <div class="value">{{ selectedItem.fecha }}</div>
+
+            <div class="label">Horas:</div>
+            <div class="value strong">{{ $any(selectedItem).horas }} h</div>
+
+            <div class="label">Actividad:</div>
+            <div class="value">Actualización de requerimientos...</div>
+          </ng-template>
+        </div>
+
+        <div class="campo">
+          <label>Comentario (Obligatorio)</label>
+          <textarea rows="3" placeholder="Añadir comentario..."></textarea>
+        </div>
+
+        <div class="acciones-modal">
+          <button type="button" class="btn-rechazar" (click)="closeModal()">
+            ✕ Rechazar
+          </button>
+          <button type="button" class="btn-aprobar" (click)="closeModal()">
+            ✓ Aprobar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

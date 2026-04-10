@@ -1,0 +1,121 @@
+<div class="attendance-page">
+  <main class="attendance-main">
+
+    <div class="page-header">
+      <button
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+      <div class="page-header__content">
+        <h2 class="page-title">Asistencia General</h2>
+        <p class="page-subtitle">
+          Consulta la asistencia diaria de todos los colaboradores.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-card__label">Presentes</p>
+        <p class="stat-card__value stat-card__value--blue">68</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Tardías</p>
+        <p class="stat-card__value stat-card__value--amber">8</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Ausentes</p>
+        <p class="stat-card__value stat-card__value--red">3</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Jornadas completas</p>
+        <p class="stat-card__value stat-card__value--green">55</p>
+      </div>
+    </div>
+
+    <div class="attendance-card">
+      <div class="attendance-card__filters">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Buscar por empleado..."
+            class="form-control"
+          />
+        </div>
+
+        <div class="filters-group">
+          <select class="form-control form-control--auto">
+            <option>Todos los departamentos</option>
+            <option>RRHH</option>
+            <option>Operaciones</option>
+            <option>Tecnología</option>
+          </select>
+
+          <select class="form-control form-control--auto">
+            <option>Todos los estados</option>
+            <option>Presente</option>
+            <option>Tarde</option>
+            <option>Ausente</option>
+            <option>Completa</option>
+          </select>
+
+          <input
+            type="date"
+            class="form-control form-control--auto"
+          />
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="attendance-table">
+          <thead>
+            <tr class="attendance-table__head-row">
+              <th class="table-head table-head--first">Empleado</th>
+              <th class="table-head">Departamento</th>
+              <th class="table-head">Entrada</th>
+              <th class="table-head">Salida</th>
+              <th class="table-head">Horas</th>
+              <th class="table-head table-head--center">Estado</th>
+              <th class="table-head table-head--last">Observación</th>
+            </tr>
+          </thead>
+          <tbody class="attendance-table__body">
+            @for (row of registros; track row.id) {
+              <tr class="attendance-table__row">
+                <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
+                <td class="table-cell table-cell--muted">{{ row.departamento }}</td>
+                <td class="table-cell">{{ row.entrada }}</td>
+                <td class="table-cell">{{ row.salida }}</td>
+                <td class="table-cell">{{ row.horas }}</td>
+                <td class="table-cell table-cell--center">
+                  <span class="status-badge" [class]="getEstadoClass(row.estado)">
+                    {{ row.estado }}
+                  </span>
+                </td>
+                <td class="table-cell table-cell--last table-cell--muted">{{ row.observacion }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="attendance-card__footer">
+        <span>Mostrando 4 de 4 registros</span>
+        <div class="pagination-actions">
+          <button class="pagination-button pagination-button--disabled">
+            Anterior
+          </button>
+          <button class="pagination-button">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

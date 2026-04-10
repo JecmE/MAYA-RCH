@@ -1,0 +1,130 @@
+<div class="functional-audit-page">
+  <main class="functional-audit-main">
+
+    <div class="page-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+      <div class="page-header__content">
+        <h2 class="page-title">Auditoría Funcional</h2>
+        <p class="page-subtitle">
+          Consulta la trazabilidad de acciones operativas dentro del sistema.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-card__label">Eventos hoy</p>
+        <p class="stat-card__value stat-card__value--blue">126</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Aprobaciones</p>
+        <p class="stat-card__value stat-card__value--green">34</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Ediciones</p>
+        <p class="stat-card__value stat-card__value--amber">18</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Procesos sistema</p>
+        <p class="stat-card__value stat-card__value--slate">9</p>
+      </div>
+    </div>
+
+    <div class="audit-card">
+      <div class="audit-card__filters">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Buscar por usuario, módulo o entidad..."
+            class="form-control"
+            [(ngModel)]="filtroBusqueda"
+          />
+        </div>
+
+        <div class="filters-group">
+          <select
+            class="form-control form-control--auto"
+            [(ngModel)]="filtroModulo"
+          >
+            <option>Todos los módulos</option>
+            <option>Permisos</option>
+            <option>Usuarios</option>
+            <option>Empleados</option>
+            <option>Planilla</option>
+          </select>
+
+          <input
+            type="date"
+            class="form-control form-control--auto"
+            [(ngModel)]="filtroFecha"
+          />
+
+          <button
+            type="button"
+            class="pagination-button"
+            (click)="limpiarFiltros()"
+          >
+            Limpiar
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="audit-table">
+          <thead>
+            <tr class="audit-table__head-row">
+              <th class="table-head table-head--first">Fecha</th>
+              <th class="table-head">Usuario</th>
+              <th class="table-head">Módulo</th>
+              <th class="table-head">Acción</th>
+              <th class="table-head">Entidad</th>
+              <th class="table-head table-head--last">Detalle</th>
+            </tr>
+          </thead>
+          <tbody class="audit-table__body">
+            @if (registrosFiltrados.length > 0) {
+              @for (row of registrosFiltrados; track row.id) {
+                <tr class="audit-table__row">
+                  <td class="table-cell table-cell--first table-cell--mono">{{ row.fecha }}</td>
+                  <td class="table-cell table-cell--strong">{{ row.usuario }}</td>
+                  <td class="table-cell">{{ row.modulo }}</td>
+                  <td class="table-cell">{{ row.accion }}</td>
+                  <td class="table-cell table-cell--muted">{{ row.entidad }}</td>
+                  <td class="table-cell table-cell--last table-cell--muted">{{ row.detalle }}</td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="6" class="table-cell table-cell--center">
+                  No se encontraron registros con los filtros seleccionados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="audit-card__footer">
+        <span>Mostrando {{ registrosFiltrados.length }} de {{ registros.length }} registros</span>
+        <div class="pagination-actions">
+          <button class="pagination-button pagination-button--disabled">
+            Anterior
+          </button>
+          <button class="pagination-button">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

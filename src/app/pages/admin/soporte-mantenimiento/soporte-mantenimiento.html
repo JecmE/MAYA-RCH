@@ -1,0 +1,439 @@
+<div class="support-page">
+  @if (mostrarNotificacion) {
+    <div class="toast" [ngClass]="getToastClass()">
+      <span class="toast__icon">{{ getToastIcon() }}</span>
+      <span>{{ mensajeNotificacion }}</span>
+    </div>
+  }
+
+  <div class="support-header">
+    <div class="support-header__left">
+      <button
+        (click)="goBack()"
+        class="back-button"
+        type="button"
+        aria-label="Regresar"
+      >
+        ←
+      </button>
+
+      <div class="support-header__content">
+        <h2 class="support-title">Soporte y Mantenimiento</h2>
+        <p class="support-subtitle">
+          Gestiona el funcionamiento técnico, integraciones e incidencias del sistema.
+        </p>
+      </div>
+    </div>
+
+    <button
+      class="sync-button"
+      type="button"
+      (click)="forzarSincronizacion()"
+    >
+      <span class="button-icon">↻</span>
+      Forzar Sincronización
+    </button>
+  </div>
+
+  <div class="support-top-grid">
+    <div class="support-left-column">
+      <div class="panel-card">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            <span class="title-icon title-icon--blue">🖧</span>
+            Integraciones y Servicios
+          </h3>
+        </div>
+
+        <div class="panel-body panel-body--spaced">
+          @for (item of integraciones; track item.id) {
+            <div class="integration-item">
+              <div class="integration-item__left">
+                <div class="integration-icon" [ngClass]="getIntegrationIconClass(item.tema)">
+                  {{ item.icono }}
+                </div>
+
+                <div>
+                  <h4 class="integration-title">{{ item.titulo }}</h4>
+                  <p class="integration-description">{{ item.descripcion }}</p>
+                </div>
+              </div>
+
+              <div class="integration-item__right">
+                @if (item.accion) {
+                  <button
+                    class="link-action"
+                    type="button"
+                    (click)="probarConexionCorreo()"
+                  >
+                    {{ item.accion }}
+                  </button>
+                }
+
+                <span class="status-chip" [ngClass]="getChipClass(item.estadoTipo)">
+                  {{ item.estado }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="critical-alert-card">
+        <div class="critical-alert-card__icon">⚠</div>
+
+        <div class="critical-alert-card__content">
+          <h3 class="critical-alert-card__title">{{ incidenciaCritica.titulo }}</h3>
+          <p class="critical-alert-card__text">
+            {{ incidenciaCritica.descripcion }}
+          </p>
+
+          <button
+            class="critical-alert-card__button"
+            type="button"
+            (click)="verDetalleError()"
+          >
+            {{ mostrarDetalleError ? 'Ocultar detalles' : 'Ver detalles del error' }}
+          </button>
+
+          @if (mostrarDetalleError) {
+            <div class="mail-config-grid" style="margin-top: 1rem;">
+              <div class="info-card">
+                <p class="info-card__label">Proceso</p>
+                <p class="info-card__value">{{ detalleError.proceso }}</p>
+              </div>
+
+              <div class="info-card">
+                <p class="info-card__label">Hora del fallo</p>
+                <p class="info-card__value">{{ detalleError.hora }}</p>
+              </div>
+
+              <div class="info-card">
+                <p class="info-card__label">Causa detectada</p>
+                <p class="info-card__value">{{ detalleError.causa }}</p>
+              </div>
+
+              <div class="info-card">
+                <p class="info-card__label">Impacto</p>
+                <p class="info-card__value">{{ detalleError.impacto }}</p>
+              </div>
+
+              <div class="info-card">
+                <p class="info-card__label">Acción recomendada</p>
+                <p class="info-card__value">{{ detalleError.accionRecomendada }}</p>
+              </div>
+
+              <div class="info-card">
+                <p class="info-card__label">Estado actual</p>
+                <p class="info-card__value">{{ detalleError.estado }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header">
+        <h3 class="panel-title">
+          <span class="title-icon title-icon--slate">⚙</span>
+          Procesos Programados (Cron)
+        </h3>
+      </div>
+
+      <div class="process-table-wrapper">
+        <table class="process-table">
+          <thead>
+            <tr class="process-table__head-row">
+              <th class="table-head">Proceso</th>
+              <th class="table-head">Programación</th>
+              <th class="table-head table-head--center">Último Estado</th>
+            </tr>
+          </thead>
+
+          <tbody class="process-table__body">
+            @for (row of procesosProgramados; track row.id) {
+              <tr class="process-table__row">
+                <td class="table-cell">
+                  <div class="process-title">{{ row.nombre }}</div>
+                  <div class="process-meta">
+                    <span class="process-meta__icon">🕒</span>
+                    {{ row.ultimaEjecucion }}
+                  </div>
+                </td>
+
+                <td class="table-cell table-cell--mono">
+                  {{ row.programacion }}
+                </td>
+
+                <td class="table-cell table-cell--center">
+                  <span
+                    class="process-status"
+                    [ngClass]="getProcessStatusClass(row.ultimoEstado)"
+                  >
+                    {{ row.ultimoEstado }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header panel-header--large">
+      <div>
+        <h3 class="panel-title panel-title--large">
+          <span class="title-icon title-icon--blue">✉</span>
+          Configuración de Correo
+        </h3>
+        <p class="panel-subtitle">
+          Gestiona el servicio SMTP para envío de notificaciones del sistema.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel-body panel-body--large">
+      <div class="mail-grid">
+        <div>
+          <label class="field-label">Estado del Servicio</label>
+
+          <div class="mail-status-card">
+            <div class="mail-status-card__icon">✓</div>
+            <div>
+              <p class="mail-status-card__title">{{ correoConfig.estadoServicio }}</p>
+              <p class="mail-status-card__text">
+                Última verificación: {{ correoConfig.ultimaVerificacion }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">Pruebas de Envío</label>
+
+          <div class="mail-test-row">
+            <input
+              type="email"
+              class="form-control"
+              [(ngModel)]="correoPrueba"
+              placeholder="correo@ejemplo.com"
+            />
+
+            <button
+              class="send-button"
+              type="button"
+              (click)="enviarCorreoPrueba()"
+            >
+              <span class="button-icon">📤</span>
+              Enviar
+            </button>
+          </div>
+
+          <p class="field-helper">
+            Envía un correo de prueba para verificar conectividad.
+          </p>
+        </div>
+      </div>
+
+<div class="mail-config-block">
+  @if (!modoEdicionCorreo) {
+    <h4 class="section-mini-title">
+      Configuración Visible (No Sensible)
+    </h4>
+
+    <div class="mail-config-grid">
+      <div class="info-card">
+        <p class="info-card__label">Servidor SMTP</p>
+        <p class="info-card__value info-card__value--mono">
+          {{ correoConfig.servidor }}
+        </p>
+      </div>
+
+      <div class="info-card">
+        <p class="info-card__label">Puerto</p>
+        <p class="info-card__value info-card__value--mono">
+          {{ correoConfig.puerto }}
+        </p>
+      </div>
+
+      <div class="info-card">
+        <p class="info-card__label">Usuario SMTP</p>
+        <p class="info-card__value info-card__value--mono">
+          {{ correoConfig.usuario }}
+        </p>
+      </div>
+
+      <div class="info-card">
+        <p class="info-card__label">Correos enviados (hoy)</p>
+        <p class="info-card__value info-card__value--large">
+          {{ correoConfig.correosEnviadosHoy }}
+        </p>
+      </div>
+    </div>
+
+    <div class="panel-actions">
+      <button
+        class="primary-button"
+        type="button"
+        (click)="editarConfiguracion()"
+      >
+        <span class="button-icon">⚙</span>
+        Editar Configuración
+      </button>
+    </div>
+  } @else {
+    <h4 class="section-mini-title">
+      Editar Configuración SMTP
+    </h4>
+
+    <div class="mail-config-grid">
+      <div>
+        <label class="field-label">Servidor SMTP</label>
+        <input
+          type="text"
+          class="form-control"
+          [(ngModel)]="correoConfigEditable.servidor"
+          placeholder="smtp.empresa.com"
+        />
+      </div>
+
+      <div>
+        <label class="field-label">Puerto</label>
+        <input
+          type="text"
+          class="form-control"
+          [(ngModel)]="correoConfigEditable.puerto"
+          placeholder="587 (TLS)"
+        />
+      </div>
+
+      <div>
+        <label class="field-label">Usuario SMTP</label>
+        <input
+          type="text"
+          class="form-control"
+          [(ngModel)]="correoConfigEditable.usuario"
+          placeholder="notificaciones@empresa.com"
+        />
+      </div>
+
+      <div class="info-card">
+        <p class="info-card__label">Correos enviados (hoy)</p>
+        <p class="info-card__value info-card__value--large">
+          {{ correoConfig.correosEnviadosHoy }}
+        </p>
+      </div>
+    </div>
+
+    <div class="panel-actions" style="gap: 0.75rem;">
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="cancelarEdicionCorreo()"
+      >
+        Cancelar
+      </button>
+
+      <button
+        class="primary-button"
+        type="button"
+        (click)="guardarConfiguracionCorreo()"
+      >
+        Guardar Configuración
+      </button>
+    </div>
+  }
+</div>
+
+      <div class="panel-actions">
+      
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-header panel-header--large panel-header--between">
+      <div>
+        <h3 class="panel-title panel-title--large">
+          <span class="title-icon title-icon--green">📈</span>
+          Monitoreo Básico del Sistema
+        </h3>
+        <p class="panel-subtitle">
+          Métricas en tiempo real del rendimiento y salud de la infraestructura.
+        </p>
+      </div>
+
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="actualizarMonitoreo()"
+      >
+        <span class="button-icon">↻</span>
+        Actualizar
+      </button>
+    </div>
+
+    <div class="panel-body panel-body--large">
+      <div class="monitor-grid">
+        @for (metric of monitoreoCards; track metric.id) {
+          <div class="monitor-card" [ngClass]="getMonitorCardClass(metric.tema)">
+            <div class="monitor-card__header">
+              <span class="monitor-card__icon">{{ metric.icono }}</span>
+              <span class="monitor-badge" [ngClass]="getMonitorBadgeClass(metric.tema)">
+                {{ metric.badge }}
+              </span>
+            </div>
+
+            <p class="monitor-card__label">{{ metric.titulo }}</p>
+
+            <p class="monitor-card__value">
+              {{ metric.valor }}<span class="monitor-card__suffix">{{ metric.sufijo }}</span>
+            </p>
+
+            @if (metric.progreso !== undefined) {
+              <div class="monitor-progress">
+                <div
+                  class="monitor-progress__bar"
+                  [ngClass]="getMonitorProgressClass(metric.tema)"
+                  [style.width.%]="metric.progreso"
+                ></div>
+              </div>
+            } @else {
+              <div class="network-stats">
+                <span>{{ metric.extraIzquierda }}</span>
+                <span>{{ metric.extraDerecha }}</span>
+              </div>
+            }
+
+            <p class="monitor-card__detail">{{ metric.detalle }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <p class="summary-card__label">Uptime del Sistema</p>
+          <p class="summary-card__value">{{ uptime }}</p>
+          <p class="summary-card__detail">{{ uptimeDetalle }}</p>
+        </div>
+
+        <div class="summary-card">
+          <p class="summary-card__label">Solicitudes/Segundo</p>
+          <p class="summary-card__value">{{ solicitudesPorSegundo }}</p>
+          <p class="summary-card__detail summary-card__detail--positive">
+            {{ solicitudesDetalle }}
+          </p>
+        </div>
+
+        <div class="summary-card">
+          <p class="summary-card__label">Usuarios Concurrentes</p>
+          <p class="summary-card__value">{{ usuariosConcurrentes }}</p>
+          <p class="summary-card__detail">{{ usuariosConcurrentesDetalle }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

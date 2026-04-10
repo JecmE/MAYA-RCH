@@ -1,0 +1,113 @@
+<div class="attendance-page">
+  <main class="attendance-main">
+
+    <div class="page-header">
+      <button
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="header-content">
+        <h2 class="page-title">Asistencia del Equipo</h2>
+        <p class="page-subtitle">
+          Revisa el estado de asistencia de los colaboradores a tu cargo.
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">Presentes</p>
+        <p class="stat-value stat-blue">1</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Tardías</p>
+        <p class="stat-value stat-amber">1</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Ausentes</p>
+        <p class="stat-value stat-red">1</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-label">Completas</p>
+        <p class="stat-value stat-green">1</p>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Buscar por empleado..."
+            class="search-input"
+          />
+        </div>
+
+        <div class="filters-box">
+          <input
+            type="date"
+            class="filter-control date-control"
+          />
+
+          <button class="filter-button" type="button">
+            Filtrar
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="attendance-table">
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Puesto</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Horas</th>
+              <th class="text-center">Estado</th>
+              <th>Observación</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (row of equipoData; track row.id) {
+              <tr>
+                <td class="employee-name">{{ row.empleado }}</td>
+                <td class="muted-text">{{ row.puesto }}</td>
+                <td>{{ row.entrada }}</td>
+                <td>{{ row.salida }}</td>
+                <td>{{ row.horas }}</td>
+                <td class="text-center">
+                  <span class="status-badge" [class]="getStatusClass(row.estado)">
+                    {{ row.estado }}
+                  </span>
+                </td>
+                <td class="observation-text">{{ row.observacion }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>Mostrando 4 de 4 registros</span>
+
+        <div class="pagination">
+          <button class="page-button disabled-button">
+            Anterior
+          </button>
+          <button class="page-button">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

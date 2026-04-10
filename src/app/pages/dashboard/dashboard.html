@@ -1,0 +1,452 @@
+<div class="dashboard-page">
+  <main class="dashboard-main">
+
+    <div class="welcome-card">
+      <div class="welcome-content">
+        <div class="avatar-box">👤</div>
+
+        <div class="welcome-text">
+          <h2 class="welcome-title">
+            Bienvenido, {{ getWelcomeName() }}
+          </h2>
+
+          <div class="welcome-meta">
+            <span class="meta-item">📅 {{ date }}</span>
+            <span class="meta-item">⏰ {{ time }}</span>
+          </div>
+        </div>
+      </div>
+
+      <button
+        (click)="logout()"
+        class="logout-button"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+
+    <div class="dashboard-grid">
+
+      <div class="dashboard-left">
+
+        @if (role !== 'admin') {
+          <div class="summary-grid" [class.summary-grid-two]="role !== 'rrhh'">
+
+            @if (role !== 'rrhh') {
+              <div class="card section-card">
+                <div class="card-header">
+                  <h3 class="card-title">Marcaje de hoy</h3>
+                </div>
+
+                <div class="card-body">
+                  <div class="info-list">
+                    <div class="info-row">
+                      <span class="info-label">Turno:</span>
+                      <span class="info-badge">8:00 AM - 5:00 PM</span>
+                    </div>
+
+                    <div class="info-row">
+                      <span class="info-label">Tolerancia:</span>
+                      <span class="info-value">10 minutos</span>
+                    </div>
+
+                    <div class="info-row">
+                      <span class="info-label">Estado del día:</span>
+                      <span
+                        class="info-status"
+                        [class.status-complete]="marcaEstado === 'Completa'"
+                        [class.status-entry]="marcaEstado === 'Entrada'"
+                        [class.status-pending]="marcaEstado === 'Pendiente'"
+                      >
+                        {{ marcaEstado }}
+                      </span>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="info-row">
+                      <span class="info-label">Entrada registrada:</span>
+                      <span class="info-value">
+                        {{ marcaEstado !== 'Pendiente' ? '7:58 AM' : '--:--' }}
+                      </span>
+                    </div>
+
+                    <div class="info-row">
+                      <span class="info-label">Salida registrada:</span>
+                      <span class="info-value">
+                        {{ marcaEstado === 'Completa' ? '5:00 PM' : '--:--' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="action-area">
+                    <div class="action-grid">
+                      <button
+                        [disabled]="marcaEstado !== 'Pendiente'"
+                        (click)="marcarEntrada()"
+                        class="primary-button"
+                      >
+                        Marcar entrada
+                      </button>
+
+                      <button
+                        [disabled]="marcaEstado !== 'Entrada'"
+                        (click)="marcarSalida()"
+                        class="primary-button"
+                      >
+                        Marcar salida
+                      </button>
+                    </div>
+
+                    @if (marcaEstado !== 'Pendiente') {
+                      <div class="success-box">
+                        <span>✅</span>
+                        <span>
+                          {{ marcaEstado === 'Entrada'
+                            ? 'Entrada registrada exitosamente a las 7:58 AM'
+                            : 'Tu jornada de hoy ha sido completada' }}
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <div class="card section-card">
+              <div class="card-header">
+                <h3 class="card-title">Mi Resumen</h3>
+              </div>
+
+              <div class="card-body">
+                <div class="kpi-grid" [class.kpi-grid-rrhh]="role === 'rrhh'">
+                  <div class="kpi-box">
+                    <p class="kpi-label">Llegadas tardes</p>
+                    <p class="kpi-value">2</p>
+                  </div>
+
+                  <div class="kpi-box">
+                    <p class="kpi-label">Horas trabajadas</p>
+                    <p class="kpi-value">148<span>h</span></p>
+                  </div>
+
+                  <div class="kpi-box">
+                    <p class="kpi-label">Permisos pendientes</p>
+                    <p class="kpi-value">1</p>
+                  </div>
+
+                  <div class="kpi-box">
+                    <p class="kpi-label">Rendimiento</p>
+                    <p class="kpi-value">92<span>%</span></p>
+                  </div>
+                </div>
+
+                <div class="classification-box">
+                  <p class="classification-label">Clasificación general</p>
+                  <p class="classification-value">Excelente</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (role === 'supervisor') {
+          <div class="card team-summary-card">
+            <div class="team-summary-header">
+              <h3 class="card-title card-title-light">Resumen de mi equipo</h3>
+            </div>
+
+            <div class="team-summary-body">
+              <div class="team-kpi-grid">
+                <div class="team-kpi-box">
+                  <p class="team-kpi-label">Empleados a cargo</p>
+                  <p class="team-kpi-value">12</p>
+                </div>
+
+                <div class="team-kpi-box">
+                  <p class="team-kpi-label">Permisos pendientes</p>
+                  <p class="team-kpi-value warning">4</p>
+                </div>
+
+                <div class="team-kpi-box">
+                  <p class="team-kpi-label">Horas pendientes</p>
+                  <p class="team-kpi-value">18</p>
+                </div>
+
+                <div class="team-kpi-box">
+                  <p class="team-kpi-label">KPI Promedio</p>
+                  <p class="team-kpi-value success">88%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (role === 'admin') {
+          <div class="card section-card">
+            <div class="card-header">
+              <h3 class="card-title">Salud y Estado del Sistema</h3>
+            </div>
+
+            <div class="card-body large-card-body">
+              <div class="status-grid">
+                <div class="status-box status-blue">
+                  <p class="status-label">Usuarios Activos</p>
+                  <p class="status-value">148</p>
+                </div>
+
+                <div class="status-box status-amber">
+                  <p class="status-label">Sesiones Activas</p>
+                  <p class="status-value">42</p>
+                </div>
+
+                <div class="status-box status-red">
+                  <p class="status-label">Usuarios Bloqueados</p>
+                  <p class="status-value">3</p>
+                </div>
+
+                <div class="status-box status-orange">
+                  <p class="status-label">Intentos Fallidos</p>
+                  <p class="status-value">12</p>
+                </div>
+
+                <div class="status-box status-purple">
+                  <p class="status-label">Eventos Auditoría</p>
+                  <p class="status-value">1,204</p>
+                </div>
+
+                <div class="status-box status-green">
+                  <p class="status-label">Estado Sistema</p>
+                  <p class="status-value-text">Óptimo</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (role === 'rrhh') {
+          <div class="card section-card">
+            <div class="card-header">
+              <h3 class="card-title">Estado Operativo Global</h3>
+            </div>
+
+            <div class="card-body large-card-body">
+              <div class="status-grid">
+                <div class="status-box status-blue">
+                  <p class="status-label">Empleados Activos</p>
+                  <p class="status-value">145</p>
+                </div>
+
+                <div class="status-box status-amber">
+                  <p class="status-label">Tardías de hoy</p>
+                  <p class="status-value">8</p>
+                </div>
+
+                <div class="status-box status-purple">
+                  <p class="status-label">Permisos Pendientes</p>
+                  <p class="status-value">12</p>
+                </div>
+
+                <div class="status-box status-emerald">
+                  <p class="status-label">Vacaciones Activas</p>
+                  <p class="status-value">5</p>
+                </div>
+
+                <div class="status-box status-red">
+                  <p class="status-label">Empleados en Riesgo</p>
+                  <p class="status-value">3</p>
+                </div>
+
+                <div class="status-box status-lime">
+                  <p class="status-label">Elegibles a Bono</p>
+                  <p class="status-value">128</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+      </div>
+
+      <div class="dashboard-right">
+
+        <div class="card side-card">
+          <div class="card-header">
+            <h3 class="card-title">Accesos rápidos</h3>
+          </div>
+
+          @if (role === 'admin') {
+            <div class="quick-links-grid">
+              <a routerLink="/admin/usuarios" class="quick-link">Usuarios</a>
+              <a routerLink="/admin/roles" class="quick-link">Roles y permisos</a>
+              <a routerLink="/admin/parametros" class="quick-link">Parámetros</a>
+              <a routerLink="/admin/auditoria" class="quick-link">Auditoría</a>
+              <a routerLink="/admin/seguridad" class="quick-link">Seguridad</a>
+              <a routerLink="/admin/soporte" class="quick-link">Soporte</a>
+            </div>
+          }
+
+          @if (role === 'rrhh') {
+            <div class="quick-links-grid">
+              <a routerLink="/rrhh/empleados" class="quick-link">Empleados</a>
+              <a routerLink="/rrhh/asistencia" class="quick-link">Asistencia</a>
+              <a routerLink="/rrhh/turnos" class="quick-link">Turnos</a>
+              <a routerLink="/rrhh/permisos" class="quick-link">Permisos</a>
+              <a routerLink="/rrhh/proyectos" class="quick-link">Proyectos</a>
+              <a routerLink="/rrhh/bonos" class="quick-link">Bonos</a>
+              <a routerLink="/rrhh/reportes" class="quick-link">Reportes</a>
+              <a routerLink="/rrhh/auditoria" class="quick-link">Auditoría</a>
+            </div>
+          }
+
+          @if (role !== 'admin' && role !== 'rrhh') {
+            <div class="quick-links-grid">
+              <a routerLink="/asistencia" class="quick-link">
+                {{ role === 'supervisor' ? 'Mi asistencia' : 'Asistencia' }}
+              </a>
+
+              <a routerLink="/solicitudes" class="quick-link">
+                {{ role === 'supervisor' ? 'Mis solicitudes' : 'Solicitudes' }}
+              </a>
+
+              <a routerLink="/timesheet" class="quick-link">
+                {{ role === 'supervisor' ? 'Mi timesheet' : 'Timesheet' }}
+              </a>
+
+              <a routerLink="/kpi" class="quick-link">
+                {{ role === 'supervisor' ? 'Mis KPIs' : 'KPIs' }}
+              </a>
+
+              <a routerLink="/boleta" class="quick-link">
+                Mi boleta
+              </a>
+
+              @if (role === 'supervisor') {
+                <a routerLink="/supervisor/pendientes" class="quick-link quick-link-warning">
+                  Pendientes
+                </a>
+              }
+            </div>
+          }
+        </div>
+
+<div class="card side-card">
+  <div class="card-header card-header-between">
+    <h3 class="card-title">Avisos</h3>
+    <span class="notice-badge">3 Nuevos</span>
+  </div>
+
+  @if (role === 'admin') {
+    <div class="notices-scroll">
+      <div class="notices-list">
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-red">!</div>
+          <div>
+            <p class="notice-title">Intentos fallidos de acceso</p>
+            <p class="notice-text">Múltiples intentos desde la IP 192.168.1.100 bloqueados.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-blue">i</div>
+          <div>
+            <p class="notice-title">Actualización de sistema</p>
+            <p class="notice-text">Parche de seguridad v1.0.2 aplicado correctamente.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-amber">⚠</div>
+          <div>
+            <p class="notice-title">Uso de CPU elevado</p>
+            <p class="notice-text">El servidor de base de datos alcanzó 85% de uso a las 14:00.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-blue">i</div>
+          <div>
+            <p class="notice-title">Respaldo completado</p>
+            <p class="notice-text">La copia de seguridad nocturna finalizó correctamente.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-green">✓</div>
+          <div>
+            <p class="notice-title">Monitoreo activo</p>
+            <p class="notice-text">Todos los servicios críticos se encuentran operando normalmente.</p>
+          </div>
+        </div>
+
+        <div class="notice-item notice-item-last">
+          <div class="notice-icon notice-icon-amber">⚠</div>
+          <div>
+            <p class="notice-title">Espacio en disco</p>
+            <p class="notice-text">El almacenamiento del servidor principal llegó al 78% de uso.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (role !== 'admin') {
+    <div class="notices-scroll">
+      <div class="notices-list">
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-blue">i</div>
+          <div>
+            <p class="notice-title">Boleta de pago disponible</p>
+            <p class="notice-text">Tu boleta de febrero ya está disponible para descargar.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-amber">📊</div>
+          <div>
+            <p class="notice-title">Actualización de KPIs</p>
+            <p class="notice-text">Tu KPI del mes ha sido actualizado y revisado.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-green">✓</div>
+          <div>
+            <p class="notice-title">Solicitud aprobada</p>
+            <p class="notice-text">Tus vacaciones del 20 al 25 de marzo han sido aprobadas.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-blue">i</div>
+          <div>
+            <p class="notice-title">Recordatorio de marcaje</p>
+            <p class="notice-text">No olvides registrar tu salida antes de finalizar tu jornada.</p>
+          </div>
+        </div>
+
+        <div class="notice-item">
+          <div class="notice-icon notice-icon-amber">📌</div>
+          <div>
+            <p class="notice-title">Nueva política interna</p>
+            <p class="notice-text">Se actualizó la política de permisos y vacaciones para este trimestre.</p>
+          </div>
+        </div>
+
+        <div class="notice-item notice-item-last">
+          <div class="notice-icon notice-icon-green">✓</div>
+          <div>
+            <p class="notice-title">Timesheet validado</p>
+            <p class="notice-text">Tus horas registradas de esta semana fueron revisadas correctamente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+      </div>
+
+    </div>
+  </main>
+</div>

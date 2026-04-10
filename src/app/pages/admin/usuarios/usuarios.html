@@ -1,0 +1,263 @@
+<div class="users-page">
+  <div class="users-header">
+    <div class="users-header__left">
+      <button
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="users-header__content">
+        <h2 class="users-title">Gestión de Usuarios</h2>
+        <p class="users-subtitle">
+          Administra cuentas de acceso al sistema y roles asignados.
+        </p>
+      </div>
+    </div>
+
+    <button
+      (click)="openNuevoUsuario()"
+      class="new-user-button"
+    >
+      Nuevo Usuario
+    </button>
+  </div>
+
+  <div class="users-card">
+    <div class="users-card__filters">
+      <div class="search-box">
+        <input
+          type="text"
+          placeholder="Buscar por nombre, usuario o correo..."
+          class="form-control"
+        />
+      </div>
+
+      <div class="filters-group">
+        <select class="form-control form-control--auto">
+          <option>Todos los roles</option>
+          <option>Administrador</option>
+          <option>RRHH</option>
+          <option>Supervisor</option>
+          <option>Empleado</option>
+        </select>
+
+        <select class="form-control form-control--auto">
+          <option>Todos los estados</option>
+          <option>Activo</option>
+          <option>Inactivo</option>
+          <option>Bloqueado</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="users-table-wrapper">
+      <table class="users-table">
+        <thead>
+          <tr class="users-table__head-row">
+            <th class="table-head table-head--first">Usuario</th>
+            <th class="table-head">Contacto</th>
+            <th class="table-head">Rol</th>
+            <th class="table-head">ID Empleado</th>
+            <th class="table-head table-head--center">Estado</th>
+            <th class="table-head table-head--last table-head--center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="users-table__body">
+          @for (row of usuariosData; track row.id) {
+            <tr class="users-table__row">
+              <td class="table-cell table-cell--first">
+                <div class="table-user-name">{{ row.nombre }}</div>
+                <div class="table-user-handle">@{{ row.usuario }}</div>
+              </td>
+
+              <td class="table-cell table-cell--muted">
+                {{ row.correo }}
+              </td>
+
+              <td class="table-cell">
+                <span class="badge badge--bordered" [class]="getRolClass(row.rol)">
+                  {{ row.rol }}
+                </span>
+              </td>
+
+              <td class="table-cell table-cell--mono">
+                {{ row.empleado }}
+              </td>
+
+              <td class="table-cell table-cell--center">
+                <span class="badge" [class]="getEstadoClass(row.estado)">
+                  {{ row.estado }}
+                </span>
+              </td>
+
+              <td class="table-cell table-cell--last table-cell--center">
+                <div class="table-actions">
+                  <button
+                    class="icon-button icon-button--amber"
+                    title="Restablecer Contraseña"
+                  >
+                    🔑
+                  </button>
+
+                  @if (row.estado === 'Activo') {
+                    <button
+                      class="icon-button icon-button--red"
+                      title="Bloquear Usuario"
+                    >
+                      ⛔
+                    </button>
+                  } @else {
+                    <button
+                      class="icon-button icon-button--green"
+                      title="Activar Usuario"
+                    >
+                      ✅
+                    </button>
+                  }
+
+                  <button
+                    class="icon-button icon-button--blue"
+                    title="Más opciones"
+                  >
+                    ⋮
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="users-card__footer">
+      <span>Mostrando 4 de 148 usuarios</span>
+      <div class="pagination-actions">
+        <button class="pagination-button pagination-button--disabled">
+          Anterior
+        </button>
+        <button class="pagination-button">
+          Siguiente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  @if (modalNuevoUsuario) {
+    <div class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-card__header">
+          <h3 class="modal-title">Nuevo Usuario</h3>
+          <button
+            (click)="closeNuevoUsuario()"
+            class="modal-close-button"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="modal-card__body">
+          <div class="form-group">
+            <label class="form-label">Nombre Completo</label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Nombre completo del usuario"
+            />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Nombre de Usuario</label>
+              <input
+                type="text"
+                class="form-control form-control--mono"
+                placeholder="username"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Correo Electrónico</label>
+              <input
+                type="email"
+                class="form-control"
+                placeholder="usuario@empresa.com"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Contraseña Temporal (Opcional)</label>
+            <input
+              type="password"
+              class="form-control"
+              placeholder="Dejar vacío para generar automáticamente"
+            />
+            <p class="helper-text">
+              Si no se especifica, se generará una contraseña temporal que se enviará al correo del usuario.
+            </p>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Rol</label>
+              <select class="form-control">
+                <option value="">Seleccionar rol</option>
+                <option>Administrador</option>
+                <option>RRHH</option>
+                <option>Supervisor</option>
+                <option>Empleado</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-control">
+                <option>Activo</option>
+                <option>Inactivo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Empleado Asociado</label>
+            <select class="form-control">
+              <option value="">Seleccionar empleado (opcional)</option>
+              <option>EMP-001 - Carlos Mérida</option>
+              <option>EMP-002 - Lucía Torres</option>
+              <option>EMP-003 - Ana López</option>
+              <option>EMP-004 - Mario Paz</option>
+              <option>N/A - Usuario sin relación de empleado</option>
+            </select>
+            <p class="helper-text">
+              Asocia este usuario a un registro de empleado existente en el sistema.
+            </p>
+          </div>
+
+          <div class="info-box">
+            <p class="info-box__title">Nota importante</p>
+            <p class="info-box__text">
+              El usuario recibirá un correo con sus credenciales de acceso. Se le solicitará cambiar la contraseña en su primer inicio de sesión.
+            </p>
+          </div>
+        </div>
+
+        <div class="modal-card__footer">
+          <button
+            (click)="closeNuevoUsuario()"
+            class="footer-button footer-button--secondary"
+          >
+            Cancelar
+          </button>
+          <button
+            (click)="closeNuevoUsuario()"
+            class="footer-button footer-button--primary"
+          >
+            Crear Usuario
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

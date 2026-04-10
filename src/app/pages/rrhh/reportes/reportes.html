@@ -1,0 +1,169 @@
+<div class="reports-page">
+  <main class="reports-main">
+
+    <div class="success-alert" *ngIf="mostrarMensajeExito">
+      <span class="success-alert__icon">✓</span>
+      <span>{{ mensajeExito }}</span>
+    </div>
+
+    <div class="page-header">
+      <div class="page-header__content">
+        <h2 class="page-title">Reportes</h2>
+        <p class="page-subtitle">Centraliza la generación de reportes exportables.</p>
+      </div>
+    </div>
+
+    <div class="reports-layout">
+      <section class="config-card">
+        <h3 class="card-title">Configuración de Reporte</h3>
+
+        <div class="form-stack">
+          <div class="form-field">
+            <label>Tipo de Reporte</label>
+            <select
+              class="form-control"
+              [(ngModel)]="tipoReporteSeleccionado"
+            >
+              <option value="">Seleccionar reporte...</option>
+              @for (reporte of reportesDisponibles; track reporte.id) {
+                <option [value]="reporte.nombre">{{ reporte.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-grid form-grid--2">
+            <div class="form-field">
+              <label>Desde</label>
+              <input
+                type="date"
+                class="form-control"
+                [(ngModel)]="fechaDesde"
+              />
+            </div>
+
+            <div class="form-field">
+              <label>Hasta</label>
+              <input
+                type="date"
+                class="form-control"
+                [(ngModel)]="fechaHasta"
+              />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label>Departamento (Opcional)</label>
+            <select
+              class="form-control"
+              [(ngModel)]="departamentoSeleccionado"
+            >
+              @for (departamento of departamentos; track departamento) {
+                <option [value]="departamento">{{ departamento }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Proyecto (Opcional)</label>
+            <select
+              class="form-control"
+              [(ngModel)]="proyectoSeleccionado"
+            >
+              @for (proyecto of proyectos; track proyecto) {
+                <option [value]="proyecto">{{ proyecto }}</option>
+              }
+            </select>
+          </div>
+
+          <button
+            type="button"
+            class="preview-button"
+            (click)="generarVistaPrevia()"
+          >
+            <span class="button-icon">⌕</span>
+            <span>Generar Vista Previa</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="preview-card">
+        <div class="preview-card__header">
+          <h3 class="preview-title">
+            <span class="preview-title__icon">📄</span>
+            <span>Vista Previa</span>
+          </h3>
+
+          <div class="preview-actions">
+            <button
+              type="button"
+              class="export-button export-button--excel"
+              (click)="exportarExcel()"
+              [disabled]="!reporteVistaPrevia"
+            >
+              <span class="button-icon">▦</span>
+              <span>Excel</span>
+            </button>
+
+            <button
+              type="button"
+              class="export-button export-button--pdf"
+              (click)="exportarPdf()"
+              [disabled]="!reporteVistaPrevia"
+            >
+              <span class="button-icon">⤓</span>
+              <span>PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="preview-card__body" *ngIf="!vistaPreviaGenerada || !reporteVistaPrevia">
+          <div class="empty-preview">
+            <div class="empty-preview__icon">📄</div>
+            <h4>No hay datos generados</h4>
+            <p>
+              Configura los parámetros en el panel izquierdo y haz clic en
+              "Generar Vista Previa" para cargar los resultados.
+            </p>
+          </div>
+        </div>
+
+        <div class="preview-card__body preview-card__body--content" *ngIf="vistaPreviaGenerada && reporteVistaPrevia">
+          <div class="preview-result">
+            <div class="preview-result__section">
+              <p class="preview-result__label">Reporte seleccionado</p>
+              <h4 class="preview-result__title">{{ reporteVistaPrevia.nombre }}</h4>
+              <p class="preview-result__description">{{ reporteVistaPrevia.descripcion }}</p>
+            </div>
+
+            <div class="preview-summary-grid">
+              <div class="summary-item">
+                <span class="summary-item__label">Desde</span>
+                <span class="summary-item__value">{{ fechaDesde || 'No definido' }}</span>
+              </div>
+
+              <div class="summary-item">
+                <span class="summary-item__label">Hasta</span>
+                <span class="summary-item__value">{{ fechaHasta || 'No definido' }}</span>
+              </div>
+
+              <div class="summary-item">
+                <span class="summary-item__label">Departamento</span>
+                <span class="summary-item__value">{{ departamentoSeleccionado }}</span>
+              </div>
+
+              <div class="summary-item">
+                <span class="summary-item__label">Proyecto</span>
+                <span class="summary-item__value">{{ proyectoSeleccionado }}</span>
+              </div>
+            </div>
+
+            <div class="preview-note">
+              Esta es una vista previa simulada del reporte. Desde aquí puedes exportar la información en Excel o PDF.
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+</div>

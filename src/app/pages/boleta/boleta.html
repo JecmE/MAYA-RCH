@@ -1,0 +1,164 @@
+<div class="payroll-page">
+  <main class="payroll-main">
+
+    <div class="page-header">
+      <button
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+      <div>
+        <h2 class="page-title">Boleta de Pago</h2>
+      </div>
+    </div>
+
+    <div class="toolbar-card">
+      <div class="period-section">
+        <label class="form-label">
+          Período de Planilla
+        </label>
+
+        <div class="period-controls">
+          <select
+            [(ngModel)]="periodo"
+            class="form-control"
+          >
+            <option value="03-2026">Marzo 2026</option>
+            <option value="02-2026">Febrero 2026</option>
+            <option value="01-2026">Enero 2026</option>
+            <option value="12-2025">Diciembre 2025</option>
+          </select>
+
+          <button
+            (click)="consultar()"
+            class="action-button action-button--amber"
+          >
+            Consultar
+          </button>
+        </div>
+      </div>
+
+      <div class="download-actions">
+        <button
+          (click)="exportarPDF()"
+          class="action-button action-button--primary"
+        >
+          Exportar PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-card__header">
+          <div class="summary-card__icon summary-card__icon--neutral">Q</div>
+          <h3 class="summary-card__label">Salario Base</h3>
+        </div>
+        <p class="summary-card__value">Q {{ resumen.salarioBase }}</p>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card__header">
+          <div class="summary-card__icon summary-card__icon--green">↑</div>
+          <h3 class="summary-card__label">Bonificaciones</h3>
+        </div>
+        <p class="summary-card__value summary-card__value--green">Q {{ resumen.bonificaciones }}</p>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card__header">
+          <div class="summary-card__icon summary-card__icon--amber">↓</div>
+          <h3 class="summary-card__label">Deducciones</h3>
+        </div>
+        <p class="summary-card__value summary-card__value--amber">Q {{ resumen.deducciones }}</p>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card__header">
+          <div class="summary-card__icon summary-card__icon--red">↓</div>
+          <h3 class="summary-card__label">ISR</h3>
+        </div>
+        <p class="summary-card__value summary-card__value--red">Q {{ resumen.isr }}</p>
+      </div>
+
+      <div class="summary-card summary-card--highlight">
+        <div class="summary-card__highlight-content">
+          <h3 class="summary-card__highlight-label">Neto a Pagar</h3>
+          <p class="summary-card__highlight-value">Q {{ resumen.netoPagar }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="details-card">
+      <div class="details-card__header">
+        <h3 class="details-title">Detalle de Conceptos</h3>
+        <p class="details-subtitle">
+          Desglose de ingresos y descuentos aplicados en el período.
+        </p>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="details-table">
+          <thead>
+            <tr class="details-table__head-row">
+              <th class="table-head table-head--first">Concepto</th>
+              <th class="table-head">Tipo</th>
+              <th class="table-head">Monto</th>
+              <th class="table-head table-head--last">Observación</th>
+            </tr>
+          </thead>
+          <tbody class="details-table__body">
+            @for (row of conceptosFiltrados; track row.id) {
+              <tr class="details-table__row">
+                <td class="table-cell table-cell--first table-cell--strong">{{ row.concepto }}</td>
+                <td class="table-cell">
+                  <span
+                    class="type-badge"
+                    [class.type-badge--income]="row.tipo === 'Ingreso'"
+                    [class.type-badge--deduction]="row.tipo === 'Deducción'"
+                  >
+                    {{ row.tipo }}
+                  </span>
+                </td>
+                <td
+                  class="table-cell amount-cell"
+                  [class.amount-cell--income]="row.tipo === 'Ingreso'"
+                  [class.amount-cell--deduction]="row.tipo === 'Deducción'"
+                >
+                  {{ row.tipo === 'Deducción' ? '- Q ' : '+ Q ' }}{{ row.monto }}
+                </td>
+                <td class="table-cell table-cell--last table-cell--muted">{{ row.obs }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="details-card__footer">
+        <span class="footer-text">Total de registros: {{ conceptosFiltrados.length }}</span>
+        <div class="footer-highlight">
+          Total depositado en cuenta bancaria terminada en ****1234
+        </div>
+      </div>
+    </div>
+
+    @if (showSuccessModal) {
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <h3 class="modal-title">Exportación completada</h3>
+          <p class="modal-text">
+            La boleta de pago del período seleccionado se descargó correctamente en PDF.
+          </p>
+          <button
+            class="action-button action-button--primary modal-button"
+            (click)="cerrarModal()"
+          >
+            Aceptar
+          </button>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

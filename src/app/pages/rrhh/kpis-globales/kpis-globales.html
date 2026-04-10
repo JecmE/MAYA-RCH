@@ -1,0 +1,206 @@
+<div class="global-kpi-page">
+  <main class="global-kpi-main">
+
+    <div class="page-header page-header--top">
+      <div class="page-header__left">
+        <button
+          type="button"
+          (click)="goBack()"
+          class="back-button"
+        >
+          ←
+        </button>
+
+        <div class="page-header__content">
+          <h2 class="page-title">KPIs Globales</h2>
+          <p class="page-subtitle">
+            Métricas de desempeño y cumplimiento organizacional.
+          </p>
+        </div>
+      </div>
+
+      <div class="page-header__actions">
+        <select
+          class="form-control form-control--header"
+          [(ngModel)]="periodoSeleccionado"
+        >
+          @for (periodo of periodosDisponibles; track periodo) {
+            <option [value]="periodo">{{ periodo }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card stat-card--icon">
+        <div class="stat-card__icon stat-card__icon--green">↗</div>
+        <div>
+          <p class="stat-card__label stat-card__label--normal">Cumplimiento Promedio</p>
+          <p class="stat-card__value">{{ cumplimientoPromedio }}</p>
+          <p class="stat-card__meta stat-card__meta--green">+1.2% vs mes anterior</p>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--icon">
+        <div class="stat-card__icon stat-card__icon--amber">🕒</div>
+        <div>
+          <p class="stat-card__label stat-card__label--normal">Tardías del Mes</p>
+          <p class="stat-card__value">{{ tardiasMes }}</p>
+          <p class="stat-card__meta stat-card__meta--red">+5% vs mes anterior</p>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--icon">
+        <div class="stat-card__icon stat-card__icon--red">⚠</div>
+        <div>
+          <p class="stat-card__label stat-card__label--normal">Faltas del Mes</p>
+          <p class="stat-card__value">{{ faltasMes }}</p>
+          <p class="stat-card__meta stat-card__meta--green">-2% vs mes anterior</p>
+        </div>
+      </div>
+
+      <div class="stat-card stat-card--icon">
+        <div class="stat-card__icon stat-card__icon--orange">👥</div>
+        <div>
+          <p class="stat-card__label stat-card__label--normal">Empleados en Riesgo</p>
+          <p class="stat-card__value">{{ empleadosEnRiesgo }}</p>
+          <p class="stat-card__meta">Requieren atención</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3 class="chart-card__title">KPI por Departamento</h3>
+
+        <div class="chart-vertical">
+          @for (item of deptoDataFiltrado; track item.name) {
+            <div class="chart-vertical__item">
+              <div class="chart-vertical__bar-wrap">
+                <div
+                  class="chart-bar chart-bar--primary"
+                  [style.height.%]="getBarHeight(item.kpi)"
+                ></div>
+              </div>
+              <div class="chart-vertical__label">{{ item.name }}</div>
+              <div class="chart-vertical__value">{{ item.kpi }}%</div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3 class="chart-card__title">KPI por Equipo</h3>
+
+        <div class="chart-vertical">
+          @for (item of equipoDataFiltrado; track item.name) {
+            <div class="chart-vertical__item">
+              <div class="chart-vertical__bar-wrap">
+                <div
+                  class="chart-bar chart-bar--accent"
+                  [style.height.%]="getBarHeight(item.kpi)"
+                ></div>
+              </div>
+              <div class="chart-vertical__label">{{ item.name }}</div>
+              <div class="chart-vertical__value">{{ item.kpi }}%</div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <h3 class="chart-card__title">Por Clasificación</h3>
+
+        <div class="chart-horizontal">
+          @for (item of clasificacionDataFiltrado; track item.name) {
+            <div class="chart-horizontal__row">
+              <div class="chart-horizontal__label">{{ item.name }}</div>
+              <div class="chart-horizontal__bar-wrap">
+                <div
+                  [class]="getClasificacionBarClass(item.name)"
+                  [style.width.%]="item.cantidad"
+                ></div>
+              </div>
+              <div class="chart-horizontal__value">{{ item.cantidad }}</div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card__header">
+        <h3 class="detail-card__title">Detalle General</h3>
+      </div>
+
+      <div class="detail-card__filters">
+        <div class="search-box">
+          <input
+            type="text"
+            placeholder="Buscar empleado o departamento..."
+            class="form-control"
+            [(ngModel)]="filtroBusqueda"
+          />
+        </div>
+
+        <div class="filters-group">
+          <select
+            class="form-control form-control--auto"
+            [(ngModel)]="filtroClasificacion"
+          >
+            <option>Todas las clasificaciones</option>
+            <option>Excelente</option>
+            <option>Bueno</option>
+            <option>Regular</option>
+            <option>Observación</option>
+            <option>Riesgo</option>
+            <option>Riesgo Moderado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="detail-table">
+          <thead>
+            <tr class="detail-table__head-row">
+              <th class="table-head table-head--first">Empleado</th>
+              <th class="table-head">Departamento</th>
+              <th class="table-head table-head--center">Tardías</th>
+              <th class="table-head table-head--center">Faltas</th>
+              <th class="table-head table-head--center">Horas</th>
+              <th class="table-head table-head--center">Cumplimiento</th>
+              <th class="table-head table-head--last">Clasificación</th>
+            </tr>
+          </thead>
+
+          <tbody class="detail-table__body">
+            @if (detalleFiltrado.length > 0) {
+              @for (row of detalleFiltrado; track row.id) {
+                <tr class="detail-table__row">
+                  <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
+                  <td class="table-cell table-cell--muted">{{ row.depto }}</td>
+                  <td class="table-cell table-cell--center table-cell--amber">{{ row.tardias }}</td>
+                  <td class="table-cell table-cell--center table-cell--red">{{ row.faltas }}</td>
+                  <td class="table-cell table-cell--center">{{ row.horas }}</td>
+                  <td class="table-cell table-cell--center table-cell--primary">{{ row.cumplimiento }}</td>
+                  <td class="table-cell table-cell--last">
+                    <span class="status-badge" [class]="getClasificacionClass(row.clasificacion)">
+                      {{ row.clasificacion }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="7" class="empty-state-cell">
+                  No se encontraron registros con los filtros seleccionados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>

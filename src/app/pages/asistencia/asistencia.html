@@ -1,0 +1,118 @@
+<div class="attendance-history-page">
+  <main class="attendance-history-main">
+
+    <div class="page-header">
+      <button
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+      <div>
+        <h2 class="page-title">Historial de asistencias</h2>
+      </div>
+    </div>
+
+    <div class="filter-card">
+      <div class="section-badge">
+        Parámetros de búsqueda
+      </div>
+
+      <div class="filter-form">
+        <div class="date-field">
+          <label class="form-label">
+            Fecha inicio <span class="required">*</span>
+          </label>
+          <div class="input-with-icon">
+            <div class="input-icon">
+              📅
+            </div>
+            <input
+              type="date"
+              [(ngModel)]="fechaInicio"
+              class="form-control form-control--with-icon"
+            />
+          </div>
+        </div>
+
+        <div class="date-field">
+          <label class="form-label">
+            Fecha fin <span class="required">*</span>
+          </label>
+          <div class="input-with-icon">
+            <div class="input-icon">
+              📅
+            </div>
+            <input
+              type="date"
+              [(ngModel)]="fechaFin"
+              class="form-control form-control--with-icon"
+            />
+          </div>
+        </div>
+
+        <div class="actions-group">
+          <button
+            (click)="filtrar()"
+            class="action-button action-button--primary"
+          >
+            Filtrar
+          </button>
+          <button
+            (click)="limpiar()"
+            class="action-button action-button--secondary"
+          >
+            Limpiar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-wrapper">
+        <table class="attendance-table">
+          <thead>
+            <tr class="attendance-table__head-row">
+              <th class="table-head table-head--first">Fecha</th>
+              <th class="table-head">Entrada</th>
+              <th class="table-head">Salida</th>
+              <th class="table-head">Horas trabajadas</th>
+              <th class="table-head">Estado</th>
+              <th class="table-head table-head--last">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody class="attendance-table__body">
+            @for (row of filteredData; track row.id) {
+              <tr class="attendance-table__row">
+                <td class="table-cell table-cell--first table-cell--strong">{{ row.date }}</td>
+                <td class="table-cell">{{ row.in }}</td>
+                <td class="table-cell">{{ row.out }}</td>
+                <td class="table-cell">{{ row.hours }}</td>
+                <td class="table-cell">
+                  <span class="status-badge" [class]="getStatusClass(row.status)">
+                    {{ row.status }}
+                  </span>
+                </td>
+                <td class="table-cell table-cell--last table-cell--muted">{{ row.obs }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <span>Mostrando 1 a {{ filteredData.length }} de {{ filteredData.length }} registros</span>
+        <div class="pagination-group">
+          <button class="pagination-button pagination-button--disabled">
+            Anterior
+          </button>
+          <button class="pagination-button pagination-button--active">1</button>
+          <button class="pagination-button">
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

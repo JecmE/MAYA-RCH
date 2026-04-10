@@ -1,0 +1,534 @@
+<div class="leave-page">
+  <main class="leave-main">
+
+    @if (mostrarMensajeExito) {
+      <div class="success-alert">
+        <span class="success-alert__icon">✓</span>
+        <span>{{ mensajeExito }}</span>
+      </div>
+    }
+
+    <div class="page-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="page-header__content">
+        <h2 class="page-title">Permisos y Vacaciones</h2>
+        <p class="page-subtitle">
+          Administra solicitudes, saldos y estado de vacaciones del personal.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="new-policy-button"
+        (click)="abrirModalNuevaSolicitud()"
+      >
+        Nuevo Permiso
+      </button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-card__label">Solicitudes pendientes</p>
+        <p class="stat-card__value stat-card__value--amber">{{ solicitudesPendientes }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Aprobadas hoy</p>
+        <p class="stat-card__value stat-card__value--green">{{ aprobadasHoy }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">En vacaciones</p>
+        <p class="stat-card__value stat-card__value--blue">{{ enVacaciones }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Rechazadas</p>
+        <p class="stat-card__value stat-card__value--red">{{ rechazadas }}</p>
+      </div>
+    </div>
+
+    <div class="leave-card">
+      <div class="tabs-bar">
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button--active]="activeTab === 'solicitudes'"
+          (click)="setTab('solicitudes')"
+        >
+          Solicitudes ({{ solicitudes.length }})
+        </button>
+
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button--active]="activeTab === 'saldos'"
+          (click)="setTab('saldos')"
+        >
+          Saldos
+        </button>
+
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button--active]="activeTab === 'movimientos'"
+          (click)="setTab('movimientos')"
+        >
+          Movimientos
+        </button>
+
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button--active]="activeTab === 'tipos'"
+          (click)="setTab('tipos')"
+        >
+          Tipos
+        </button>
+      </div>
+
+      @if (activeTab === 'solicitudes') {
+        <div>
+          <div class="leave-card__filters">
+            <div class="search-box">
+              <input
+                type="text"
+                placeholder="Buscar por empleado o tipo..."
+                class="form-control"
+                [(ngModel)]="filtroBusqueda"
+              />
+            </div>
+
+            <div class="filters-group">
+              <select class="form-control form-control--auto" [(ngModel)]="filtroTipo">
+                <option value="Todos los tipos">Todos los tipos</option>
+                <option value="Vacaciones">Vacaciones</option>
+                <option value="Permiso Médico">Permiso Médico</option>
+                <option value="Día Personal">Día Personal</option>
+              </select>
+
+              <select class="form-control form-control--auto" [(ngModel)]="filtroEstado">
+                <option value="Todos los estados">Todos los estados</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Aprobado">Aprobado</option>
+                <option value="Rechazado">Rechazado</option>
+              </select>
+
+              <button
+                type="button"
+                class="table-button table-button--neutral"
+                (click)="limpiarFiltros()"
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="leave-table">
+              <thead>
+                <tr class="leave-table__head-row">
+                  <th class="table-head table-head--first">Empleado</th>
+                  <th class="table-head">Tipo</th>
+                  <th class="table-head">Fecha solicitud</th>
+                  <th class="table-head">Período</th>
+                  <th class="table-head">Saldo</th>
+                  <th class="table-head table-head--center">Estado</th>
+                  <th class="table-head table-head--last table-head--center">Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody class="leave-table__body">
+                @if (solicitudesFiltradas.length > 0) {
+                  @for (row of solicitudesFiltradas; track row.id) {
+                    <tr class="leave-table__row">
+                      <td class="table-cell table-cell--first table-cell--strong">
+                        {{ row.empleado }}
+                        <div class="row-subtext">{{ row.id }}</div>
+                      </td>
+                      <td class="table-cell">{{ row.tipo }}</td>
+                      <td class="table-cell table-cell--muted">{{ row.fechaSolicitud }}</td>
+                      <td class="table-cell table-cell--muted">{{ row.periodo }}</td>
+                      <td class="table-cell">{{ row.saldo }}</td>
+                      <td class="table-cell table-cell--center">
+                        <span class="status-badge" [class]="getEstadoClass(row.estado)">
+                          {{ row.estado }}
+                        </span>
+                      </td>
+                      <td class="table-cell table-cell--last table-cell--center">
+                        <div class="table-actions">
+                          @if (row.estado === 'Pendiente') {
+                            <button
+                              type="button"
+                              class="table-button table-button--green"
+                              (click)="aprobarSolicitud(row)"
+                            >
+                              Aprobar
+                            </button>
+
+                            <button
+                              type="button"
+                              class="table-button table-button--red"
+                              (click)="rechazarSolicitud(row)"
+                            >
+                              Rechazar
+                            </button>
+                          } @else {
+                            <button
+                              type="button"
+                              class="table-button table-button--neutral"
+                              (click)="verDetalle(row)"
+                            >
+                              Ver detalle
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                } @else {
+                  <tr>
+                    <td colspan="7" class="empty-state-cell">
+                      No se encontraron solicitudes con los filtros seleccionados.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="leave-card__footer">
+            <span>Mostrando {{ solicitudesFiltradas.length }} de {{ solicitudes.length }} solicitudes</span>
+            <div class="pagination-actions">
+              <button type="button" class="pagination-button pagination-button--disabled">
+                Anterior
+              </button>
+              <button type="button" class="pagination-button">
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (activeTab === 'saldos') {
+        <div class="table-wrapper">
+          <table class="leave-table">
+            <thead>
+              <tr class="leave-table__head-row">
+                <th class="table-head table-head--first">Empleado</th>
+                <th class="table-head table-head--center">Días Disponibles</th>
+                <th class="table-head table-head--center">Días Usados</th>
+                <th class="table-head table-head--last table-head--center">Días Restantes</th>
+              </tr>
+            </thead>
+            <tbody class="leave-table__body">
+              @for (row of saldosData; track row.empleado) {
+                <tr class="leave-table__row">
+                  <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
+                  <td class="table-cell table-cell--center">{{ row.disponibles }}</td>
+                  <td class="table-cell table-cell--center">{{ row.usados }}</td>
+                  <td class="table-cell table-cell--last table-cell--center">
+                    <span class="status-badge" [class]="getSaldoClass(row.restantes)">
+                      {{ row.restantes }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (activeTab === 'movimientos') {
+        <div class="table-wrapper">
+          <table class="leave-table">
+            <thead>
+              <tr class="leave-table__head-row">
+                <th class="table-head table-head--first">Empleado</th>
+                <th class="table-head">Tipo de Movimiento</th>
+                <th class="table-head">Fecha</th>
+                <th class="table-head table-head--center">Cantidad</th>
+                <th class="table-head table-head--last">Motivo</th>
+              </tr>
+            </thead>
+            <tbody class="leave-table__body">
+              @for (row of movimientosData; track row.empleado + row.fecha) {
+                <tr class="leave-table__row">
+                  <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
+                  <td class="table-cell">
+                    <span class="status-badge" [class]="getMovimientoClass(row.tipo)">
+                      {{ row.tipo }}
+                    </span>
+                  </td>
+                  <td class="table-cell">{{ row.fecha }}</td>
+                  <td class="table-cell table-cell--center">{{ row.cantidad }}</td>
+                  <td class="table-cell table-cell--last table-cell--muted">{{ row.motivo }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (activeTab === 'tipos') {
+        <div>
+          <div class="section-toolbar">
+            <button type="button" class="new-policy-button">
+              Nuevo Tipo
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="leave-table">
+              <thead>
+                <tr class="leave-table__head-row">
+                  <th class="table-head table-head--first">Nombre del Tipo</th>
+                  <th class="table-head table-head--center">Requiere Documento</th>
+                  <th class="table-head table-head--center">Descuenta Vacaciones</th>
+                  <th class="table-head table-head--last table-head--center">Estado</th>
+                </tr>
+              </thead>
+              <tbody class="leave-table__body">
+                @for (row of tiposData; track row.nombre) {
+                  <tr class="leave-table__row">
+                    <td class="table-cell table-cell--first table-cell--strong">{{ row.nombre }}</td>
+                    <td class="table-cell table-cell--center">
+                      <span class="status-badge" [class]="getSiNoClass(row.requiereDoc)">
+                        {{ row.requiereDoc }}
+                      </span>
+                    </td>
+                    <td class="table-cell table-cell--center">
+                      <span class="status-badge" [class]="getSiNoClass(row.descuentaVacaciones)">
+                        {{ row.descuentaVacaciones }}
+                      </span>
+                    </td>
+                    <td class="table-cell table-cell--last table-cell--center">
+                      <span class="status-badge" [class]="getTipoEstadoClass(row.estado)">
+                        {{ row.estado }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (modalDetalle && solicitudSeleccionada) {
+      <div class="modal-backdrop">
+        <div class="detail-modal">
+          <div class="detail-modal__header">
+            <h3>Detalle de Solicitud</h3>
+            <button
+              type="button"
+              class="detail-modal__close"
+              (click)="cerrarDetalle()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="detail-modal__body">
+            <div class="detail-grid">
+              <div class="detail-box">
+                <span class="detail-label">ID</span>
+                <span class="detail-value">{{ solicitudSeleccionada.id }}</span>
+              </div>
+
+              <div class="detail-box">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value">
+                  <span class="status-badge" [class]="getEstadoClass(solicitudSeleccionada.estado)">
+                    {{ solicitudSeleccionada.estado }}
+                  </span>
+                </span>
+              </div>
+
+              <div class="detail-box">
+                <span class="detail-label">Empleado</span>
+                <span class="detail-value">{{ solicitudSeleccionada.empleado }}</span>
+              </div>
+
+              <div class="detail-box">
+                <span class="detail-label">Tipo</span>
+                <span class="detail-value">{{ solicitudSeleccionada.tipo }}</span>
+              </div>
+
+              <div class="detail-box detail-box--full">
+                <span class="detail-label">Período</span>
+                <span class="detail-value">{{ solicitudSeleccionada.periodo }}</span>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <label class="detail-label">Comentario</label>
+              <p class="detail-paragraph">{{ solicitudSeleccionada.comentario }}</p>
+            </div>
+
+            @if (solicitudSeleccionada.adjunto === 'Si') {
+              <div class="detail-section">
+                <label class="detail-label">Archivo Adjunto</label>
+                <div class="attachment-box">
+                  <div>
+                    <p class="attachment-name">documento_solicitud.pdf</p>
+                    <p class="attachment-meta">145 KB</p>
+                  </div>
+                  <button type="button" class="attachment-button">Descargar</button>
+                </div>
+              </div>
+            }
+
+            <div class="detail-footer-note">
+              <p>Fecha de solicitud: 08/11/23 10:30 AM</p>
+              <p>Revisado por: María Pérez (RRHH)</p>
+            </div>
+          </div>
+
+          <div class="detail-modal__footer">
+            <button
+              type="button"
+              class="table-button table-button--neutral"
+              (click)="cerrarDetalle()"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (modalNuevaSolicitud) {
+      <div class="modal-backdrop">
+        <div class="detail-modal">
+          <div class="detail-modal__header">
+            <h3>Nueva Solicitud</h3>
+            <button
+              type="button"
+              class="detail-modal__close"
+              (click)="cerrarModalNuevaSolicitud()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="detail-modal__body">
+            <div class="detail-grid">
+              <div class="detail-box">
+                <label class="detail-label">Empleado</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Nombre del empleado"
+                  [(ngModel)]="nuevaSolicitud.empleado"
+                />
+              </div>
+
+              <div class="detail-box">
+                <label class="detail-label">Tipo</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevaSolicitud.tipo"
+                >
+                  <option value="">Seleccione un tipo</option>
+                  <option value="Vacaciones">Vacaciones</option>
+                  <option value="Permiso Médico">Permiso Médico</option>
+                  <option value="Día Personal">Día Personal</option>
+                </select>
+              </div>
+
+              <div class="detail-box">
+                <label class="detail-label">Fecha solicitud</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  [(ngModel)]="nuevaSolicitud.fechaSolicitud"
+                />
+              </div>
+
+              <div class="detail-box">
+                <label class="detail-label">Saldo</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Ej: 5 días"
+                  [(ngModel)]="nuevaSolicitud.saldo"
+                />
+              </div>
+
+              <div class="detail-box detail-box--full">
+                <label class="detail-label">Período</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Ej: 15/11/23 - 20/11/23"
+                  [(ngModel)]="nuevaSolicitud.periodo"
+                />
+              </div>
+
+              <div class="detail-box detail-box--full">
+                <label class="detail-label">Comentario</label>
+                <textarea
+                  class="form-control form-control--textarea"
+                  placeholder="Ingrese un comentario"
+                  [(ngModel)]="nuevaSolicitud.comentario"
+                ></textarea>
+              </div>
+
+              <div class="detail-box">
+                <label class="detail-label">Adjunto</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevaSolicitud.adjunto"
+                >
+                  <option value="No">No</option>
+                  <option value="Si">Sí</option>
+                </select>
+              </div>
+
+              <div class="detail-box">
+                <label class="detail-label">Estado</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevaSolicitud.estado"
+                >
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="Aprobado">Aprobado</option>
+                  <option value="Rechazado">Rechazado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-modal__footer">
+            <button
+              type="button"
+              class="table-button table-button--neutral"
+              (click)="cancelarNuevaSolicitud()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              class="table-button table-button--green"
+              (click)="guardarNuevaSolicitud()"
+            >
+              Guardar solicitud
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>

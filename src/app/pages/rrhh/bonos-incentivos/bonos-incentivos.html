@@ -1,0 +1,439 @@
+<div class="bonus-page">
+  <main class="bonus-main">
+
+    @if (mostrarMensajeExito) {
+      <div class="success-alert">
+        <span class="success-alert__icon">✓</span>
+        <span>{{ mensajeExito }}</span>
+      </div>
+    }
+
+    <div class="page-header">
+      <button
+        type="button"
+        (click)="goBack()"
+        class="back-button"
+      >
+        ←
+      </button>
+
+      <div class="page-header__content">
+        <h2 class="page-title">Bonos e Incentivos</h2>
+        <p class="page-subtitle">
+          Configura reglas y consulta resultados de elegibilidad.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="evaluate-button"
+        (click)="abrirModalNuevaRegla()"
+      >
+        Nueva Regla
+      </button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-card__label">Elegibles</p>
+        <p class="stat-card__value stat-card__value--green">{{ totalElegibles }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">No elegibles</p>
+        <p class="stat-card__value stat-card__value--red">{{ totalNoElegibles }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Monto estimado</p>
+        <p class="stat-card__value stat-card__value--blue">{{ montoEstimado }}</p>
+      </div>
+
+      <div class="stat-card">
+        <p class="stat-card__label">Promedio bono</p>
+        <p class="stat-card__value stat-card__value--amber">{{ promedioBono }}</p>
+      </div>
+    </div>
+
+    <div class="bonus-card">
+      <div class="tabs-bar">
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button--active]="activeTab === 'resultados'"
+          (click)="setTab('resultados')"
+        >
+          Resultados Mensuales
+        </button>
+
+        <button
+          type="button"
+          class="tab-button"
+          [class.tab-button--active]="activeTab === 'reglas'"
+          (click)="setTab('reglas')"
+        >
+          Reglas Configuradas
+        </button>
+      </div>
+
+      @if (activeTab === 'resultados') {
+        <div>
+          <div class="bonus-card__filters">
+            <div class="search-box">
+              <input
+                type="text"
+                placeholder="Buscar empleado..."
+                class="form-control"
+                [(ngModel)]="filtroBusqueda"
+              />
+            </div>
+
+            <div class="filters-group">
+              <select
+                class="form-control form-control--auto"
+                [(ngModel)]="filtroPeriodo"
+              >
+                <option value="Octubre 2023">Octubre 2023</option>
+                <option value="Septiembre 2023">Septiembre 2023</option>
+              </select>
+
+              <button
+                type="button"
+                class="table-button table-button--neutral"
+                (click)="exportarResultados()"
+              >
+                Exportar
+              </button>
+
+              <button
+                type="button"
+                class="table-button table-button--blue"
+                (click)="ejecutarEvaluacion()"
+              >
+                Ejecutar evaluación
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="bonus-table">
+              <thead>
+                <tr class="bonus-table__head-row">
+                  <th class="table-head table-head--first">Empleado</th>
+                  <th class="table-head">Período</th>
+                  <th class="table-head">Regla Aplicada</th>
+                  <th class="table-head table-head--center">Elegibilidad</th>
+                  <th class="table-head table-head--last">Motivo / Observación</th>
+                </tr>
+              </thead>
+
+              <tbody class="bonus-table__body">
+                @for (row of bonosFiltrados; track row.id) {
+                  <tr class="bonus-table__row">
+                    <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
+                    <td class="table-cell table-cell--muted">{{ row.periodo }}</td>
+                    <td class="table-cell table-cell--muted">{{ row.regla }}</td>
+                    <td class="table-cell table-cell--center">
+                      <span class="status-badge" [class]="getEstadoClass(row.estado)">
+                        {{ row.estado }}
+                      </span>
+                    </td>
+                    <td class="table-cell table-cell--last table-cell--muted">{{ row.motivo }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="bonus-card__footer">
+            <span>Mostrando {{ bonosFiltrados.length }} de {{ bonosData.length }} registros</span>
+            <div class="pagination-actions">
+              <button type="button" class="pagination-button pagination-button--disabled">
+                Anterior
+              </button>
+              <button type="button" class="pagination-button">
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (activeTab === 'reglas') {
+        <div class="table-wrapper table-wrapper--top-spacing">
+          <table class="bonus-table">
+            <thead>
+              <tr class="bonus-table__head-row">
+                <th class="table-head table-head--first">Nombre de Regla</th>
+                <th class="table-head">Período</th>
+                <th class="table-head">Vigencia</th>
+                <th class="table-head table-head--center">Min. Asistencia</th>
+                <th class="table-head table-head--center">Max. Tardías</th>
+                <th class="table-head table-head--center">Estado</th>
+                <th class="table-head table-head--last table-head--center">Acciones</th>
+              </tr>
+            </thead>
+
+            <tbody class="bonus-table__body">
+              @for (row of reglasData; track row.id) {
+                <tr class="bonus-table__row">
+                  <td class="table-cell table-cell--first table-cell--strong">{{ row.nombre }}</td>
+                  <td class="table-cell table-cell--muted">{{ row.periodo }}</td>
+                  <td class="table-cell table-cell--muted">{{ row.vigencia }}</td>
+                  <td class="table-cell table-cell--center text-green">{{ row.minAsistencia }}</td>
+                  <td class="table-cell table-cell--center text-red">{{ row.maxTardias }}</td>
+                  <td class="table-cell table-cell--center">
+                    <span class="status-badge" [class]="getReglaEstadoClass(row.estado)">
+                      {{ row.estado }}
+                    </span>
+                  </td>
+                  <td class="table-cell table-cell--last table-cell--center">
+                    <div class="table-actions">
+                      <button
+                        type="button"
+                        class="icon-button"
+                        title="Editar"
+                        (click)="abrirModalNuevaRegla()"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        type="button"
+                        class="icon-button icon-button--danger"
+                        title="Cambiar estado"
+                        (click)="toggleEstadoRegla(row)"
+                      >
+                        ⏻
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="rules-card">
+      <h3 class="rules-title">Reglas aplicadas</h3>
+
+      <div class="rules-grid">
+        <div class="rule-box">
+          <p class="rule-box__label">Meta mínima</p>
+          <p class="rule-box__value">85%</p>
+        </div>
+
+        <div class="rule-box">
+          <p class="rule-box__label">Máximo tardías</p>
+          <p class="rule-box__value">3</p>
+        </div>
+
+        <div class="rule-box">
+          <p class="rule-box__label">Evaluación</p>
+          <p class="rule-box__value">Mensual</p>
+        </div>
+      </div>
+    </div>
+
+    @if (modalNuevaRegla) {
+      <div class="modal-backdrop">
+        <div class="bonus-modal">
+          <div class="bonus-modal__header">
+            <h3>Nueva Regla de Bono</h3>
+            <button
+              type="button"
+              class="bonus-modal__close"
+              (click)="cerrarModalNuevaRegla()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="bonus-modal__body">
+            <div class="form-field">
+              <label>Nombre de Regla</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="Ej: Bono Excelencia Mensual"
+                [(ngModel)]="nuevaRegla.nombre"
+              />
+            </div>
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label>Fecha inicio</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  [(ngModel)]="nuevaRegla.fechaInicio"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Fecha fin</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  [(ngModel)]="nuevaRegla.fechaFin"
+                />
+              </div>
+            </div>
+
+            <p class="helper-text">Deja la fecha fin vacía para vigencia indefinida.</p>
+
+            <div class="form-field">
+              <label>Período</label>
+              <select
+                class="form-control"
+                [(ngModel)]="nuevaRegla.periodo"
+              >
+                <option value="Mensual">Mensual</option>
+                <option value="Quincenal">Quincenal</option>
+                <option value="Semanal">Semanal</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label>Criterio Mínimo de Asistencia (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                class="form-control"
+                placeholder="Ej: 95"
+                [(ngModel)]="nuevaRegla.minAsistencia"
+              />
+            </div>
+
+            <div class="form-field">
+              <label>Máximo de Tardías Permitidas</label>
+              <input
+                type="number"
+                min="0"
+                class="form-control"
+                placeholder="Ej: 2"
+                [(ngModel)]="nuevaRegla.maxTardias"
+              />
+            </div>
+
+            <div class="form-field">
+              <label>Otras Condiciones</label>
+              <textarea
+                class="form-control form-control--textarea"
+                rows="4"
+                placeholder="Especifica otras condiciones o requisitos adicionales para la elegibilidad..."
+                [(ngModel)]="nuevaRegla.condiciones"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="bonus-modal__footer">
+            <button
+              type="button"
+              class="table-button table-button--neutral"
+              (click)="cancelarNuevaRegla()"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="table-button table-button--blue"
+              (click)="guardarNuevaRegla()"
+            >
+              Crear Regla
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (modalDetalle && bonoSeleccionado) {
+      <div class="modal-backdrop">
+        <div class="bonus-modal bonus-modal--detail">
+          <div class="bonus-modal__header">
+            <h3>Detalle de Evaluación</h3>
+            <button
+              type="button"
+              class="bonus-modal__close"
+              (click)="cerrarDetalle()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="bonus-modal__body">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Empleado</span>
+                <span class="detail-value">{{ bonoSeleccionado.empleado }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Departamento</span>
+                <span class="detail-value">{{ bonoSeleccionado.departamento }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Cumplimiento</span>
+                <span class="detail-value">{{ bonoSeleccionado.cumplimiento }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Clasificación</span>
+                <span class="detail-value">
+                  <span class="status-badge" [class]="getClasificacionClass(bonoSeleccionado.clasificacion)">
+                    {{ bonoSeleccionado.clasificacion }}
+                  </span>
+                </span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Bono</span>
+                <span class="detail-value">{{ bonoSeleccionado.bono }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Estado</span>
+                <span class="detail-value">
+                  <span class="status-badge" [class]="getEstadoClass(bonoSeleccionado.estado)">
+                    {{ bonoSeleccionado.estado }}
+                  </span>
+                </span>
+              </div>
+
+              <div class="detail-item detail-item--full">
+                <span class="detail-label">Regla aplicada</span>
+                <span class="detail-value">{{ bonoSeleccionado.regla }}</span>
+              </div>
+
+              <div class="detail-item detail-item--full">
+                <span class="detail-label">Motivo / Observación</span>
+                <span class="detail-value">{{ bonoSeleccionado.motivo }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bonus-modal__footer">
+            <button
+              type="button"
+              class="table-button table-button--neutral"
+              (click)="cerrarDetalle()"
+            >
+              Cerrar
+            </button>
+            <button
+              type="button"
+              class="table-button table-button--blue"
+              (click)="recalcular(bonoSeleccionado)"
+            >
+              Recalcular
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
+</div>
