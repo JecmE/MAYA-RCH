@@ -85,7 +85,8 @@
             }
 
             @if (
-              selectedTipo?.descuentaVacaciones &&
+              selectedTipo &&
+              selectedTipo.descuentaVacaciones &&
               daysRequestedPreview > vacationBalance.diasDisponibles
             ) {
               <p class="days-warning-text">
@@ -93,11 +94,11 @@
               </p>
             }
 
-            @if (selectedTipo && !selectedTipo?.descuentaVacaciones && daysRequestedPreview > 0) {
+            @if (selectedTipo && !selectedTipo.descuentaVacaciones && daysRequestedPreview > 0) {
               <p class="days-info-small">⚠️ Este permiso no descuenta días de vacaciones</p>
             }
 
-            @if (selectedTipo?.requiereDocumento && !selectedFileName) {
+            @if (selectedTipo && selectedTipo.requiereDocumento && !selectedFileName) {
               <p class="days-warning-text">⚠️ Requiere documento adjunto</p>
             }
           </div>
