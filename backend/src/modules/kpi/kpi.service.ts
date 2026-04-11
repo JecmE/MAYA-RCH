@@ -204,14 +204,29 @@ export class KpiService {
   private async calculateKpi(empleadoId: number, mes: number, anio: number): Promise<KpiMensual> {
     const fechaInicio = new Date(anio, mes - 1, 1);
     const fechaFin = new Date(anio, mes, 0);
+    const hoy = new Date();
+    const fechaActual = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
-    const diasLaborales = fechaFin.getDate();
-    const horasEsperadas = diasLaborales * 8;
+    // Solo contar hasta la fecha actual (no futuros)
+    const fechaCorte = fechaActual < fechaFin ? fechaActual : fechaFin;
+
+    // Calcular días laborables transcurridos (lunes a viernes)
+    let diasTranscurridos = 0;
+    const fechaTemp = new Date(fechaInicio);
+    while (fechaTemp <= fechaCorte) {
+      const diaSemana = fechaTemp.getDay();
+      if (diaSemana !== 0 && diaSemana !== 6) {
+        diasTranscurridos++;
+      }
+      fechaTemp.setDate(fechaTemp.getDate() + 1);
+    }
+
+    const horasEsperadas = diasTranscurridos * 8;
 
     const asistencia = await this.asistenciaRepository.find({
       where: {
         empleadoId,
-        fecha: Between(fechaInicio, fechaFin),
+        fecha: Between(fechaInicio, fechaCorte),
       },
     });
 
@@ -221,7 +236,7 @@ export class KpiService {
 
     const diasConEntrada = asistencia.filter((a) => a.horaEntradaReal !== null).length;
     const tardias = asistencia.reduce((sum, a) => sum + (a.minutosTardia > 0 ? 1 : 0), 0);
-    const faltas = diasLaborales - diasConEntrada;
+    const faltas = diasTranscurridos - diasConEntrada;
 
     const horasTrabajadas = asistencia.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
 
@@ -236,7 +251,7 @@ export class KpiService {
       empleadoId,
       anio,
       mes,
-      diasEsperados: diasLaborales,
+      diasEsperados: diasTranscurridos,
       diasTrabajados,
       tardias,
       faltas,
@@ -248,6 +263,18 @@ export class KpiService {
     });
 
     return this.kpiRepository.save(kpi);
+  }
+
+  async refreshEmployeeKpi(empleadoId: number, mes?: number, anio?: number): Promise<KpiMensual> {
+    const now = new Date();
+    const month = mes || now.getMonth() + 1;
+    const year = anio || now.getFullYear();
+
+    // Delete existing KPI for this employee/month/year
+    await this.kpiRepository.delete({ empleadoId, mes: month, anio: year });
+
+    // Recalculate and save
+    return this.calculateKpi(empleadoId, month, year);
   }
 
   async getEmployeeProfile(empleadoId: number) {

@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, DataSource } from 'typeorm';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
@@ -7,6 +13,7 @@ import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { Turno } from '../../entities/turno.entity';
 import { AjusteAsistencia } from '../../entities/ajuste-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { KpiService } from '../kpi/kpi.service';
 
 @Injectable()
 export class AttendanceService {
@@ -24,6 +31,8 @@ export class AttendanceService {
     @InjectRepository(AuditLog)
     private auditRepository: Repository<AuditLog>,
     private dataSource: DataSource,
+    @Inject(forwardRef(() => KpiService))
+    private kpiService: KpiService,
   ) {}
 
   async registerEntry(empleadoId: number, usuarioId: number) {
@@ -49,7 +58,32 @@ export class AttendanceService {
 
     const turno = empleadoTurno.turno;
     const now = new Date();
+
     const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
+    const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
+
+    const horaEntradaMin = new Date(now);
+    horaEntradaMin.setHours(
+      horaEntradaEsperada.getHours(),
+      horaEntradaEsperada.getMinutes() - 30,
+      0,
+      0,
+    );
+
+    const horaEntradaMax = new Date(horaEntradaEsperada);
+    horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + turno.toleranciaMinutos);
+
+    if (now < horaEntradaMin) {
+      throw new BadRequestException(
+        `Aún no puedes marcar entrada. Puedes hacerlo a partir de las ${this.formatTimeToString(horaEntradaMin)}`,
+      );
+    }
+
+    if (now > horaEntradaMax) {
+      throw new BadRequestException(
+        `Ya no puedes marcar entrada. La hora máxima fue las ${this.formatTimeToString(horaEntradaMax)}`,
+      );
+    }
 
     let minutosTardia = 0;
     if (now > horaEntradaEsperada) {
@@ -109,6 +143,9 @@ export class AttendanceService {
       detalle: `Entrada registrada${minutosTardia > 0 ? `, ${minutosTardia} min tardanza` : ''}`,
     });
 
+    // Recalcular KPI del mes
+    await this.kpiService.refreshEmployeeKpi(empleadoId);
+
     return {
       message: 'Entrada registrada',
       asistencia: saved,
@@ -132,7 +169,33 @@ export class AttendanceService {
       throw new BadRequestException('Ya se registró la salida hoy');
     }
 
+    const empleadoTurno = await this.empleadoTurnoRepository.findOne({
+      where: { empleadoId, activo: true },
+      relations: ['turno'],
+    });
+
+    if (!empleadoTurno) {
+      throw new BadRequestException('No tiene turno asignado');
+    }
+
+    const turno = empleadoTurno.turno;
     const now = new Date();
+    const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
+
+    const horaSalidaPermitida = new Date(now);
+    horaSalidaPermitida.setHours(
+      horaSalidaEsperada.getHours(),
+      horaSalidaEsperada.getMinutes(),
+      0,
+      0,
+    );
+
+    if (now < horaSalidaPermitida) {
+      throw new BadRequestException(
+        `Aún no puedes marcar salida. Puedes hacerlo a partir de las ${this.formatTimeToString(horaSalidaPermitida)}`,
+      );
+    }
+
     asistencia.horaSalidaReal = now;
     asistencia.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
     const horaEntrada =
@@ -152,6 +215,9 @@ export class AttendanceService {
       entidadId: asistencia.asistenciaId,
       detalle: `Salida registrada, ${asistencia.horasTrabajadas} horas trabajadas`,
     });
+
+    // Recalcular KPI del mes (día cerrado con entrada y salida)
+    await this.kpiService.refreshEmployeeKpi(empleadoId);
 
     return {
       message: 'Salida registrada',
@@ -339,6 +405,14 @@ export class AttendanceService {
     const date = new Date();
     date.setHours(hours, minutes, seconds || 0, 0);
     return date;
+  }
+
+  private formatTimeToString(date: Date): string {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const period = hours >= 12 ? 'p. m.' : 'a. m.';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
   }
 
   private calculateHours(start: Date, end: Date): number {

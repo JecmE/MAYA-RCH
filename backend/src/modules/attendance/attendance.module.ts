@@ -8,6 +8,7 @@ import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { Turno } from '../../entities/turno.entity';
 import { AjusteAsistencia } from '../../entities/ajuste-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { KpiModule } from '../kpi/kpi.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuditLog } from '../../entities/audit-log.entity';
       AjusteAsistencia,
       AuditLog,
     ]),
+    KpiModule,
   ],
   controllers: [AttendanceController],
   providers: [AttendanceService],

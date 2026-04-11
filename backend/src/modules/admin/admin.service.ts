@@ -1,6 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, MoreThanOrEqual, LessThanOrEqual, Between } from 'typeorm';
+import {
+  Repository,
+  IsNull,
+  Not,
+  MoreThanOrEqual,
+  MoreThan,
+  LessThanOrEqual,
+  Between,
+} from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { TipoPermiso } from '../../entities/tipo-permiso.entity';
 import { ParametroSistema } from '../../entities/parametro-sistema.entity';
@@ -286,7 +294,7 @@ export class AdminService {
         this.registroAsistenciaRepository.count({
           where: {
             fecha: Between(today, tomorrow),
-            esTardanza: true,
+            minutosTardia: MoreThan(0),
           },
         }),
         this.kpiMensualRepository
@@ -338,7 +346,7 @@ export class AdminService {
         .where('emp.supervisorId = :supervisorId', { supervisorId })
         .andWhere('ra.fecha >= :today', { today })
         .andWhere('ra.fecha < :tomorrow', { tomorrow })
-        .andWhere('ra.esTardanza = :esTardanza', { esTardanza: true })
+        .andWhere('ra.minutosTardia > 0')
         .getCount(),
       this.kpiMensualRepository
         .createQueryBuilder('kpi')
