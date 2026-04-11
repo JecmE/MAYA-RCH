@@ -178,18 +178,29 @@ let KpiService = class KpiService {
     async calculateKpi(empleadoId, mes, anio) {
         const fechaInicio = new Date(anio, mes - 1, 1);
         const fechaFin = new Date(anio, mes, 0);
-        const diasLaborales = fechaFin.getDate();
-        const horasEsperadas = diasLaborales * 8;
+        const hoy = new Date();
+        const fechaActual = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+        const fechaCorte = fechaActual < fechaFin ? fechaActual : fechaFin;
+        let diasTranscurridos = 0;
+        const fechaTemp = new Date(fechaInicio);
+        while (fechaTemp <= fechaCorte) {
+            const diaSemana = fechaTemp.getDay();
+            if (diaSemana !== 0 && diaSemana !== 6) {
+                diasTranscurridos++;
+            }
+            fechaTemp.setDate(fechaTemp.getDate() + 1);
+        }
+        const horasEsperadas = diasTranscurridos * 8;
         const asistencia = await this.asistenciaRepository.find({
             where: {
                 empleadoId,
-                fecha: (0, typeorm_2.Between)(fechaInicio, fechaFin),
+                fecha: (0, typeorm_2.Between)(fechaInicio, fechaCorte),
             },
         });
         const diasTrabajados = asistencia.filter((a) => a.estadoJornada === 'completada' || a.estadoJornada === 'incompleta').length;
         const diasConEntrada = asistencia.filter((a) => a.horaEntradaReal !== null).length;
         const tardias = asistencia.reduce((sum, a) => sum + (a.minutosTardia > 0 ? 1 : 0), 0);
-        const faltas = diasLaborales - diasConEntrada;
+        const faltas = diasTranscurridos - diasConEntrada;
         const horasTrabajadas = asistencia.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
         const cumplimientoPct = horasEsperadas > 0 ? (horasTrabajadas / horasEsperadas) * 100 : 0;
         let clasificacion = 'En riesgo';
@@ -203,7 +214,7 @@ let KpiService = class KpiService {
             empleadoId,
             anio,
             mes,
-            diasEsperados: diasLaborales,
+            diasEsperados: diasTranscurridos,
             diasTrabajados,
             tardias,
             faltas,
@@ -214,6 +225,13 @@ let KpiService = class KpiService {
             fechaCalculo: new Date(),
         });
         return this.kpiRepository.save(kpi);
+    }
+    async refreshEmployeeKpi(empleadoId, mes, anio) {
+        const now = new Date();
+        const month = mes || now.getMonth() + 1;
+        const year = anio || now.getFullYear();
+        await this.kpiRepository.delete({ empleadoId, mes: month, anio: year });
+        return this.calculateKpi(empleadoId, month, year);
     }
     async getEmployeeProfile(empleadoId) {
         const empleado = await this.empleadoRepository.findOne({

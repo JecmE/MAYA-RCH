@@ -52,6 +52,15 @@ let AdminController = class AdminController {
     getRoles() {
         return this.adminService.getRoles();
     }
+    getAdminDashboard() {
+        return this.adminService.getAdminDashboardStats();
+    }
+    getRrhhDashboard() {
+        return this.adminService.getRrhhDashboardStats();
+    }
+    getSupervisorDashboard(req) {
+        return this.adminService.getSupervisorDashboardStats(req.user.empleadoId);
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -138,6 +147,28 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getRoles", null);
+__decorate([
+    (0, common_1.Get)('dashboard/admin'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAdminDashboard", null);
+__decorate([
+    (0, common_1.Get)('dashboard/rrhh'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getRrhhDashboard", null);
+__decorate([
+    (0, common_1.Get)('dashboard/supervisor'),
+    (0, roles_decorator_1.Roles)('Supervisor'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getSupervisorDashboard", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

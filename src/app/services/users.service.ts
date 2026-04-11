@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface Empleado {
   empleadoId?: number;
@@ -51,7 +52,7 @@ export interface CreateUsuarioDto {
 
 @Injectable({ providedIn: 'root' })
 export class UsersService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/users';
+  private apiUrl = environment.apiUrl + '/users';
 
   constructor(private http: HttpClient) {}
 

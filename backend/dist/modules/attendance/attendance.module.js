@@ -17,6 +17,7 @@ const empleado_turno_entity_1 = require("../../entities/empleado-turno.entity");
 const turno_entity_1 = require("../../entities/turno.entity");
 const ajuste_asistencia_entity_1 = require("../../entities/ajuste-asistencia.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const kpi_module_1 = require("../kpi/kpi.module");
 let AttendanceModule = class AttendanceModule {
 };
 exports.AttendanceModule = AttendanceModule;
@@ -31,6 +32,7 @@ exports.AttendanceModule = AttendanceModule = __decorate([
                 ajuste_asistencia_entity_1.AjusteAsistencia,
                 audit_log_entity_1.AuditLog,
             ]),
+            kpi_module_1.KpiModule,
         ],
         controllers: [attendance_controller_1.AttendanceController],
         providers: [attendance_service_1.AttendanceService],

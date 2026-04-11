@@ -68,4 +68,23 @@ export declare class AdminController {
         nombre: string;
         descripcion: string;
     }[]>;
+    getAdminDashboard(): Promise<{
+        usuariosActivos: number;
+        usuariosBloqueados: number;
+        eventosAuditoria: number;
+        estadoSistema: string;
+    }>;
+    getRrhhDashboard(): Promise<{
+        empleadosActivos: number;
+        tardiasHoy: number;
+        permisosPendientes: number;
+        vacacionesActivas: number;
+        empleadosEnRiesgo: number;
+    }>;
+    getSupervisorDashboard(req: any): Promise<{
+        empleadosACargo: number;
+        permisosPendientes: number;
+        horasPendientes: number;
+        kpiPromedio: number;
+    }>;
 }

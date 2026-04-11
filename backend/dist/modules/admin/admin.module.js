@@ -18,6 +18,12 @@ const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.ent
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
 const rol_entity_1 = require("../../entities/rol.entity");
 const regla_bono_entity_1 = require("../../entities/regla-bono.entity");
+const usuario_entity_1 = require("../../entities/usuario.entity");
+const empleado_entity_1 = require("../../entities/empleado.entity");
+const solicitud_permiso_entity_1 = require("../../entities/solicitud-permiso.entity");
+const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
+const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
+const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -32,6 +38,12 @@ exports.AdminModule = AdminModule = __decorate([
                 audit_log_entity_1.AuditLog,
                 rol_entity_1.Rol,
                 regla_bono_entity_1.ReglaBono,
+                usuario_entity_1.Usuario,
+                empleado_entity_1.Empleado,
+                solicitud_permiso_entity_1.SolicitudPermiso,
+                registro_asistencia_entity_1.RegistroAsistencia,
+                kpi_mensual_entity_1.KpiMensual,
+                vacacion_movimiento_entity_1.VacacionMovimiento,
             ]),
         ],
         controllers: [admin_controller_1.AdminController],

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface RegistroTiempo {
   tiempoId?: number;
@@ -27,7 +28,7 @@ export interface TeamTimesheetEntry {
 
 @Injectable({ providedIn: 'root' })
 export class TimesheetsService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/timesheets';
+  private apiUrl = environment.apiUrl + '/timesheets';
 
   constructor(private http: HttpClient) {}
 

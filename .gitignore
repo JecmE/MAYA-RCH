@@ -46,6 +46,11 @@ backend/dist/
 # Environment
 .env
 .env.*
+backend/.env
+backend/.env.*
+
+# Environment files
+src/environments/environment.ts
 
 # System files
 .DS_Store

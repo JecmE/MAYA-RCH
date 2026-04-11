@@ -22,8 +22,9 @@ const empleado_turno_entity_1 = require("../../entities/empleado-turno.entity");
 const turno_entity_1 = require("../../entities/turno.entity");
 const ajuste_asistencia_entity_1 = require("../../entities/ajuste-asistencia.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const kpi_service_1 = require("../kpi/kpi.service");
 let AttendanceService = class AttendanceService {
-    constructor(asistenciaRepository, empleadoRepository, empleadoTurnoRepository, turnoRepository, ajusteRepository, auditRepository, dataSource) {
+    constructor(asistenciaRepository, empleadoRepository, empleadoTurnoRepository, turnoRepository, ajusteRepository, auditRepository, dataSource, kpiService) {
         this.asistenciaRepository = asistenciaRepository;
         this.empleadoRepository = empleadoRepository;
         this.empleadoTurnoRepository = empleadoTurnoRepository;
@@ -31,6 +32,7 @@ let AttendanceService = class AttendanceService {
         this.ajusteRepository = ajusteRepository;
         this.auditRepository = auditRepository;
         this.dataSource = dataSource;
+        this.kpiService = kpiService;
     }
     async registerEntry(empleadoId, usuarioId) {
         const today = new Date();
@@ -51,6 +53,17 @@ let AttendanceService = class AttendanceService {
         const turno = empleadoTurno.turno;
         const now = new Date();
         const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
+        const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
+        const horaEntradaMin = new Date(now);
+        horaEntradaMin.setHours(horaEntradaEsperada.getHours(), horaEntradaEsperada.getMinutes() - 30, 0, 0);
+        const horaEntradaMax = new Date(horaEntradaEsperada);
+        horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + turno.toleranciaMinutos);
+        if (now < horaEntradaMin) {
+            throw new common_1.BadRequestException(`Aún no puedes marcar entrada. Puedes hacerlo a partir de las ${this.formatTimeToString(horaEntradaMin)}`);
+        }
+        if (now > horaEntradaMax) {
+            throw new common_1.BadRequestException(`Ya no puedes marcar entrada. La hora máxima fue las ${this.formatTimeToString(horaEntradaMax)}`);
+        }
         let minutosTardia = 0;
         if (now > horaEntradaEsperada) {
             const diff = now.getTime() - horaEntradaEsperada.getTime();
@@ -101,6 +114,7 @@ let AttendanceService = class AttendanceService {
             entidadId: saved.asistenciaId,
             detalle: `Entrada registrada${minutosTardia > 0 ? `, ${minutosTardia} min tardanza` : ''}`,
         });
+        await this.kpiService.refreshEmployeeKpi(empleadoId);
         return {
             message: 'Entrada registrada',
             asistencia: saved,
@@ -119,7 +133,21 @@ let AttendanceService = class AttendanceService {
         if (asistencia.horaSalidaReal) {
             throw new common_1.BadRequestException('Ya se registró la salida hoy');
         }
+        const empleadoTurno = await this.empleadoTurnoRepository.findOne({
+            where: { empleadoId, activo: true },
+            relations: ['turno'],
+        });
+        if (!empleadoTurno) {
+            throw new common_1.BadRequestException('No tiene turno asignado');
+        }
+        const turno = empleadoTurno.turno;
         const now = new Date();
+        const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
+        const horaSalidaPermitida = new Date(now);
+        horaSalidaPermitida.setHours(horaSalidaEsperada.getHours(), horaSalidaEsperada.getMinutes(), 0, 0);
+        if (now < horaSalidaPermitida) {
+            throw new common_1.BadRequestException(`Aún no puedes marcar salida. Puedes hacerlo a partir de las ${this.formatTimeToString(horaSalidaPermitida)}`);
+        }
         asistencia.horaSalidaReal = now;
         asistencia.estadoJornada = registro_asistencia_entity_1.RegistroAsistencia.ESTADO_COMPLETADA;
         const horaEntrada = asistencia.horaEntradaReal instanceof Date
@@ -136,6 +164,7 @@ let AttendanceService = class AttendanceService {
             entidadId: asistencia.asistenciaId,
             detalle: `Salida registrada, ${asistencia.horasTrabajadas} horas trabajadas`,
         });
+        await this.kpiService.refreshEmployeeKpi(empleadoId);
         return {
             message: 'Salida registrada',
             asistencia,
@@ -153,6 +182,8 @@ let AttendanceService = class AttendanceService {
         });
         const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
         const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+        const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
+        const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
         if (!asistencia) {
             return {
                 estadoJornada: 'sin_registro',
@@ -161,6 +192,8 @@ let AttendanceService = class AttendanceService {
                 tieneSalida: false,
                 turnoNombre,
                 toleranciaMinutos,
+                horaEntradaTurno,
+                horaSalidaTurno,
             };
         }
         return {
@@ -176,6 +209,8 @@ let AttendanceService = class AttendanceService {
             tieneSalida: !!asistencia.horaSalidaReal,
             turnoNombre,
             toleranciaMinutos,
+            horaEntradaTurno,
+            horaSalidaTurno,
         };
     }
     async getHistory(empleadoId, fechaInicio, fechaFin) {
@@ -287,6 +322,13 @@ let AttendanceService = class AttendanceService {
         date.setHours(hours, minutes, seconds || 0, 0);
         return date;
     }
+    formatTimeToString(date) {
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const period = hours >= 12 ? 'p. m.' : 'a. m.';
+        const hour12 = hours % 12 || 12;
+        return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
+    }
     calculateHours(start, end) {
         const diff = end.getTime() - start.getTime();
         return Math.round((diff / 3600000) * 100) / 100;
@@ -301,12 +343,14 @@ exports.AttendanceService = AttendanceService = __decorate([
     __param(3, (0, typeorm_1.InjectRepository)(turno_entity_1.Turno)),
     __param(4, (0, typeorm_1.InjectRepository)(ajuste_asistencia_entity_1.AjusteAsistencia)),
     __param(5, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(7, (0, common_1.Inject)((0, common_1.forwardRef)(() => kpi_service_1.KpiService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.DataSource])
+        typeorm_2.DataSource,
+        kpi_service_1.KpiService])
 ], AttendanceService);
 //# sourceMappingURL=attendance.service.js.map

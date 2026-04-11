@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface KpiDashboard {
   diasEsperados: number;
@@ -81,7 +82,7 @@ export interface EmployeeProfile {
 
 @Injectable({ providedIn: 'root' })
 export class KpiService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/kpi';
+  private apiUrl = environment.apiUrl + '/kpi';
 
   constructor(private http: HttpClient) {}
 

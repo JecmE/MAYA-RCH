@@ -5,6 +5,12 @@ import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { Rol } from '../../entities/rol.entity';
 import { ReglaBono } from '../../entities/regla-bono.entity';
+import { Usuario } from '../../entities/usuario.entity';
+import { Empleado } from '../../entities/empleado.entity';
+import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
+import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
+import { KpiMensual } from '../../entities/kpi-mensual.entity';
+import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 export declare class AdminService {
     private turnoRepository;
     private tipoPermisoRepository;
@@ -12,7 +18,13 @@ export declare class AdminService {
     private auditRepository;
     private rolRepository;
     private reglaBonoRepository;
-    constructor(turnoRepository: Repository<Turno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>);
+    private usuarioRepository;
+    private empleadoRepository;
+    private solicitudPermisoRepository;
+    private registroAsistenciaRepository;
+    private kpiMensualRepository;
+    private vacacionMovimientoRepository;
+    constructor(turnoRepository: Repository<Turno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>);
     getShifts(): Promise<{
         turnoId: number;
         nombre: string;
@@ -79,4 +91,23 @@ export declare class AdminService {
         nombre: string;
         descripcion: string;
     }[]>;
+    getAdminDashboardStats(): Promise<{
+        usuariosActivos: number;
+        usuariosBloqueados: number;
+        eventosAuditoria: number;
+        estadoSistema: string;
+    }>;
+    getRrhhDashboardStats(): Promise<{
+        empleadosActivos: number;
+        tardiasHoy: number;
+        permisosPendientes: number;
+        vacacionesActivas: number;
+        empleadosEnRiesgo: number;
+    }>;
+    getSupervisorDashboardStats(supervisorId: number): Promise<{
+        empleadosACargo: number;
+        permisosPendientes: number;
+        horasPendientes: number;
+        kpiPromedio: number;
+    }>;
 }

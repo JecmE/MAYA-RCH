@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface Proyecto {
   proyectoId?: number;
@@ -13,7 +14,7 @@ export interface Proyecto {
 
 @Injectable({ providedIn: 'root' })
 export class ProjectsService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/projects';
+  private apiUrl = environment.apiUrl + '/projects';
 
   constructor(private http: HttpClient) {}
 

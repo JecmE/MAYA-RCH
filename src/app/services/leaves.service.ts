@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface TipoPermiso {
   tipoPermisoId: number;
@@ -55,7 +56,7 @@ export interface VacationBalance {
 
 @Injectable({ providedIn: 'root' })
 export class LeavesService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/leaves';
+  private apiUrl = environment.apiUrl + '/leaves';
 
   constructor(private http: HttpClient) {}
 

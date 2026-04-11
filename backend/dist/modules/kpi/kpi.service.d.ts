@@ -73,6 +73,7 @@ export declare class KpiService {
         faltas: number;
     }[]>;
     private calculateKpi;
+    refreshEmployeeKpi(empleadoId: number, mes?: number, anio?: number): Promise<KpiMensual>;
     getEmployeeProfile(empleadoId: number): Promise<{
         empleado: {
             nombreCompleto: string;

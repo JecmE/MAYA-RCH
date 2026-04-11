@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface MonthlyAttendanceReport {
   empleadoId: number;
@@ -33,7 +34,7 @@ export interface ProjectHoursReport {
 
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/reports';
+  private apiUrl = environment.apiUrl + '/reports';
 
   constructor(private http: HttpClient) {}
 

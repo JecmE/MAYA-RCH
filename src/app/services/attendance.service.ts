@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface AttendanceRecord {
   asistenciaId?: number;
@@ -47,7 +48,7 @@ export interface TeamAttendance {
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/attendance';
+  private apiUrl = environment.apiUrl + '/attendance';
 
   constructor(private http: HttpClient) {}
 
