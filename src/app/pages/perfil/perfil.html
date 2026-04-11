@@ -1,55 +1,36 @@
 <div class="profile-page">
   <main class="profile-main">
-
     <div class="page-header">
-      <button
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
+      <button (click)="goBack()" class="back-button">←</button>
       <div>
         <h2 class="page-title">Mi Perfil</h2>
       </div>
     </div>
 
     <div class="profile-layout">
-
       <div class="profile-sidebar-card">
         <div class="profile-hero">
           <div class="profile-avatar-wrapper">
-            <div class="profile-avatar">
-              👤
-            </div>
-
-            <button
-              class="profile-photo-button"
-              title="Cambiar foto de perfil"
-            >
-              📷
-            </button>
+            <div class="profile-avatar">👤</div>
+            <button class="profile-photo-button" title="Cambiar foto de perfil">📷</button>
           </div>
 
-          <h2 class="profile-name">Edgar Estuardo García</h2>
-          <p class="profile-position">Desarrollador Frontend</p>
+          <h2 class="profile-name">{{ perfilData?.nombreCompleto || 'Empleado' }}</h2>
+          <p class="profile-position">{{ perfilData?.puesto || 'Sin puesto asignado' }}</p>
 
-          <div class="profile-status">
-            ✓ Cuenta Activa
-          </div>
+          <div class="profile-status">✓ Cuenta Activa</div>
         </div>
 
         <div class="profile-sidebar-content">
           <div>
-            <h3 class="section-label">
-              Detalles corporativos
-            </h3>
+            <h3 class="section-label">Detalles corporativos</h3>
 
             <div class="details-list">
               <div class="detail-item">
                 <div class="detail-icon">🏢</div>
                 <div>
                   <p class="detail-label">Departamento</p>
-                  <p class="detail-value">Tecnología de la Información</p>
+                  <p class="detail-value">{{ perfilData?.departamento || 'Sin asignar' }}</p>
                 </div>
               </div>
 
@@ -57,15 +38,15 @@
                 <div class="detail-icon">💼</div>
                 <div>
                   <p class="detail-label">Puesto</p>
-                  <p class="detail-value">Desarrollador Frontend Sr.</p>
+                  <p class="detail-value">{{ perfilData?.puesto || 'Sin asignar' }}</p>
                 </div>
               </div>
 
               <div class="detail-item">
                 <div class="detail-icon">👤</div>
                 <div>
-                  <p class="detail-label">Supervisor Directo</p>
-                  <p class="detail-value">Ana María López</p>
+                  <p class="detail-label">Código Empleado</p>
+                  <p class="detail-value">{{ perfilData?.codigoEmpleado || 'N/A' }}</p>
                 </div>
               </div>
 
@@ -74,7 +55,7 @@
                 <div>
                   <p class="detail-label">Usuario / Matrícula</p>
                   <p class="detail-badge">
-                    edgar.garcia
+                    {{ perfilData?.codigoEmpleado || 'N/A' }}
                   </p>
                 </div>
               </div>
@@ -83,8 +64,8 @@
                 <div class="detail-icon">✉</div>
                 <div>
                   <p class="detail-label">Correo Corporativo</p>
-                  <p class="detail-value detail-value--truncate" title="edgar.garcia@empresa.com">
-                    edgar.garcia@empresa.com
+                  <p class="detail-value detail-value--truncate" title="{{ perfilData?.email }}">
+                    {{ perfilData?.email || 'Sin email' }}
                   </p>
                 </div>
               </div>
@@ -94,7 +75,6 @@
       </div>
 
       <div class="profile-content">
-
         <div class="content-card">
           <div class="card-header">
             <div class="card-header__icon card-header__icon--blue">👤</div>
@@ -103,31 +83,17 @@
 
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">
-                Teléfono Personal
-              </label>
-              <input
-                type="text"
-                [(ngModel)]="telefono"
-                class="form-control"
-              />
+              <label class="form-label"> Teléfono Personal </label>
+              <input type="text" [(ngModel)]="telefono" class="form-control" />
             </div>
 
             <div class="form-group">
-              <label class="form-label">
-                Correo Alternativo
-              </label>
-              <input
-                type="email"
-                [(ngModel)]="correoAlternativo"
-                class="form-control"
-              />
+              <label class="form-label"> Correo Alternativo </label>
+              <input type="email" [(ngModel)]="correoAlternativo" class="form-control" />
             </div>
 
             <div class="form-group form-group--full">
-              <label class="form-label">
-                Dirección de Domicilio
-              </label>
+              <label class="form-label"> Dirección de Domicilio </label>
               <textarea
                 rows="2"
                 [(ngModel)]="direccion"
@@ -149,10 +115,7 @@
           }
 
           <div class="card-actions card-actions--end">
-            <button
-              (click)="guardarCambios()"
-              class="action-button action-button--amber"
-            >
+            <button (click)="guardarCambios()" class="action-button action-button--amber">
               Guardar Cambios
             </button>
           </div>
@@ -166,9 +129,7 @@
 
           <div class="security-grid">
             <div class="form-group form-group--full">
-              <label class="form-label">
-                Contraseña Actual
-              </label>
+              <label class="form-label"> Contraseña Actual </label>
               <input
                 type="password"
                 [(ngModel)]="passwordActual"
@@ -178,9 +139,7 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">
-                Nueva Contraseña
-              </label>
+              <label class="form-label"> Nueva Contraseña </label>
               <input
                 type="password"
                 [(ngModel)]="nuevaPassword"
@@ -190,9 +149,7 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">
-                Confirmar Contraseña
-              </label>
+              <label class="form-label"> Confirmar Contraseña </label>
               <input
                 type="password"
                 [(ngModel)]="confirmarPassword"
@@ -215,15 +172,11 @@
           }
 
           <div class="card-actions card-actions--start">
-            <button
-              (click)="actualizarPassword()"
-              class="action-button action-button--dark"
-            >
+            <button (click)="actualizarPassword()" class="action-button action-button--dark">
               Actualizar Contraseña
             </button>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -231,9 +184,7 @@
       <div class="modal-overlay">
         <div class="modal-card">
           <h3 class="modal-title">Cambios guardados</h3>
-          <p class="modal-text">
-            Tu información personal fue actualizada correctamente.
-          </p>
+          <p class="modal-text">Tu información personal fue actualizada correctamente.</p>
           <button
             class="action-button action-button--amber modal-button"
             (click)="cerrarModalPerfil()"
@@ -248,9 +199,7 @@
       <div class="modal-overlay">
         <div class="modal-card">
           <h3 class="modal-title">Contraseña actualizada</h3>
-          <p class="modal-text">
-            Tu contraseña se cambió correctamente.
-          </p>
+          <p class="modal-text">Tu contraseña se cambió correctamente.</p>
           <button
             class="action-button action-button--dark modal-button"
             (click)="cerrarModalPassword()"
@@ -260,6 +209,5 @@
         </div>
       </div>
     }
-
   </main>
 </div>

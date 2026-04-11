@@ -132,13 +132,13 @@ export class SoporteMantenimiento {
     usuario: 'notificaciones@empresa.com',
     correosEnviadosHoy: 142,
   };
-modoEdicionCorreo = false;
+  modoEdicionCorreo = false;
 
-correoConfigEditable = {
-  servidor: '',
-  puerto: '',
-  usuario: '',
-};
+  correoConfigEditable = {
+    servidor: '',
+    puerto: '',
+    usuario: '',
+  };
   monitoreoCards: MonitorCardItem[] = [
     {
       id: 1,
@@ -216,7 +216,7 @@ correoConfigEditable = {
             ultimoEstado: 'Éxito',
             ultimaEjecucion: this.obtenerMarcaDeTiempo('Hoy'),
           }
-        : proceso
+        : proceso,
     );
 
     this.mostrarMensaje('Sincronización ejecutada correctamente.', 'success');
@@ -243,45 +243,45 @@ correoConfigEditable = {
     this.mostrarMensaje('Correo de prueba enviado correctamente.', 'success');
   }
 
-editarConfiguracion(): void {
-  this.correoConfigEditable = {
-    servidor: this.correoConfig.servidor,
-    puerto: this.correoConfig.puerto,
-    usuario: this.correoConfig.usuario,
-  };
+  editarConfiguracion(): void {
+    this.correoConfigEditable = {
+      servidor: this.correoConfig.servidor,
+      puerto: this.correoConfig.puerto,
+      usuario: this.correoConfig.usuario,
+    };
 
-  this.modoEdicionCorreo = true;
-}
-
-guardarConfiguracionCorreo(): void {
-  if (
-    !this.correoConfigEditable.servidor.trim() ||
-    !this.correoConfigEditable.puerto.trim() ||
-    !this.correoConfigEditable.usuario.trim()
-  ) {
-    this.mostrarMensaje('Completa todos los campos de la configuración SMTP.', 'error');
-    return;
+    this.modoEdicionCorreo = true;
   }
 
-  this.correoConfig = {
-    ...this.correoConfig,
-    servidor: this.correoConfigEditable.servidor.trim(),
-    puerto: this.correoConfigEditable.puerto.trim(),
-    usuario: this.correoConfigEditable.usuario.trim(),
-  };
+  guardarConfiguracionCorreo(): void {
+    if (
+      !this.correoConfigEditable.servidor.trim() ||
+      !this.correoConfigEditable.puerto.trim() ||
+      !this.correoConfigEditable.usuario.trim()
+    ) {
+      this.mostrarMensaje('Completa todos los campos de la configuración SMTP.', 'error');
+      return;
+    }
 
-  this.modoEdicionCorreo = false;
-  this.mostrarMensaje('Configuración SMTP actualizada correctamente.', 'success');
-}
+    this.correoConfig = {
+      ...this.correoConfig,
+      servidor: this.correoConfigEditable.servidor.trim(),
+      puerto: this.correoConfigEditable.puerto.trim(),
+      usuario: this.correoConfigEditable.usuario.trim(),
+    };
 
-cancelarEdicionCorreo(): void {
-  this.modoEdicionCorreo = false;
-  this.correoConfigEditable = {
-    servidor: '',
-    puerto: '',
-    usuario: '',
-  };
-}
+    this.modoEdicionCorreo = false;
+    this.mostrarMensaje('Configuración SMTP actualizada correctamente.', 'success');
+  }
+
+  cancelarEdicionCorreo(): void {
+    this.modoEdicionCorreo = false;
+    this.correoConfigEditable = {
+      servidor: '',
+      puerto: '',
+      usuario: '',
+    };
+  }
   actualizarMonitoreo(): void {
     const cpu = this.randomInt(35, 60);
     const ram = this.randomInt(60, 78);

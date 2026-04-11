@@ -26,7 +26,7 @@ export class RegistroAsistencia {
   @Column({ name: 'minutos_tardia', default: 0 })
   minutosTardia: number;
 
-  @Column({ name: 'horas_trabajadas', type: 'decimal', precision: 4, scale: 2, nullable: true })
+  @Column({ name: 'horas_trabajadas', type: 'decimal', precision: 6, scale: 2, nullable: true })
   horasTrabajadas: number;
 
   @Column({ name: 'estado_jornada', length: 20, default: 'pendiente' })

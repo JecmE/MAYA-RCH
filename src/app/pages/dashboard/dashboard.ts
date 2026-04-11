@@ -1,6 +1,10 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, OnInit, ChangeDetectorRef } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { AttendanceService } from '../../services/attendance.service';
+import { KpiService, KpiDashboard } from '../../services/kpi.service';
+import { LeavesService } from '../../services/leaves.service';
 
 type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
 
@@ -11,45 +15,201 @@ type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
-export class Dashboard {
+export class Dashboard implements OnInit {
   marcaEstado: MarcaEstado = 'Pendiente';
   role = 'empleado';
+  userName = '';
 
-  time = '16:40 PM';
-  date = 'Lunes, 20 de marzo de 2026';
+  time = '';
+  date = '';
+
+  horaEntradaReal = '';
+  horaSalidaReal = '';
+  turnoNombre = '';
+  toleranciaMinutos = 0;
+
+  tardiasMes = 0;
+  horasTrabajadas = 0;
+  permisosPendientes = 0;
+  cumplimiento = 0;
+  clasificacion = '';
+
+  private isCheckingIn = false;
+  private isCheckingOut = false;
 
   constructor(
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: object
+    private authService: AuthService,
+    private attendanceService: AttendanceService,
+    private kpiService: KpiService,
+    private leavesService: LeavesService,
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private platformId: object,
   ) {
     if (isPlatformBrowser(this.platformId)) {
       this.role = localStorage.getItem('userRole') || 'empleado';
     }
   }
 
+  ngOnInit(): void {
+    this.updateDateTime();
+    this.loadUserProfile();
+    this.loadTodayStatus();
+    this.loadKpiData();
+    setInterval(() => this.updateDateTime(), 60000);
+  }
+
+  private updateDateTime(): void {
+    const now = new Date();
+    this.time = now.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    };
+    this.date = now.toLocaleDateString('es-GT', options);
+  }
+
+  private loadUserProfile(): void {
+    this.authService.getCurrentUser().subscribe({
+      next: (user: any) => {
+        this.userName = user.nombreCompleto || user.username || '';
+      },
+      error: () => {
+        this.userName = '';
+      },
+    });
+  }
+
+  private loadTodayStatus(): void {
+    this.attendanceService.getTodayStatus().subscribe({
+      next: (status: any) => {
+        if (status.tieneEntrada && status.tieneSalida) {
+          this.marcaEstado = 'Completa';
+        } else if (status.tieneEntrada) {
+          this.marcaEstado = 'Entrada';
+        } else {
+          this.marcaEstado = 'Pendiente';
+        }
+        this.horaEntradaReal = status.horaEntradaReal
+          ? this.formatTime(status.horaEntradaReal)
+          : '--:--';
+        this.horaSalidaReal = status.horaSalidaReal
+          ? this.formatTime(status.horaSalidaReal)
+          : '--:--';
+        this.turnoNombre = status.turnoNombre || 'Sin turno';
+        this.toleranciaMinutos = status.toleranciaMinutos || 0;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.marcaEstado = 'Pendiente';
+        this.turnoNombre = 'Sin turno';
+        this.toleranciaMinutos = 0;
+        this.horaEntradaReal = '--:--';
+        this.horaSalidaReal = '--:--';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private loadKpiData(): void {
+    this.kpiService.getEmployeeDashboard().subscribe({
+      next: (kpi: KpiDashboard) => {
+        this.tardiasMes = kpi.tardias || 0;
+        this.horasTrabajadas = kpi.horasTrabajadas || 0;
+        this.cumplimiento = kpi.cumplimientoPct || 0;
+        this.clasificacion = kpi.clasificacion || 'N/A';
+        this.cdr.detectChanges();
+      },
+      error: () => {},
+    });
+
+    this.leavesService.getMyRequests().subscribe({
+      next: (requests: any[]) => {
+        this.permisosPendientes = requests.filter((r) => r.estado === 'pendiente').length;
+        this.cdr.detectChanges();
+      },
+      error: () => {},
+    });
+  }
+
+  private formatTime(time: string): string {
+    if (!time) return '--:--';
+    if (time.includes('T')) {
+      return new Date(time).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+    }
+    return time.substring(0, 5);
+  }
+
   getWelcomeName(): string {
+    if (this.userName) return this.userName;
     if (this.role === 'admin') return 'Administrador del Sistema';
-    if (this.role === 'rrhh') return 'María Pérez';
-    if (this.role === 'supervisor') return 'Ana López';
-    return 'Edgar Estuardo García Cabrera';
+    if (this.role === 'rrhh') return 'Usuario RRHH';
+    if (this.role === 'supervisor') return 'Supervisor';
+    return 'Empleado';
   }
 
   marcarEntrada(): void {
-    if (this.marcaEstado === 'Pendiente') {
-      this.marcaEstado = 'Entrada';
-    }
+    if (this.isCheckingIn) return;
+    this.isCheckingIn = true;
+
+    this.attendanceService.checkIn().subscribe({
+      next: (response: any) => {
+        this.marcaEstado = 'Entrada';
+        if (response.asistencia?.horaEntradaReal) {
+          this.horaEntradaReal = this.formatTime(response.asistencia.horaEntradaReal);
+        }
+        this.isCheckingIn = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isCheckingIn = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   marcarSalida(): void {
-    if (this.marcaEstado === 'Entrada') {
-      this.marcaEstado = 'Completa';
-    }
+    if (this.isCheckingOut) return;
+    this.isCheckingOut = true;
+
+    this.attendanceService.checkOut().subscribe({
+      next: (response: any) => {
+        this.marcaEstado = 'Completa';
+        if (response.asistencia?.horaSalidaReal) {
+          this.horaSalidaReal = this.formatTime(response.asistencia.horaSalidaReal);
+        }
+        this.isCheckingOut = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isCheckingOut = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   logout(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem('userRole');
-    }
-    this.router.navigate(['/login']);
+    this.authService.logout().subscribe({
+      complete: () => {
+        this.authService.clearToken();
+        if (isPlatformBrowser(this.platformId)) {
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('usuarioId');
+          localStorage.removeItem('empleadoId');
+        }
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.authService.clearToken();
+        if (isPlatformBrowser(this.platformId)) {
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('usuarioId');
+          localStorage.removeItem('empleadoId');
+        }
+        this.router.navigate(['/login']);
+      },
+    });
   }
 }

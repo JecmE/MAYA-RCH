@@ -1,0 +1,788 @@
+1. Arquitectura Seleccionada
+La arquitectura seleccionada para el Sistema de Control de Asistencia,
+Permisos y Planilla (MAYA CRH) es Cliente/Servidor, implementada como una
+aplicación web en la que el cliente (navegador con interfaz en Angular) consume
+servicios expuestos por un servidor (API REST en Node.js con ExpressJS),
+centralizando la información en una base de datos relacional (Microsoft SQL
+Server).
+Esta arquitectura es adecuada para el contexto de la organización debido a que
+proporciona un equilibrio entre simplicidad, control y escalabilidad para una
+operación de aproximadamente 30 empleados. Al concentrar la lógica de
+negocio en el servidor, se garantiza que reglas como tardías, permisos,
+aprobaciones, registro de horas por proyecto (timesheet), KPIs, bonos,
+vacaciones y planilla se apliquen de forma uniforme para todos los usuarios,
+reduciendo inconsistencias y retrabajo.
+Adicionalmente, al basarse en acceso por navegador, la solución facilita la
+compatibilidad multiplataforma (Windows, Linux y entornos Apple) sin requerir
+instalaciones locales, lo que favorece la adopción y disminuye la carga de
+soporte. Desde el punto de vista de seguridad, el modelo Cliente/Servidor
+permite implementar controles centralizados de autenticación y autorización
+por roles (Empleado, Supervisor, RRHH/Admin), así como mecanismos de
+trazabilidad y auditoría para registrar acciones críticas (aprobaciones,
+rechazos, ajustes, cálculos y cambios relevantes).
+Finalmente, al mantener la información en un repositorio central, se habilita la
+generación de reportes mensuales consistentes y el cálculo de KPIs confiables,
+permitiendo un crecimiento incremental por módulos (asistencia, permisos,
+proyectos, KPIs, bonos y planilla) sin necesidad de rediseñar la solución, lo cual
+se alinea con el enfoque iterativo de la metodología Scrum.
+
+
+
+2. Front-End
+Debido a que el proyecto Maya CRH tiene potencial de crecimiento por módulos
+(asistencia, permisos, reportes, KPIs, vacaciones y timesheet), se prioriza
+desde el inicio la estabilidad, sostenibilidad y reutilización de componentes,
+con el objetivo de evitar duplicación de código y mantener una estructura clara
+conforme el sistema evolucione. Para lograrlo, se define un patrón de
+organización y buenas prácticas que faciliten el mantenimiento, la
+escalabilidad y el trabajo colaborativo.
+Con base en estos requerimientos, se selecciona Angular en su versión 19
+(versión actual) como framework principal para el desarrollo del Front-End,
+debido a su enfoque estructurado, su soporte para aplicaciones empresariales
+y su capacidad de organizar la aplicación en módulos y componentes
+reutilizables.
+Ventajas de utilizar Angular
+ Código más mantenible: adecuado para proyectos que crecen y
+requieren orden a largo plazo.
+ Organización del código: separación clara entre componentes (UI),
+servicios (lógica y consumo de API) y módulos (agrupación por
+funcionalidad).
+ Reutilización: componentes compartidos (inputs, tablas,
+modales, layouts) reutilizables en múltiples pantallas.
+ Ecosistema y comunidad: amplia documentación, patrones probados y
+soporte constante.
+Patrones y enfoque de diseño
+MVC (adaptado al Front-End)
+En aplicaciones web con Angular, el patrón MVC se aplica de forma
+práctica mediante la separación de responsabilidades:
+ View: Componentes Angular (HTML/CSS/TS enfocados en
+presentación).
+ Controller/Lógica de interacción: Componentes más servicios
+coordinadores (manejo de eventos, validaciones UI y
+orquestación).
+ Model: Interfaces/Modelos TypeScript (estructura de datos
+consumidos desde la API).
+Ventajas:
+ Facilita mantenimiento y escalabilidad al separar
+presentación, lógica e información.
+ Permite reutilizar componentes y modelos en diferentes
+pantallas.
+ Favorece pruebas unitarias al separar lógica de presentación.
+ Reduce complejidad al modularizar pantallas y
+responsabilidades.
+
+DI (Dependency Injection)
+Angular incluye DI de forma nativa para inyectar servicios (API,
+autenticación, almacenamiento, etc.) dentro de componentes.
+Ventajas de DI:
+ Reduce el acoplamiento entre componentes y servicios.
+ Facilita pruebas unitarias al permitir sustituir dependencias
+(mocks).
+ Promueve modularidad y reutilización del código.
+Integración con ExpressJS y SQL Server (a nivel de Front-End)
+El Front-End (Angular) se comunica con el Back-End mediante API REST
+expuesta por ExpressJS. El Back-End será responsable de:
+ Autenticación y autorización por roles.
+ Validación de reglas (tardías, permisos, horas por proyecto, KPIs,
+etc.).
+ Acceso a la base de datos SQL Server para persistencia y reportes.
+El Front-End se limitará a:
+ consumir endpoints HTTP/HTTPS,
+ mostrar resultados,
+ validar formularios,
+ proteger rutas de navegación según rol (guardas).
+
+Nomenclatura y estructura de carpetas (Angular)
+Para mantener consistencia y facilitar el mantenimiento, se adopta una
+estructura por capas y por módulos funcionales, siguiendo
+convenciones estándar de Angular.
+a) Modelos (Models / Interfaces)
+ Ubicación: src/app/models/
+ Nomenclatura: kebab-case en archivo, interfaces
+en PascalCase.
+ Ejemplo:
+ empleado.model.ts
+ registro-asistencia.model.ts
+ solicitud-permiso.model.ts
+ planilla.model.ts
+
+b) Vistas (Componentes / Pages)
+ Ubicación: src/app/pages/ (o src/app/components/)
+ Nomenclatura: carpetas y archivos en kebab-case, clases
+en PascalCase.
+ Ejemplo:
+ asistencia/asistencia.component.ts
+ permisos/permisos.component.ts
+ kpis-dashboard/kpis-dashboard.component.ts
+ planilla/planilla.component.ts
+
+c) Servicios (Services – consumo de API y lógica reutilizable)
+ Ubicación: src/app/services/
+ Nomenclatura: kebab-case en archivo, clases en PascalCase.
+ Ejemplo:
+ autenticacion.service.ts
+ asistencia.service.ts
+ permisos.service.ts
+ reportes.service.ts
+ planilla.service.ts
+
+Nota: En Angular, los “controladores” se representan normalmente
+con servicios y lógica del componente, por lo que se usará servicios/
+como convención.
+d) Componentes compartidos (Shared)
+ Ubicación: src/app/shared/
+ Uso: componentes reutilizables (navbar, sidebar, tablas,
+modales, inputs, etc.)
+ Ejemplo:
+ shared/header/header.component.ts
+ shared/tabla/tabla.component.ts
+
+e) Core (lógica transversal y central)
+ Ubicación: src/app/core/
+ Incluye: auth, guards, interceptors, manejo de errores globales,
+configuración.
+ Ejemplo:
+ core/guards/autenticacion.guard.ts
+ core/interceptors/token.interceptor.ts
+ core/interceptors/error-http.interceptor.ts
+
+3. Back-End
+Dado que el Front-End del proyecto MAYA CRH (Angular) está diseñado para ser
+robusto y escalable, es esencial que el Back-End mantenga el mismo nivel de
+calidad, confiabilidad y organización. Por esta razón, se utiliza Node.js
+con ExpressJS para desarrollar la API del sistema, debido a su enfoque ligero, su
+amplia adopción en proyectos web modernos y su capacidad de integrarse
+eficientemente con aplicaciones SPA como Angular.
+El Back-End será responsable de centralizar la lógica de negocio del sistema:
+autenticación y roles, reglas de tardías y faltas, flujo de permisos con
+trazabilidad, registro de horas por proyecto (timesheet), generación de KPIs,
+control de vacaciones, cálculo de bonos y cálculo de planilla (bonificaciones,
+deducciones, horas extra e ISR), además de reportes mensuales exportables.
+
+Ventajas de utilizar ExpressJS
+ Ligero y flexible: Express permite construir APIs REST de forma directa y
+controlada, evitando complejidad innecesaria para un sistema de
+tamaño mediano.
+ Ecosistema amplio: existe una gran cantidad de librerías,
+validación, logging, manejo de errores y autenticación.
+ Integración natural con Angular: facilita la comunicación
+mediante endpoints REST para consumir desde el Front-End.
+ Desarrollo rápido e iterativo: se adapta bien al enfoque Scrum,
+permitiendo construir módulos incrementales por sprint.
+ Rendimiento adecuado: Node.js maneja eficientemente múltiples
+solicitudes concurrentes, suficiente para el volumen estimado de
+usuarios (≈30).
+
+Patrones de diseño y enfoque arquitectónico
+Patrón Repositorio
+Se utilizará el Patrón Repositorio para separar la lógica de acceso a datos
+(SQL Server) de la lógica de negocio.
+Ventajas del Patrón Repositorio:
+1. Abstracción del acceso a datos: la capa de negocio no depende
+directamente de consultas SQL o detalles del motor.
+2. Mantenibilidad: los cambios en el modelo o consultas se aíslan
+en repositorios.
+3. Reutilización: repositorios reutilizables por módulo (asistencia,
+permisos, timesheet, reportes y planilla).
+4. Facilita pruebas: repositorios simulables para pruebas unitarias.
+
+Inyección de Dependencias (DI)
+Se aplicará Inyección de Dependencias para desacoplar controladores,
+servicios y repositorios.
+Ventajas de DI:
+ Reduce acoplamiento entre componentes.
+ Facilita pruebas unitarias (mocks).
+ Promueve modularidad y escalabilidad.
+
+Capas del Back-End
+a) Capa de Dominio
+ Carpeta: src/domain/
+ Contenido: entidades y contratos.
+ Ejemplo:
+ entidades/empleado.entidad.ts
+ interfaces/repositorio-asistencia.interface.ts
+
+b) Capa de Infraestructura
+ Carpeta: src/infrastructure/
+ Contenido: conexión a SQL Server e implementaciones de
+repositorios.
+ Ejemplo:
+ base-datos/sqlserver.conexion.ts
+ repositorios/repositorio-asistencia.ts
+
+c) Capa de Aplicación
+ Carpeta: src/application/
+ Contenido: servicios, casos de uso y DTOs.
+ Ejemplo:
+ servicios/asistencia.servicio.ts
+ dtos/crear-solicitud-permiso.dto.ts
+ servicios/planilla.servicio.ts
+
+d) Presentation Layer (API / Web)
+ Carpeta: src/api/
+ Contenido: controladores, rutas.
+ Ejemplo:
+ controladores/asistencia.controlador.ts
+ rutas/asistencia.rutas.ts
+
+
+Nomenclatura (convenciones)
+Repositorios e interfaces
+ Interfaces: PascalCase con prefijo I
+o IRepositorioAsistencia, IRepositorioPermisos
+ Implementaciones: PascalCase con sufijo Repositorio
+o RepositorioAsistencia, RepositorioPermisos
+
+Servicios y controladores
+ Servicios: PascalCase con sufijo Servicio
+o ServicioAutenticacion, ServicioKpi, ServicioPlanilla
+ Controladores: PascalCase con sufijo Controlador
+o ControladorAutenticacion, ControladorReportes
+Métodos y variables
+ Métodos: camelCase
+o registrarEntrada(), aprobarPermiso()
+ Variables: camelCase
+o isLoading, UsuarioRole
+
+Estructura de endpoints (índice por módulo)
+Prefijo general recomendado: /api/v1
+Autenticación y usuarios
+ POST /api/v1/autenticacion/login
+o POST /api/v1/autenticacion/logout
+o GET /api/v1/usuarios/mi-perfil
+o POST /api/v1/usuarios (RRHH/Admin
+
+Asistencia
+ POST /api/v1/asistencia/entrada
+o POST /api/v1/asistencia/salida
+o GET /api/v1/asistencia/mi-historial
+o GET /api/v1/asistencia/equipo (Supervisor/RRHH)
+
+Permisos / Ausencias
+ POST /api/v1/permisos
+o GET /api/v1/permisos/mis-solicitudes
+o GET /api/v1/permisos/pendientes (Supervisor/RRHH)
+o PUT /api/v1/permisos/{id}/aprobar
+o PUT /api/v1/permisos/{id}/rechazar
+
+Timesheet
+ POST /api/v1/tiempos
+o GET /api/v1/tiempos/mis-registros
+o GET /api/v1/tiempos/equipo (Supervisor/RRHH)
+o PUT /api/v1/tiempos/{id}/aprobar (si aplica)
+o PUT /api/v1/tiempos/{id}/rechazar (si aplica)
+o
+KPIs y dashboard
+ GET /api/v1/kpis/mios
+o GET /api/v1/kpis/equipo (Supervisor)
+o GET /api/v1/kpis/global (RRHH/Admin)
+Bonos
+ GET /api/v1/bonos/elegibilidad?mes=YYYY-MM
+Planilla
+ POST /api/v1/planilla/periodos (crear/abrir)
+ POST /api/v1/planilla/periodos/{id}/calcular
+ POST /api/v1/planilla/periodos/{id}/cerrar
+ GET /api/v1/planilla/mi-boleta?periodo=YYYY-MM
+
+Reportes (exportables)
+ GET /api/v1/reportes/planilla-mensual?mes=YYYY-MM
+o GET /api/v1/reportes/horas-por-proyecto?mes=YYYY-MM
+o GET /api/v1/reportes/kpis?mes=YYYY-MM
+
+Vacaciones / Bonos
+ GET /api/v1/vacatciones/balance
+ POST /api/v1/vacaciones/request
+
+Integración con SQL Server (acceso a datos)
+El Back-End se conectará a SQL Server mediante driver/ORM para:
+ consultas seguras (evitar inyección),
+ manejo de transacciones (aprobaciones, marcajes),
+ consistencia del modelo y reportes.
+
+
+
+
+
+
+4. Base de Datos
+El proyecto MAYA CRH tiene potencial de crecer de forma progresiva
+(asistencia, permisos, reportes, KPIs, vacaciones, registro de horas por
+proyecto y planilla), por lo que resulta crucial priorizar desde el inicio la
+estabilidad, sostenibilidad y consistencia de la base de datos. En SQL Server, se
+adoptarán buenas prácticas como: correcta normalización, organización
+eficiente de tablas, diseño de índices adecuados, uso controlado de vistas y,
+cuando sea necesario, procedimientos almacenados reutilizables.
+Se utiliza una base de datos relacional en Microsoft SQL Server, ya que el
+sistema maneja información altamente estructurada y relacionada
+(empleados, turnos, marcajes, permisos, aprobaciones, auditoría, horas por
+proyecto y planilla), además de requerir consistencia para reportes mensuales
+y KPIs.
+
+Ventajas de una base de datos relacional en este proyecto
+ Integridad de los datos: el modelo relacional permite garantizar
+integridad referencial entre entidades (por ejemplo, que un marcaje
+pertenezca a un empleado válido y que una aprobación esté asociada a
+un supervisor autorizado).
+ Consultas y reportes complejos: el sistema requiere reportes
+mensuales, olanilla mensual, KPIs por empleado/equipo/mes y reportes
+de horas por proyecto; SQL permite agregaciones, filtros y consultas
+complejas de forma eficiente.
+ Estructura y escalabilidad controlada: con un diseño correcto e índices
+bien definidos, se mantiene buen rendimiento incluso si el sistema crece
+en volumen de registros (mes a mes) o se agregan módulos nuevos.
+
+Ventajas específicas de SQL Server para Maya CRH
+ Transacciones ACID: es esencial en operaciones críticas como
+marcajes, aprobaciones y ajustes, asegurando consistencia y
+durabilidad de la información (evitar registros incompletos o
+inconsistentes).
+ Seguridad y control: SQL Server permite control de acceso, roles,
+auditoría, respaldos y cifrado, lo cual es importante al manejar
+información de RRHH.
+ Rendimiento para reportes: el motor está optimizado para consultas de
+agregación y reportes (mensuales y por periodos), especialmente con
+índices y vistas bien diseñadas.
+ Crecimiento por módulos: permite extender el esquema de forma
+gradual agregando entidades (timesheet, vacaciones, bonos, KPIs)
+manteniendo coherencia relacional.
+
+Buenas prácticas de diseño en la base de datos
+ Normalización: evitar duplicación de datos (por ejemplo, datos del
+empleado se mantienen en una tabla principal, no en cada marcaje).
+ Llaves primarias y foráneas: para asegurar trazabilidad e integridad
+(Empleado a Asistencia, Empleado a Permisos, Supervisor a
+Aprobaciones).
+ Índices orientados al uso real:
+o búsquedas por empleado y rango de fechas,
+o reportes mensuales,
+o pendientes de aprobación,
+o horas por proyecto por período.
+ Auditoría/bitácora: registro de acciones críticas (aprobaciones,
+ajustes, cambios) para trazabilidad.
+ Vistas (opcional): para reportes recurrentes (planilla mensual, KPIs del
+mes, horas por proyecto).
+ Procedimientos almacenados (solo cuando aporte valor): para
+operaciones repetitivas o reportes estandarizados, evitando lógica
+duplicada.
+
+Estructura base de entidades
+La base de datos se organizará por módulos principales:
+ Seguridad: Usuarios, Roles, Permisos (RBAC).
+ RRHH: Empleados, Turnos, Asignaciones (Supervisor–Empleado).
+ Asistencia: Marcajes (entrada/salida), cálculo de tardías/faltas.
+ Permisos: Solicitudes, estados, aprobaciones/rechazos y comentarios.
+ Timesheet: Proyectos, registro de horas por fecha/proyecto/actividad,
+aprobación (si aplica).
+ KPIs/Reportes: tablas o vistas de apoyo para cálculos mensuales (según
+diseño).
+ Auditoría: Bitácora de acciones críticas.
+Nomenclatura
+Para mantener consistencia se adoptará una convención clara:
+ Base de datos: MAYA CRH_DB
+ Tablas: plurales
+o empleado, usuario, rol, usuario_rol
+ turno, empleado_turno
+ registro_asistencia, ajuste_asistencia
+ tipo_permiso, solicitud_permiso, decision_permiso, adjunto_solicitud
+ vacacion_saldo, vacacion_movimiento
+ proyecto, empleado_proyecto
+ registro_tiempo, aprobacion_tiempo
+ kpi_mensual, regla_bono, bono_resultado
+ periodo_planilla, planilla_empleado, movimiento_planilla, concepto_pl
+anilla, tabla_isr
+ audit_log, parametro_sistema, reset_password_token
+ Columnas: snake_case.
+ Ejemplo en PascalCase:
+ empleado_id, fecha_creacion, estado, comentario
+ Llaves primarias: Id o (Entidad)Id.
+ Llaves foráneas: (Entidad)Id (ej. EmpleadoId, ProyectoId).
+ Indices: prefijo IX_ (ej. IX_AttendanceRecords_EmployeeId_Date).
+
+
+
+
+
+
+
+
+
+5. Unit Testing
+El unit testing será fundamental en el desarrollo del sistema MAYA CRH porque
+permite detectar errores de forma temprana, asegurar la calidad del código y
+facilitar la evolución del proyecto conforme se agreguen módulos (asistencia,
+permisos, reportes, KPIs, timesheet, vacaciones y bonos. Dado que el sistema
+maneja reglas de negocio sensibles (tardías, aprobaciones, cálculo de horas,
+elegibilidad de bono, etc.), las pruebas unitarias reducen el riesgo de
+inconsistencias y retrabajo, especialmente bajo una metodología ágil (Scrum)
+donde se liberan incrementos por sprint.
+1. Pruebas Unitarias en el Back-End (ExpressJS)
+
+Tecnología seleccionada: Jest más Supertest
+Se utilizará Jest como framework principal de pruebas para Node.js,
+complementado con Supertest para validar controladores/rutas de la API de
+forma controlada (sin necesidad de levantar un servidor real en producción).
+Justificación
+Jest
+ Rápido y moderno: ejecución en paralelo y caché para acelerar
+pruebas.
+ Mocking integrado: facilita simular repositorios, servicios y
+dependencias.
+ Cobertura de código: permite medir cobertura y detectar módulos sin
+pruebas.
+ Estructura clara: ideal para aplicar patrones AAA y pruebas aisladas.
+
+Supertest
+ Permite probar endpoints HTTP de manera sencilla y controlada.
+ Ideal para validar respuestas, códigos HTTP, validaciones y autorización.
+
+Prueba en el Back-End
+Se priorizarán pruebas unitarias en servicios (lógica de negocio) y
+pruebas controladas en controladores.
+
+a) Servicios (Business Logic) – Pruebas unitarias (Jest)
+Ejemplos de casos:
+ Asistencia
+ Registrar entrada/salida correctamente.
+ Evitar doble marcaje en el mismo periodo.
+ Cálculo de tardía según turno y tolerancia.
+ Permisos
+ Crear solicitud con validación de fechas.
+ Aprobar/rechazar con rol correcto.
+ Guardar trazabilidad (quién aprobó, fecha, comentario).
+ Timesheet
+ Validar que horas por día no excedan el límite configurado.
+ Validar que horas cargadas no excedan lo marcado.
+ Cambiar estado a aprobado/rechazado y registrar auditoría.
+ KPIs
+ Cálculo de horas trabajadas vs esperadas por mes.
+ Días trabajados vs días meta.
+ Clasificación de calidad del empleado según reglas definidas.
+ Bonos/Vacaciones
+ Elegibilidad de bono según máximos de tardías/faltas/horas.
+ Cálculo de saldo de vacaciones, consumo y validación de
+elegibilidad.
+ Planilla (nuevo)
+ Calcular planilla por período para un empleado (bruto, deducciones,
+neto).
+ Generar movimientos automáticos (bono/deducción/ISR)
+según CONCEPTO_PLANILLA.
+ Calcular ISR según TABLA_ISR (selección de rango correcta +
+fórmula).
+ Validar que PLANILLA_EMPLEADO quede consistente
+con MOVIMIENTO_PLANILLA (sumas cuadran).
+ Recalcular: si se modifica asistencia/permisos/bonos del período, se
+refleja en planilla (si permites recalcular).
+ Control de período: no permitir cambios si período está “cerrado”.
+
+b) Controladores / Rutas – Pruebas básicas (Jest + Supertest)
+Ejemplos de casos:
+ Responde 200/201 en peticiones válidas.
+ Responde 400 si faltan campos o formato inválido.
+ Responde 401 si no hay token.
+ Responde 403 si el rol no tiene permiso.
+ Responde 404 si el recurso no existe.
+
+Mejores prácticas para Back-End
+ Pruebas aisladas: los servicios se prueban con
+repositorios mockeados.
+ Nomenclatura clara: [Metodo]_[Condicion]_[ResultadoEsperado]
+o Ejemplo: approveLeave_whenRoleIsSupervisor_shouldReturnApproved
+()
+ AAA Pattern (Arrange – Act – Assert) en todas las pruebas.
+ Cobertura mínima objetivo: 70–80% en servicios críticos.
+ Datos de prueba: se usará factories/fixtures para evitar repetición.
+
+2. Pruebas Unitarias en el Front-End (Angular)
+Tecnología seleccionada: Jest
+Aunque Angular trae por defecto Jasmine/Karma, se selecciona Jest porque
+ofrece mejor rendimiento y una experiencia más simple para pruebas
+modernas.
+Ventajas de Jest en Angular
+ Ejecución más rápida (paralelo + cache).
+ Mocking sencillo de servicios, observables y dependencias.
+ Snapshots para validar cambios de UI en componentes
+ Configuración más limpia que Karma + Jasmine en proyectos grandes.
+
+Pruebas en el Front-End
+Se enfocará en pruebas unitarias de:
+ Componentes (render, comportamiento, validaciones UI).
+ Servicios Angular (consumo de API y lógica de presentación).
+ Guards e interceptors (seguridad del lado cliente).
+
+a) Componentes (Jest)
+Ejemplos:
+ El componente de marcaje muestra correctamente “Entrada
+registrada”.
+ Formularios validan campos obligatorios (permiso, fecha, motivo).
+ Botones de aprobación aparecen solo para roles permitidos.
+ Pantallas de KPIs renderizan métricas sin error.
+b) Servicios (Jest + HttpTestingController o mocks)
+Ejemplos:
+ attendanceService.checkIn() llama al endpoint correcto.
+ Manejo de errores: si API devuelve 401, redirige a login.
+ Transformación de datos para tablas y dashboards.
+c) Guards/Interceptors (Jest)
+Ejemplos:
+ AuthGuard bloquea rutas si no hay token.
+ Interceptor agrega token a cada request.
+ Interceptor maneja errores 401/403 de forma estándar.
+
+Mejores prácticas para Front-End
+ AAA Pattern (Arrange-Act-Assert).
+ Mocking de servicios y API para no depender del backend.
+ Pruebas pequeñas y específicas: se vitará pruebas gigantes.
+ No duplicar frameworks: si se adopta Jest, se evitará mantener
+Karma/Jasmine para no sobrecargar el proyecto.
+
+3. Pruebas de rendimiento y pruebas manuales (complementarias)
+Aunque no son unit tests, se usarán para documentar como apoyo:
+ Postman: validación rápida de endpoints (colección de pruebas
+manuales).
+ JMeter (opcional): pruebas de carga/tiempos de respuesta
+para endpoints críticos:
+o login
+o check-in/check-out
+o reporte mensual
+o dashboard KPIs
+
+Resumen de herramientas definidas
+ Back-End (ExpressJS): Jest (unit tests)
++ Supertest (rutas/controladores)
+ Front-End (Angular): Jest (componentes, servicios, guards,
+interceptors)
+ Complementarias: Postman (validación), JMeter (rendimiento
+opcional)}
+
+6. Integraciones
+Con el objetivo de cumplir los requerimientos del sistema MAYA CRH sin
+agregar complejidad innecesaria, se define una única integración externa
+orientada a notificaciones. Esta integración permitirá informar oportunamente
+a los actores clave del proceso (Supervisor y Empleado) sobre eventos
+relevantes del flujo de permisos.
+
+Correo Gmail (Notificaciones por email)
+La integración con correo Gmail permitirá enviar notificaciones automáticas
+relacionadas con el módulo de permisos/ausencias, asegurando comunicación
+formal y trazabilidad. Su uso se limita a mensajes transaccionales del sistema,
+evitando integraciones adicionales que no forman parte del alcance.
+a) Objetivo de la integración
+ Notificar al Supervisor cuando exista una nueva solicitud de permiso
+pendiente de revisión.
+ Notificar al Empleado cuando su solicitud cambie de estado (por
+ejemplo: aprobada o rechazada, incluyendo comentario si aplica).
+b) Características principales
+ Envío automático de correos desde el sistema ante eventos definidos.
+ Plantillas de mensaje reutilizables (asunto y cuerpo estandarizado).
+ Mensajes transaccionales (no marketing): información puntual del
+flujo.
+ Trazabilidad básica: registro de envío (fecha/hora, destinatario, tipo de
+evento, resultado).
+
+c) Cómo funciona la integración (flujo)
+Evento 1: Nueva solicitud
+ El empleado registra una solicitud en el sistema (Angular más
+API ExpressJS).
+ El backend guarda la solicitud en SQL Server.
+ El backend genera y envía un correo al Supervisor indicando que
+existe una solicitud pendiente.
+Evento 2: Cambio de estado
+ El Supervisor aprueba/rechaza la solicitud en el sistema.
+ El backend actualiza el estado y registra auditoría.
+ El backend envía un correo al Empleado informando el resultado
+(aprobado/rechazado) y el comentario (si aplica).
+
+d) Requisitos para utilizar Gmail
+ Cuenta Gmail que actuará como remitente del sistema (por ejemplo:
+notificaciones@...).
+ Configuración de autenticación segura para el envío (según política
+definida):
+o SMTP con credenciales seguras (según disponibilidad de la cuenta).
+ Acceso a variables de entorno para almacenar credenciales sin
+exponerlas en el código.
+
+e) Integración técnica con ExpressJS y Angular
+Backend (ExpressJS)
+ El envío de correos se implementará únicamente desde el servidor
+(no desde el Front-End).
+ Biblioteca:
+o Nodemailer para envío de correo desde Node.js.
+ Se definirá un módulo/Módulo de notificaciones, por ejemplo:
+o NotificationService (envío)
+o EmailTemplateService (plantillas)
+o EmailLogRepository (registro del envío)
+Eventos que disparan correos:
+ LeaveRequestCreated = notifica Supervisor
+ LeaveRequestApproved/Rejected = notifica Empleado
+Frontend (Angular)
+ El Front-End no envía correos directamente.
+ Únicamente dispara acciones del sistema (crear solicitud / aprobar /
+rechazar).
+ Opcional: mostrar un mensaje de confirmación (“Notificación
+enviada al supervisor”).
+
+f) Seguridad y buenas prácticas
+ No almacenar credenciales en el código (se usarán variables del
+entorno).
+ TLS/SSL en el envío para proteger credenciales y contenido.
+ Control de contenido: para evitar datos sensibles innecesarios en el
+correo (solo lo esencial: fechas, tipo de permiso, estado, comentario).
+ Manejo de errores y reintentos: si el correo falla, registrar y reintentar
+de forma controlada (o dejar en cola).
+ Bitácora: registrar envío con estado ENVIADO/FALLIDO para
+trazabilidad.
+g) Costos
+ El envío de correos mediante una cuenta Gmail puede ser sin costo para
+volúmenes bajos/moderados.
+h) Alcance de esta integración
+Incluye:
+ Notificación al supervisor por nueva solicitud.
+ Notificación al empleado por cambio de estado.
+ Plantillas y registro básico del envío.
+Excluye:
+ WhatsApp, SMS, pagos, calendarios externos,
+notificaciones push en tiempo real (no forman parte del alcance
+actual).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+7. Infraestructura
+Para el proyecto MAYA CRH se consideran dos escenarios de infraestructura:
+1. Ejecución local (localhost) para desarrollo y pruebas académicas
+(estado actual).
+2. Infraestructura recomendada en la nube (Azure) si en el futuro se
+decide lanzar el sistema de forma formal y accesible desde la
+organización.
+
+Escenario actual: ejecución en Localhost (sin despliegue productivo)
+En la etapa actual, el sistema se ejecutará en un entorno local
+controlado para desarrollo, pruebas y validación funcional.
+Componentes:
+ Frontend (Angular): ejecutado en entorno local (servidor de
+desarrollo) y probado desde navegador.
+ Backend (ExpressJS/Node.js): API ejecutada en localhost con
+configuración por variables de entorno.
+ Base de datos (SQL Server): instancia local (Developer/Express
+según disponibilidad) con scripts de creación y datos semilla.
+ Notificaciones Gmail: activadas en ambiente local únicamente
+para pruebas controladas (o deshabilitadas por configuración).
+Buenas prácticas mínimas en local:
+ Separar configuraciones por ambiente (por ejemplo: DEV / TEST)
+usando variables de entorno.
+ Copias de seguridad manuales periódicas de la base de datos
+(para no perder avance).
+ Registro de logs básicos del backend (errores y eventos críticos).
+
+Escenario futuro: infraestructura recomendada si el sistema se lanza
+Si el sistema se publica para uso real, la infraestructura deberá priorizar
+seguridad, disponibilidad, escalabilidad y control de costos,
+manteniendo compatibilidad con el stack (Angular + ExpressJS + SQL
+Server + notificaciones Gmail).
+
+1) Red y Seguridad
+ Azure Virtual Network (VNet): red privada para aislar recursos
+críticos.
+ Subredes separadas:
+ Subred de aplicación (API).
+ Subred de datos (SQL Server/servicios de datos).
+ Network Security Groups (NSGs): reglas de entrada/salida para
+permitir únicamente tráfico necesario.
+ WAF (opcional recomendado): Application Gateway con
+Web Application Firewall para proteger la aplicación web ante
+ataques comunes (inyección, bots, etc.).
+ Azure Key Vault: almacenamiento seguro de secretos
+(credenciales, claves, tokens de correo, etc.).
+ MFA para administradores: acceso reforzado para cuentas que
+administran la infraestructura.
+
+2) Frontend (Angular)
+Para el Frontend, al ser contenido estático, se tendría que usar
+alojamiento optimizado para SPA:
+Opciones recomendadas (cualquiera es válida):
+ Azure Static Web Apps (simple, rápido, ideal para SPA).
+ Azure Storage Static Website + Azure CDN (mejor rendimiento
+global y costo eficiente).
+
+Beneficios:
+ Alta disponibilidad para contenido estático.
+ Carga rápida (CDN) y menor costo que un servidor tradicional.
+ Entrega segura por HTTPS.
+
+3) Backend (ExpressJS / Node.js)
+Para la API REST, se usaría un servicio administrado que facilite
+escalabilidad y mantenimiento:
+Opción principal:
+ Azure App Service (Web Apps) para Node.js
+o Permite escalado vertical/horizontal.
+o Manejo de certificados, HTTPS y despliegue controlado.
+o Soporta variables de entorno y “slots” de despliegue
+(staging/producción).
+Alternativa (si se requiere contenerización):
+ Azure Container Apps (si se decide empaquetar backend en
+Docker).
+
+4) Base de Datos (SQL Server)
+Como el motor definido es SQL Server, existen tres rutas típicas según
+necesidades:
+Opción recomendada para crecimiento empresarial:
+ Azure SQL Managed Instance
+o Alta compatibilidad con SQL Server.
+o Administración más sencilla que una VM.
+o Backups automáticos y alta disponibilidad.
+
+Opción directa (más control):
+ SQL Server en Azure Virtual Machine (VM)
+o Útil si se requiere control total del motor, features específicos o
+configuración avanzada.
+o Requiere más administración (parches, backups, hardening).
+Opción ligera:
+ Azure SQL Database (muy administrado y eficiente)
+o Es altamente compatible, aunque no es “SQL Server instalado”
+como tal.
+Buenas prácticas de datos (futuro):
+ Backups automáticos más retención definida.
+ Estrategia de restauración probada (DR básico).
+ Índices orientados a reportes mensuales y consultas por rango de
+fecha.
+
+5) Integración de correo (Gmail)
+ El backend seguirá siendo el responsable de enviar
+notificaciones.
+ Credenciales/tokens almacenados en Key Vault.
+ Registro de envío en base de datos o logs (éxito/falla) para
+trazabilidad.
+
+6) Monitoreo y Administración
+ Application Insights (o Azure Monitor): métricas
+del backend (errores, latencia, disponibilidad).
+ Log Analytics: centralización de logs para auditoría técnica.
+ Alertas básicas:
+ Caídas del backend
+o errores HTTP 5xx
+o latencia anormal
+o disponibilidad de base de datos
+
+7) CI/CD y control operativo
+Aunque el despliegue no sea inmediato, para un futuro lanzamiento se
+recomienda:
+ Azure DevOps Pipelines para automatizar:
+ build del Angular,
+ pruebas unitarias,
+o despliegue del frontend,
+o despliegue del backend,
+o migraciones controladas de base de datos (si aplica).
+ Ambientes: DEV / QA / PROD (mínimo QA y PROD en
+lanzamiento). 

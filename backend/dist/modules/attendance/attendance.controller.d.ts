@@ -16,6 +16,8 @@ export declare class AttendanceController {
         fecha: Date;
         tieneEntrada: boolean;
         tieneSalida: boolean;
+        turnoNombre: string;
+        toleranciaMinutos: number;
         asistenciaId?: undefined;
         horaEntradaReal?: undefined;
         horaSalidaReal?: undefined;
@@ -33,6 +35,8 @@ export declare class AttendanceController {
         observacion: string;
         tieneEntrada: boolean;
         tieneSalida: boolean;
+        turnoNombre: string;
+        toleranciaMinutos: number;
     }>;
     getHistory(req: any, fechaInicio?: string, fechaFin?: string): Promise<{
         asistenciaId: number;

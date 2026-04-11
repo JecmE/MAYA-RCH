@@ -34,6 +34,9 @@ let KpiController = class KpiController {
     getEmployeeClassification(req, mes, anio) {
         return this.kpiService.getEmployeeClassification(req.user.empleadoId, mes, anio);
     }
+    getEmployeeProfile(id) {
+        return this.kpiService.getEmployeeProfile(id);
+    }
 };
 exports.KpiController = KpiController;
 __decorate([
@@ -73,6 +76,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, Number, Number]),
     __metadata("design:returntype", void 0)
 ], KpiController.prototype, "getEmployeeClassification", null);
+__decorate([
+    (0, common_1.Get)('employee/:id/profile'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], KpiController.prototype, "getEmployeeProfile", null);
 exports.KpiController = KpiController = __decorate([
     (0, common_1.Controller)('kpi'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

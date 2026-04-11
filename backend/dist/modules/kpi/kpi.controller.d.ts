@@ -17,11 +17,23 @@ export declare class KpiController {
     getSupervisorDashboard(req: any, mes?: number, anio?: number): Promise<{
         mes: number;
         anio: number;
+        cantidadEmpleados: number;
+        resumen: {
+            totalDiasTrabajados: number;
+            totalTardias: number;
+            promedioCumplimiento: number;
+            comparacionMesAnterior?: undefined;
+        };
+        empleados: any[];
+    } | {
+        mes: number;
+        anio: number;
         cantidadEmpleados: any;
         resumen: {
             totalDiasTrabajados: number;
             totalTardias: number;
             promedioCumplimiento: number;
+            comparacionMesAnterior: number;
         };
         empleados: any;
     }>;
@@ -40,9 +52,42 @@ export declare class KpiController {
         };
     }>;
     getEmployeeClassification(req: any, mes?: number, anio?: number): Promise<{
+        empleadoId: number;
+        nombreCompleto: string;
         clasificacion: string;
         cumplimientoPct: number;
         tardias: number;
         faltas: number;
+    }[]>;
+    getEmployeeProfile(id: number): Promise<{
+        empleado: {
+            nombreCompleto: string;
+            puesto: string;
+            departamento: string;
+            email: string;
+        };
+        historialAsistencia: {
+            fecha: Date;
+            entrada: Date;
+            salida: Date;
+            estado: string;
+        }[];
+        horasPorProyecto: {
+            nombre: string;
+            horas: number;
+        }[];
+        solicitudesRecientes: {
+            tipo: string;
+            fechaInicio: Date;
+            fechaFin: Date;
+            estado: string;
+        }[];
+        kpiActual: {
+            cumplimientoPct: number;
+            clasificacion: string;
+            tardias: number;
+            faltas: number;
+        };
+        comparacionMesAnterior: number;
     }>;
 }

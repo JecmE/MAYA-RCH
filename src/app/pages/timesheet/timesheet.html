@@ -1,13 +1,7 @@
 <div class="timesheet-page">
   <main class="timesheet-main">
-
     <div class="page-header">
-      <button
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
+      <button (click)="goBack()" class="back-button">←</button>
 
       <div class="header-content">
         <h2 class="page-title">Timesheet</h2>
@@ -19,28 +13,20 @@
 
       <div class="form-layout">
         <div class="form-section">
-
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">
-                Proyecto <span class="required">*</span>
-              </label>
+              <label class="form-label"> Proyecto <span class="required">*</span> </label>
 
-              <select
-                [(ngModel)]="proyecto"
-                name="proyecto"
-                class="form-control form-control-soft"
-              >
+              <select [(ngModel)]="proyecto" name="proyecto" class="form-control form-control-soft">
                 <option value="">Seleccione...</option>
-                <option value="CRH">CRH</option>
-                <option value="RRHH">RRHH</option>
+                @for (proj of proyectos; track proj.proyectoId) {
+                  <option [value]="proj.codigo">{{ proj.codigo }} - {{ proj.nombre }}</option>
+                }
               </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label">
-                Fecha <span class="required">*</span>
-              </label>
+              <label class="form-label"> Fecha <span class="required">*</span> </label>
 
               <input
                 type="date"
@@ -51,9 +37,7 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">
-                Horas a Registrar <span class="required">*</span>
-              </label>
+              <label class="form-label"> Horas a Registrar <span class="required">*</span> </label>
 
               <div class="input-with-suffix">
                 <input
@@ -69,9 +53,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">
-              Actividad <span class="required">*</span>
-            </label>
+            <label class="form-label"> Actividad <span class="required">*</span> </label>
 
             <textarea
               rows="4"
@@ -84,25 +66,13 @@
 
           <div class="actions-row">
             @if (+horas > 8) {
-              <span class="inline-error">
-                ✕ Error: este registro excede las horas permitidas
-              </span>
+              <span class="inline-error"> ✕ Error: este registro excede las horas permitidas </span>
             }
 
             <div class="button-group">
-              <button
-                type="button"
-                (click)="limpiar()"
-                class="btn btn-secondary"
-              >
-                Limpiar
-              </button>
+              <button type="button" (click)="limpiar()" class="btn btn-secondary">Limpiar</button>
 
-              <button
-                type="button"
-                (click)="handleValidar()"
-                class="btn btn-primary"
-              >
+              <button type="button" (click)="handleValidar()" class="btn btn-primary">
                 Validar
               </button>
             </div>
@@ -118,23 +88,15 @@
 
       <div class="history-toolbar">
         <div class="filter-group">
-          <input
-            type="date"
-            [(ngModel)]="filtroFecha"
-            name="filtroFecha"
-            class="filter-control"
-          />
+          <input type="date" [(ngModel)]="filtroFecha" name="filtroFecha" class="filter-control" />
         </div>
 
         <div class="filter-group">
-          <select
-            [(ngModel)]="filtroProyecto"
-            name="filtroProyecto"
-            class="filter-control"
-          >
+          <select [(ngModel)]="filtroProyecto" name="filtroProyecto" class="filter-control">
             <option value="">Filtrar por proyecto</option>
-            <option value="CRH">CRH</option>
-            <option value="RRHH">RRHH</option>
+            @for (proj of proyectos; track proj.proyectoId) {
+              <option [value]="proj.codigo">{{ proj.codigo }}</option>
+            }
           </select>
         </div>
 
@@ -185,27 +147,18 @@
         </table>
       </div>
     </div>
-
   </main>
 
   @if (errorModal) {
     <div class="modal-overlay">
       <div class="modal-card modal-small">
         <div class="modal-header modal-header-light">
-          <button
-            type="button"
-            (click)="closeErrorModal()"
-            class="modal-close"
-          >
-            ✕
-          </button>
+          <button type="button" (click)="closeErrorModal()" class="modal-close">✕</button>
         </div>
 
         <div class="modal-content centered-content">
           <div class="modal-icon modal-icon-error">✕</div>
-          <h3 class="modal-title-text">
-            Error: este registro excede las horas permitidas
-          </h3>
+          <h3 class="modal-title-text">Error: este registro excede las horas permitidas</h3>
         </div>
       </div>
     </div>
@@ -215,20 +168,12 @@
     <div class="modal-overlay">
       <div class="modal-card modal-small">
         <div class="modal-header modal-header-light">
-          <button
-            type="button"
-            (click)="closeSuccessModal()"
-            class="modal-close"
-          >
-            ✕
-          </button>
+          <button type="button" (click)="closeSuccessModal()" class="modal-close">✕</button>
         </div>
 
         <div class="modal-content centered-content">
           <div class="modal-icon modal-icon-success">✓</div>
-          <h3 class="modal-title-success">
-            Proyecto actualizado con éxito
-          </h3>
+          <h3 class="modal-title-success">Proyecto actualizado con éxito</h3>
         </div>
       </div>
     </div>

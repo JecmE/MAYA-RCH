@@ -50,12 +50,9 @@ let TimesheetsService = class TimesheetsService {
         });
         return registros.map((r) => ({
             tiempoId: r.tiempoId,
+            empleadoId: r.empleadoId,
             fecha: r.fecha,
-            proyecto: {
-                proyectoId: r.proyecto?.proyectoId,
-                nombre: r.proyecto?.nombre,
-                codigo: r.proyecto?.codigo,
-            },
+            proyectoId: r.proyectoId,
             horas: r.horas,
             horasValidadas: r.horasValidadas,
             actividadDescripcion: r.actividadDescripcion,
@@ -78,7 +75,7 @@ let TimesheetsService = class TimesheetsService {
             proyectoId: createDto.proyectoId,
             fecha: new Date(createDto.fecha),
             horas: createDto.horas,
-            actividadDescripcion: createDto.actividadDescripcion || '',
+            actividadDescripcion: createDto.actividadDescripcion || createDto.actividad || '',
             estado: registro_tiempo_entity_1.RegistroTiempo.ESTADO_PENDIENTE,
         });
         const saved = await this.tiempoRepository.save(registro);

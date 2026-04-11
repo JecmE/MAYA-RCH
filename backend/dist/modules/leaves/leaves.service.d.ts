@@ -6,6 +6,7 @@ import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { AdjuntoSolicitud } from '../../entities/adjunto-solicitud.entity';
 import { DataSource } from 'typeorm';
 export declare class LeavesService {
     private solicitudRepository;
@@ -15,19 +16,23 @@ export declare class LeavesService {
     private vacacionMovimientoRepository;
     private empleadoRepository;
     private auditRepository;
+    private adjuntoRepository;
     private dataSource;
-    constructor(solicitudRepository: Repository<SolicitudPermiso>, tipoPermisoRepository: Repository<TipoPermiso>, decisionRepository: Repository<DecisionPermiso>, vacacionSaldoRepository: Repository<VacacionSaldo>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, empleadoRepository: Repository<Empleado>, auditRepository: Repository<AuditLog>, dataSource: DataSource);
+    constructor(solicitudRepository: Repository<SolicitudPermiso>, tipoPermisoRepository: Repository<TipoPermiso>, decisionRepository: Repository<DecisionPermiso>, vacacionSaldoRepository: Repository<VacacionSaldo>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, empleadoRepository: Repository<Empleado>, auditRepository: Repository<AuditLog>, adjuntoRepository: Repository<AdjuntoSolicitud>, dataSource: DataSource);
     getTiposPermiso(): Promise<{
         tipoPermisoId: number;
         nombre: string;
         requiereDocumento: boolean;
         descuentaVacaciones: boolean;
     }[]>;
+    private calculateDays;
     createRequest(createDto: any, empleadoId: number): Promise<{
         solicitudId: number;
         estado: string;
         mensaje: string;
     }>;
+    private saveAttachment;
+    getAttachment(fileName: string, res: any): Promise<void>;
     getMyRequests(empleadoId: number): Promise<{
         solicitudId: number;
         tipoPermiso: string;
@@ -42,6 +47,11 @@ export declare class LeavesService {
             decision: string;
             comentario: string;
             fechaHora: Date;
+        }[];
+        adjuntos: {
+            adjuntoId: number;
+            nombreArchivo: string;
+            rutaUrl: string;
         }[];
     }[]>;
     getPendingRequests(supervisorEmpleadoId: number): Promise<any>;
@@ -58,5 +68,4 @@ export declare class LeavesService {
         diasTotales: number;
         fechaCorte: Date;
     }>;
-    private calculateDays;
 }

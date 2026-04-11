@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { KpiService, HrKpi, EmployeeClassification } from '../../../services/kpi.service';
 
 interface KpiGlobalItem {
   id: number;
@@ -50,74 +51,129 @@ interface KpiDetalleItem {
   templateUrl: './kpis-globales.html',
   styleUrl: './kpis-globales.css',
 })
-export class KpisGlobales {
+export class KpisGlobales implements OnInit {
   periodoSeleccionado = 'Octubre 2023';
   filtroClasificacion = 'Todas las clasificaciones';
   filtroBusqueda = '';
 
   periodosDisponibles = ['Octubre 2023', 'Septiembre 2023'];
 
-  resumenDepartamentos: KpiGlobalItem[] = [
-    { id: 1, departamento: 'RRHH', cumplimiento: '94%', tardias: 2, faltas: 0, clasificacion: 'Excelente', periodo: 'Octubre 2023' },
-    { id: 2, departamento: 'Operaciones', cumplimiento: '87%', tardias: 5, faltas: 1, clasificacion: 'Bueno', periodo: 'Octubre 2023' },
-    { id: 3, departamento: 'Tecnología', cumplimiento: '79%', tardias: 7, faltas: 2, clasificacion: 'Observación', periodo: 'Octubre 2023' },
-    { id: 4, departamento: 'Finanzas', cumplimiento: '68%', tardias: 8, faltas: 3, clasificacion: 'Riesgo', periodo: 'Octubre 2023' },
+  resumenDepartamentos: KpiGlobalItem[] = [];
+  deptoData: KpiDepartamentoChartItem[] = [];
+  equipoData: KpiEquipoChartItem[] = [];
+  clasificacionData: KpiClasificacionChartItem[] = [];
+  tablaData: KpiDetalleItem[] = [];
 
-    { id: 5, departamento: 'RRHH', cumplimiento: '92%', tardias: 3, faltas: 0, clasificacion: 'Excelente', periodo: 'Septiembre 2023' },
-    { id: 6, departamento: 'Operaciones', cumplimiento: '84%', tardias: 6, faltas: 1, clasificacion: 'Bueno', periodo: 'Septiembre 2023' },
-    { id: 7, departamento: 'Tecnología', cumplimiento: '76%', tardias: 8, faltas: 2, clasificacion: 'Observación', periodo: 'Septiembre 2023' },
-    { id: 8, departamento: 'Finanzas', cumplimiento: '65%', tardias: 9, faltas: 4, clasificacion: 'Riesgo', periodo: 'Septiembre 2023' }
-  ];
+  private hrKpi: HrKpi | null = null;
 
-  deptoData: KpiDepartamentoChartItem[] = [
-    { name: 'Tecnología', kpi: 95, periodo: 'Octubre 2023' },
-    { name: 'Marketing', kpi: 88, periodo: 'Octubre 2023' },
-    { name: 'Ventas', kpi: 82, periodo: 'Octubre 2023' },
-    { name: 'RRHH', kpi: 97, periodo: 'Octubre 2023' },
-    { name: 'Finanzas', kpi: 91, periodo: 'Octubre 2023' },
+  constructor(
+    private router: Router,
+    private kpiService: KpiService,
+  ) {}
 
-    { name: 'Tecnología', kpi: 91, periodo: 'Septiembre 2023' },
-    { name: 'Marketing', kpi: 84, periodo: 'Septiembre 2023' },
-    { name: 'Ventas', kpi: 79, periodo: 'Septiembre 2023' },
-    { name: 'RRHH', kpi: 94, periodo: 'Septiembre 2023' },
-    { name: 'Finanzas', kpi: 88, periodo: 'Septiembre 2023' }
-  ];
+  ngOnInit(): void {
+    this.loadKpiData();
+  }
 
-  equipoData: KpiEquipoChartItem[] = [
-    { name: 'Equipo A', kpi: 93, periodo: 'Octubre 2023' },
-    { name: 'Equipo B', kpi: 87, periodo: 'Octubre 2023' },
-    { name: 'Equipo C', kpi: 91, periodo: 'Octubre 2023' },
-    { name: 'Equipo D', kpi: 85, periodo: 'Octubre 2023' },
+  private loadKpiData(): void {
+    this.kpiService.getHrDashboard().subscribe({
+      next: (data: HrKpi) => {
+        this.hrKpi = data;
+        this.updateDepartamentosData(data);
+        this.updateClasificacionData();
+      },
+      error: () => {
+        this.hrKpi = null;
+        this.resumenDepartamentos = [];
+        this.clasificacionData = [];
+      },
+    });
 
-    { name: 'Equipo A', kpi: 90, periodo: 'Septiembre 2023' },
-    { name: 'Equipo B', kpi: 84, periodo: 'Septiembre 2023' },
-    { name: 'Equipo C', kpi: 88, periodo: 'Septiembre 2023' },
-    { name: 'Equipo D', kpi: 81, periodo: 'Septiembre 2023' }
-  ];
+    this.kpiService.getEmployeeClassifications().subscribe({
+      next: (data: EmployeeClassification[]) => {
+        this.tablaData = data.map((item, index) => this.mapClassificationToDetalle(item, index));
+        this.deptoData = this.generateDeptoData(data);
+        this.equipoData = this.generateEquipoData(data);
+      },
+      error: () => {
+        this.tablaData = [];
+        this.deptoData = [];
+        this.equipoData = [];
+      },
+    });
+  }
 
-  clasificacionData: KpiClasificacionChartItem[] = [
-    { name: 'Excelente', cantidad: 85, periodo: 'Octubre 2023' },
-    { name: 'Bueno', cantidad: 42, periodo: 'Octubre 2023' },
-    { name: 'Regular', cantidad: 15, periodo: 'Octubre 2023' },
-    { name: 'Riesgo', cantidad: 8, periodo: 'Octubre 2023' },
+  private updateDepartamentosData(data: HrKpi): void {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+    this.periodoSeleccionado = `${currentMonth} ${currentYear}`;
 
-    { name: 'Excelente', cantidad: 76, periodo: 'Septiembre 2023' },
-    { name: 'Bueno', cantidad: 39, periodo: 'Septiembre 2023' },
-    { name: 'Regular', cantidad: 18, periodo: 'Septiembre 2023' },
-    { name: 'Riesgo', cantidad: 12, periodo: 'Septiembre 2023' }
-  ];
+    this.periodosDisponibles = [this.periodoSeleccionado];
 
-  tablaData: KpiDetalleItem[] = [
-    { id: 1, empleado: 'Carlos Mérida', depto: 'Tecnología', tardias: 0, faltas: 0, horas: '160h', cumplimiento: '100%', clasificacion: 'Excelente', periodo: 'Octubre 2023' },
-    { id: 2, empleado: 'Lucía Torres', depto: 'Ventas', tardias: 4, faltas: 1, horas: '152h', cumplimiento: '85%', clasificacion: 'Riesgo Moderado', periodo: 'Octubre 2023' },
-    { id: 3, empleado: 'Ana Gómez', depto: 'Marketing', tardias: 1, faltas: 0, horas: '160h', cumplimiento: '98%', clasificacion: 'Bueno', periodo: 'Octubre 2023' },
+    this.resumenDepartamentos = [
+      {
+        id: 1,
+        departamento: 'General',
+        cumplimiento: `${data.promedioCumplimiento}%`,
+        tardias: data.totalTardias,
+        faltas: data.totalFaltas,
+        clasificacion:
+          data.promedioCumplimiento >= 90
+            ? 'Excelente'
+            : data.promedioCumplimiento >= 80
+              ? 'Bueno'
+              : 'Observación',
+        periodo: this.periodoSeleccionado,
+      },
+    ];
+  }
 
-    { id: 4, empleado: 'Mario Paz', depto: 'Finanzas', tardias: 3, faltas: 1, horas: '154h', cumplimiento: '88%', clasificacion: 'Bueno', periodo: 'Septiembre 2023' },
-    { id: 5, empleado: 'Lucía Torres', depto: 'Ventas', tardias: 5, faltas: 1, horas: '148h', cumplimiento: '82%', clasificacion: 'Riesgo Moderado', periodo: 'Septiembre 2023' },
-    { id: 6, empleado: 'Ana Gómez', depto: 'Marketing', tardias: 2, faltas: 0, horas: '158h', cumplimiento: '95%', clasificacion: 'Bueno', periodo: 'Septiembre 2023' }
-  ];
+  private updateClasificacionData(): void {
+    if (!this.hrKpi || !this.hrKpi.clasificaciones) return;
 
-  constructor(private router: Router) {}
+    const clasif = this.hrKpi.clasificaciones;
+
+    this.clasificacionData = [
+      { name: 'Excelente', cantidad: clasif.Excelente || 0, periodo: this.periodoSeleccionado },
+      { name: 'Bueno', cantidad: clasif.Bueno || 0, periodo: this.periodoSeleccionado },
+      {
+        name: 'Regular',
+        cantidad: clasif['En observacion'] || 0,
+        periodo: this.periodoSeleccionado,
+      },
+      { name: 'Riesgo', cantidad: clasif['En riesgo'] || 0, periodo: this.periodoSeleccionado },
+    ];
+  }
+
+  private mapClassificationToDetalle(item: EmployeeClassification, index: number): KpiDetalleItem {
+    return {
+      id: item.empleadoId,
+      empleado: item.nombreCompleto || `Empleado ${item.empleadoId}`,
+      depto: 'General',
+      tardias: item.tardias ?? 0,
+      faltas: item.faltas ?? 0,
+      horas: '-',
+      cumplimiento: `${item.cumplimientoPct}%`,
+      clasificacion: item.clasificacion,
+      periodo: this.periodoSeleccionado,
+    };
+  }
+
+  private generateDeptoData(classifications: EmployeeClassification[]): KpiDepartamentoChartItem[] {
+    return classifications.slice(0, 5).map((c) => ({
+      name: c.nombreCompleto?.split(' ')[0] || `Emp ${c.empleadoId}`,
+      kpi: c.cumplimientoPct,
+      periodo: this.periodoSeleccionado,
+    }));
+  }
+
+  private generateEquipoData(classifications: EmployeeClassification[]): KpiEquipoChartItem[] {
+    return classifications.slice(0, 4).map((c, i) => ({
+      name: `Equipo ${String.fromCharCode(65 + i)}`,
+      kpi: c.cumplimientoPct,
+      periodo: this.periodoSeleccionado,
+    }));
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -129,27 +185,19 @@ export class KpisGlobales {
   }
 
   get resumenDepartamentosFiltrado(): KpiGlobalItem[] {
-    return this.resumenDepartamentos.filter(
-      (item) => item.periodo === this.periodoSeleccionado
-    );
+    return this.resumenDepartamentos.filter((item) => item.periodo === this.periodoSeleccionado);
   }
 
   get deptoDataFiltrado(): KpiDepartamentoChartItem[] {
-    return this.deptoData.filter(
-      (item) => item.periodo === this.periodoSeleccionado
-    );
+    return this.deptoData.filter((item) => item.periodo === this.periodoSeleccionado);
   }
 
   get equipoDataFiltrado(): KpiEquipoChartItem[] {
-    return this.equipoData.filter(
-      (item) => item.periodo === this.periodoSeleccionado
-    );
+    return this.equipoData.filter((item) => item.periodo === this.periodoSeleccionado);
   }
 
   get clasificacionDataFiltrado(): KpiClasificacionChartItem[] {
-    return this.clasificacionData.filter(
-      (item) => item.periodo === this.periodoSeleccionado
-    );
+    return this.clasificacionData.filter((item) => item.periodo === this.periodoSeleccionado);
   }
 
   get detalleFiltrado(): KpiDetalleItem[] {
@@ -173,6 +221,9 @@ export class KpisGlobales {
   }
 
   get cumplimientoPromedio(): string {
+    if (this.hrKpi) {
+      return `${this.hrKpi.promedioCumplimiento}%`;
+    }
     const data = this.deptoDataFiltrado;
     if (!data.length) return '0%';
 
@@ -181,25 +232,26 @@ export class KpisGlobales {
   }
 
   get tardiasMes(): number {
+    if (this.hrKpi) return this.hrKpi.totalTardias;
     return this.detalleFiltrado.reduce((acc, item) => acc + item.tardias, 0);
   }
 
   get faltasMes(): number {
+    if (this.hrKpi) return this.hrKpi.totalFaltas;
     return this.detalleFiltrado.reduce((acc, item) => acc + item.faltas, 0);
   }
 
   get empleadosEnRiesgo(): number {
     return this.detalleFiltrado.filter(
-      (item) =>
-        item.clasificacion === 'Riesgo' ||
-        item.clasificacion === 'Riesgo Moderado'
+      (item) => item.clasificacion === 'Riesgo' || item.clasificacion === 'Riesgo Moderado',
     ).length;
   }
 
   getClasificacionClass(clasificacion: string): string {
     if (clasificacion === 'Excelente') return 'status-badge--excellent';
     if (clasificacion === 'Bueno') return 'status-badge--good';
-    if (clasificacion === 'Observación' || clasificacion === 'Regular') return 'status-badge--warning';
+    if (clasificacion === 'Observación' || clasificacion === 'Regular')
+      return 'status-badge--warning';
     return 'status-badge--risk';
   }
 

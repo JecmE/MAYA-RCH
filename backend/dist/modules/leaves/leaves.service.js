@@ -23,9 +23,12 @@ const vacacion_saldo_entity_1 = require("../../entities/vacacion-saldo.entity");
 const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const adjunto_solicitud_entity_1 = require("../../entities/adjunto-solicitud.entity");
 const typeorm_3 = require("typeorm");
+const fs = require("fs");
+const path = require("path");
 let LeavesService = class LeavesService {
-    constructor(solicitudRepository, tipoPermisoRepository, decisionRepository, vacacionSaldoRepository, vacacionMovimientoRepository, empleadoRepository, auditRepository, dataSource) {
+    constructor(solicitudRepository, tipoPermisoRepository, decisionRepository, vacacionSaldoRepository, vacacionMovimientoRepository, empleadoRepository, auditRepository, adjuntoRepository, dataSource) {
         this.solicitudRepository = solicitudRepository;
         this.tipoPermisoRepository = tipoPermisoRepository;
         this.decisionRepository = decisionRepository;
@@ -33,6 +36,7 @@ let LeavesService = class LeavesService {
         this.vacacionMovimientoRepository = vacacionMovimientoRepository;
         this.empleadoRepository = empleadoRepository;
         this.auditRepository = auditRepository;
+        this.adjuntoRepository = adjuntoRepository;
         this.dataSource = dataSource;
     }
     async getTiposPermiso() {
@@ -46,6 +50,10 @@ let LeavesService = class LeavesService {
             descuentaVacaciones: t.descuentaVacaciones,
         }));
     }
+    calculateDays(start, end) {
+        const diff = end.getTime() - start.getTime();
+        return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+    }
     async createRequest(createDto, empleadoId) {
         const tipoPermiso = await this.tipoPermisoRepository.findOne({
             where: { tipoPermisoId: createDto.tipoPermisoId },
@@ -53,25 +61,34 @@ let LeavesService = class LeavesService {
         if (!tipoPermiso) {
             throw new common_1.NotFoundException('Tipo de permiso no encontrado');
         }
+        const fechaInicio = new Date(createDto.fechaInicio);
+        const fechaFin = new Date(createDto.fechaFin);
+        const diasSolicitados = this.calculateDays(fechaInicio, fechaFin);
         if (tipoPermiso.descuentaVacaciones) {
             const saldo = await this.vacacionSaldoRepository.findOne({
                 where: { empleadoId },
             });
-            if (!saldo || saldo.diasDisponibles < createDto.dias) {
-                throw new common_1.BadRequestException('No tiene suficientes días de vacaciones');
+            if (!saldo) {
+                throw new common_1.BadRequestException('No tiene saldo de vacaciones configurado');
+            }
+            if (saldo.diasDisponibles < diasSolicitados) {
+                throw new common_1.BadRequestException(`No tiene suficientes días de vacaciones. Tiene ${saldo.diasDisponibles} días disponibles pero está solicitando ${diasSolicitados} días.`);
             }
         }
         const solicitud = this.solicitudRepository.create({
             empleadoId,
             tipoPermisoId: createDto.tipoPermisoId,
-            fechaInicio: new Date(createDto.fechaInicio),
-            fechaFin: new Date(createDto.fechaFin),
+            fechaInicio,
+            fechaFin,
             horasInicio: createDto.horasInicio || null,
             horasFin: createDto.horasFin || null,
             motivo: createDto.motivo,
             estado: solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE,
         });
         const saved = await this.solicitudRepository.save(solicitud);
+        if (createDto.archivo && createDto.nombreArchivo) {
+            await this.saveAttachment(saved.solicitudId, createDto.archivo, createDto.nombreArchivo, createDto.tipoMime || 'application/octet-stream');
+        }
         await this.auditRepository.save({
             usuarioId: null,
             modulo: 'PERMISOS',
@@ -86,10 +103,36 @@ let LeavesService = class LeavesService {
             mensaje: 'Solicitud creada exitosamente',
         };
     }
+    async saveAttachment(solicitudId, base64Data, nombreArchivo, tipoMime) {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const buffer = Buffer.from(base64Data, 'base64');
+        const safeName = nombreArchivo.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileName = `${solicitudId}_${Date.now()}_${safeName}`;
+        const filePath = path.join(uploadsDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+        const adjunto = this.adjuntoRepository.create({
+            solicitudId,
+            nombreArchivo: nombreArchivo,
+            rutaUrl: `/attachment/${fileName}`,
+            tipoMime,
+        });
+        await this.adjuntoRepository.save(adjunto);
+    }
+    async getAttachment(fileName, res) {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
+        const filePath = path.join(uploadsDir, fileName);
+        if (!fs.existsSync(filePath)) {
+            throw new common_1.NotFoundException('Archivo no encontrado');
+        }
+        res.sendFile(filePath);
+    }
     async getMyRequests(empleadoId) {
         const solicitudes = await this.solicitudRepository.find({
             where: { empleadoId },
-            relations: ['tipoPermiso', 'decisiones'],
+            relations: ['tipoPermiso', 'decisiones', 'adjuntos'],
             order: { fechaSolicitud: 'DESC' },
         });
         return solicitudes.map((s) => ({
@@ -106,6 +149,11 @@ let LeavesService = class LeavesService {
                 decision: d.decision,
                 comentario: d.comentario,
                 fechaHora: d.fechaHora,
+            })),
+            adjuntos: s.adjuntos?.map((a) => ({
+                adjuntoId: a.adjuntoId,
+                nombreArchivo: a.nombreArchivo,
+                rutaUrl: a.rutaUrl,
             })),
         }));
     }
@@ -142,7 +190,6 @@ let LeavesService = class LeavesService {
     async approveRequest(solicitudId, comentario, usuarioId) {
         const solicitud = await this.solicitudRepository.findOne({
             where: { solicitudId },
-            relations: ['tipoPermiso'],
         });
         if (!solicitud) {
             throw new common_1.NotFoundException('Solicitud no encontrada');
@@ -159,25 +206,6 @@ let LeavesService = class LeavesService {
             comentario,
             fechaHora: new Date(),
         });
-        if (solicitud.tipoPermiso?.descuentaVacaciones) {
-            const dias = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
-            await this.vacacionMovimientoRepository.save({
-                empleadoId: solicitud.empleadoId,
-                solicitudId,
-                tipo: vacacion_movimiento_entity_1.VacacionMovimiento.TIPO_CONSUMO,
-                dias,
-                fecha: new Date(),
-                comentario: `Consumo por aprobación de ${solicitud.tipoPermiso.nombre}`,
-            });
-            const saldo = await this.vacacionSaldoRepository.findOne({
-                where: { empleadoId: solicitud.empleadoId },
-            });
-            if (saldo) {
-                saldo.diasDisponibles = saldo.diasDisponibles - dias;
-                saldo.diasUsados = saldo.diasUsados + dias;
-                await this.vacacionSaldoRepository.save(saldo);
-            }
-        }
         await this.auditRepository.save({
             usuarioId,
             modulo: 'PERMISOS',
@@ -253,10 +281,6 @@ let LeavesService = class LeavesService {
             fechaCorte: saldo.fechaCorte,
         };
     }
-    calculateDays(start, end) {
-        const diff = end.getTime() - start.getTime();
-        return Math.ceil(diff / (24 * 60 * 60 * 1000)) + 1;
-    }
 };
 exports.LeavesService = LeavesService;
 exports.LeavesService = LeavesService = __decorate([
@@ -268,7 +292,9 @@ exports.LeavesService = LeavesService = __decorate([
     __param(4, (0, typeorm_1.InjectRepository)(vacacion_movimiento_entity_1.VacacionMovimiento)),
     __param(5, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
     __param(6, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(7, (0, typeorm_1.InjectRepository)(adjunto_solicitud_entity_1.AdjuntoSolicitud)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

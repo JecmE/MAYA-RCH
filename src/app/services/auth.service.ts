@@ -8,12 +8,14 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
+  token: string;
   user: {
     usuarioId: number;
     username: string;
     roles: string[];
     empleadoId: number;
+    nombreCompleto?: string;
+    email?: string;
   };
 }
 

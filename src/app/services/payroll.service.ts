@@ -80,6 +80,10 @@ export class PayrollService {
     return this.http.get<PaycheckDetail>(`${this.apiUrl}/my-paycheck`, { params });
   }
 
+  getMyPeriods(): Observable<PeriodoPlanilla[]> {
+    return this.http.get<PeriodoPlanilla[]>(`${this.apiUrl}/my-periods`);
+  }
+
   getConcepts(): Observable<ConceptoPlanilla[]> {
     return this.http.get<ConceptoPlanilla[]>(`${this.apiUrl}/concepts`);
   }

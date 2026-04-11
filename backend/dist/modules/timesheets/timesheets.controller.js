@@ -32,10 +32,10 @@ let TimesheetsController = class TimesheetsController {
         return this.timesheetsService.getTeamTimesheets(req.user.empleadoId, fechaInicio, fechaFin);
     }
     approve(id, body, req) {
-        return this.timesheetsService.approve(id, body.comentario, req.user.usuarioId);
+        return this.timesheetsService.approve(id, body.comentario || body.comentarios, req.user.usuarioId);
     }
     reject(id, body, req) {
-        return this.timesheetsService.reject(id, body.comentario, req.user.usuarioId);
+        return this.timesheetsService.reject(id, body.comentario || body.comentarios, req.user.usuarioId);
     }
     getProjectSummary(fechaInicio, fechaFin) {
         return this.timesheetsService.getProjectSummary(fechaInicio, fechaFin);

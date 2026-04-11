@@ -53,13 +53,21 @@ export class TimesheetsController {
   @Put(':id/approve')
   @Roles('Supervisor', 'RRHH', 'Administrador')
   approve(@Param('id', ParseIntPipe) id: number, @Body() body: any, @Req() req: any) {
-    return this.timesheetsService.approve(id, body.comentario, req.user.usuarioId);
+    return this.timesheetsService.approve(
+      id,
+      body.comentario || body.comentarios,
+      req.user.usuarioId,
+    );
   }
 
   @Put(':id/reject')
   @Roles('Supervisor', 'RRHH', 'Administrador')
   reject(@Param('id', ParseIntPipe) id: number, @Body() body: any, @Req() req: any) {
-    return this.timesheetsService.reject(id, body.comentario, req.user.usuarioId);
+    return this.timesheetsService.reject(
+      id,
+      body.comentario || body.comentarios,
+      req.user.usuarioId,
+    );
   }
 
   @Get('report/project-summary')

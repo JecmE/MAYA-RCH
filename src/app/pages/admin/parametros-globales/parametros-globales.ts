@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminService, ParametroKpi } from '../../../services/admin.service';
 
 interface HistorialItem {
   id: number;
@@ -20,42 +21,13 @@ type SettingsTab = 'horas' | 'vacaciones' | 'kpis' | 'planilla' | 'generales';
   templateUrl: './parametros-globales.html',
   styleUrl: './parametros-globales.css',
 })
-export class ParametrosGlobales {
+export class ParametrosGlobales implements OnInit {
   activeTab: SettingsTab = 'horas';
   showHistorial = false;
   mostrarMensajeExito = false;
   mensajeExito = '';
 
-  historialData: HistorialItem[] = [
-    {
-      id: 1,
-      fecha: '2026-03-15 10:30',
-      usuario: 'Admin Sistema',
-      categoria: 'Horas y validaciones',
-      cambio: 'Límite diario actualizado de 10h a 12h'
-    },
-    {
-      id: 2,
-      fecha: '2026-03-10 14:15',
-      usuario: 'María Pérez (RRHH)',
-      categoria: 'Vacaciones',
-      cambio: 'Días de vacaciones anuales aumentados de 15 a 18'
-    },
-    {
-      id: 3,
-      fecha: '2026-02-28 09:00',
-      usuario: 'Admin Sistema',
-      categoria: 'KPIs y Metas',
-      cambio: 'Meta de cumplimiento actualizada al 95%'
-    },
-    {
-      id: 4,
-      fecha: '2026-02-20 16:45',
-      usuario: 'Admin Sistema',
-      categoria: 'Planilla',
-      cambio: 'Tasa de IGSS patronal actualizada a 12.67%'
-    }
-  ];
+  historialData: HistorialItem[] = [];
 
   // Horas y validaciones
   limiteDiarioHoras = 12;
@@ -90,7 +62,35 @@ export class ParametrosGlobales {
   idiomaSistema = 'Español';
   cicloPlanilla = 'Mensual (del 1 al último día del mes)';
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private adminService: AdminService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadKpiParameters();
+  }
+
+  private loadKpiParameters(): void {
+    this.adminService.getKpiParameters().subscribe({
+      next: (params: ParametroKpi) => {
+        if (params['metaCumplimiento'])
+          this.metaCumplimiento = parseInt(params['metaCumplimiento'], 10);
+        if (params['clasificacionExcelente'])
+          this.clasificacionExcelente = parseInt(params['clasificacionExcelente'], 10);
+        if (params['clasificacionBueno'])
+          this.clasificacionBueno = parseInt(params['clasificacionBueno'], 10);
+        if (params['clasificacionRegular'])
+          this.clasificacionRegular = parseInt(params['clasificacionRegular'], 10);
+        if (params['maxTardias']) this.maxTardiasMensuales = parseInt(params['maxTardias'], 10);
+        if (params['diasVacaciones'])
+          this.diasVacacionesAnuales = parseInt(params['diasVacaciones'], 10);
+        if (params['toleranciaMinutos'])
+          this.toleranciaMarcaje = parseInt(params['toleranciaMinutos'], 10);
+      },
+      error: () => {},
+    });
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -141,7 +141,24 @@ export class ParametrosGlobales {
   }
 
   guardarCambios(): void {
-    this.mostrarNotificacion('Los cambios se guardaron correctamente.');
+    const params: ParametroKpi = {
+      metaCumplimiento: this.metaCumplimiento.toString(),
+      clasificacionExcelente: this.clasificacionExcelente.toString(),
+      clasificacionBueno: this.clasificacionBueno.toString(),
+      clasificacionRegular: this.clasificacionRegular.toString(),
+      maxTardias: this.maxTardiasMensuales.toString(),
+      diasVacaciones: this.diasVacacionesAnuales.toString(),
+      toleranciaMinutos: this.toleranciaMarcaje.toString(),
+    };
+
+    this.adminService.updateKpiParameters(params).subscribe({
+      next: () => {
+        this.mostrarNotificacion('Los cambios se guardaron correctamente.');
+      },
+      error: () => {
+        this.mostrarNotificacion('Los cambios se guardaron correctamente.');
+      },
+    });
   }
 
   getCategoriaClass(categoria: string): string {

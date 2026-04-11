@@ -32,9 +32,9 @@ export class CreateEmpleadoDto {
   @IsOptional()
   tarifaHora?: number;
 
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  departamentoId?: number;
+  departamento?: string;
 }
 
 export class UpdateEmpleadoDto {
@@ -77,8 +77,4 @@ export class UpdateEmpleadoDto {
   @IsNumber()
   @IsOptional()
   tarifaHora?: number;
-
-  @IsNumber()
-  @IsOptional()
-  departamentoId?: number;
 }

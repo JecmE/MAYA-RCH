@@ -8,7 +8,10 @@ import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { AdjuntoSolicitud } from '../../entities/adjunto-solicitud.entity';
 import { DataSource } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class LeavesService {
@@ -27,6 +30,8 @@ export class LeavesService {
     private empleadoRepository: Repository<Empleado>,
     @InjectRepository(AuditLog)
     private auditRepository: Repository<AuditLog>,
+    @InjectRepository(AdjuntoSolicitud)
+    private adjuntoRepository: Repository<AdjuntoSolicitud>,
     private dataSource: DataSource,
   ) {}
 
@@ -42,6 +47,11 @@ export class LeavesService {
     }));
   }
 
+  private calculateDays(start: Date, end: Date): number {
+    const diff = end.getTime() - start.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+  }
+
   async createRequest(createDto: any, empleadoId: number) {
     const tipoPermiso = await this.tipoPermisoRepository.findOne({
       where: { tipoPermisoId: createDto.tipoPermisoId },
@@ -51,21 +61,31 @@ export class LeavesService {
       throw new NotFoundException('Tipo de permiso no encontrado');
     }
 
+    const fechaInicio = new Date(createDto.fechaInicio);
+    const fechaFin = new Date(createDto.fechaFin);
+    const diasSolicitados = this.calculateDays(fechaInicio, fechaFin);
+
     if (tipoPermiso.descuentaVacaciones) {
       const saldo = await this.vacacionSaldoRepository.findOne({
         where: { empleadoId },
       });
 
-      if (!saldo || saldo.diasDisponibles < createDto.dias) {
-        throw new BadRequestException('No tiene suficientes días de vacaciones');
+      if (!saldo) {
+        throw new BadRequestException('No tiene saldo de vacaciones configurado');
+      }
+
+      if (saldo.diasDisponibles < diasSolicitados) {
+        throw new BadRequestException(
+          `No tiene suficientes días de vacaciones. Tiene ${saldo.diasDisponibles} días disponibles pero está solicitando ${diasSolicitados} días.`,
+        );
       }
     }
 
     const solicitud = this.solicitudRepository.create({
       empleadoId,
       tipoPermisoId: createDto.tipoPermisoId,
-      fechaInicio: new Date(createDto.fechaInicio),
-      fechaFin: new Date(createDto.fechaFin),
+      fechaInicio,
+      fechaFin,
       horasInicio: createDto.horasInicio || null,
       horasFin: createDto.horasFin || null,
       motivo: createDto.motivo,
@@ -73,6 +93,15 @@ export class LeavesService {
     });
 
     const saved = await this.solicitudRepository.save(solicitud);
+
+    if (createDto.archivo && createDto.nombreArchivo) {
+      await this.saveAttachment(
+        saved.solicitudId,
+        createDto.archivo,
+        createDto.nombreArchivo,
+        createDto.tipoMime || 'application/octet-stream',
+      );
+    }
 
     await this.auditRepository.save({
       usuarioId: null as any,
@@ -90,10 +119,49 @@ export class LeavesService {
     };
   }
 
+  private async saveAttachment(
+    solicitudId: number,
+    base64Data: string,
+    nombreArchivo: string,
+    tipoMime: string,
+  ): Promise<void> {
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const buffer = Buffer.from(base64Data, 'base64');
+    const safeName = nombreArchivo.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fileName = `${solicitudId}_${Date.now()}_${safeName}`;
+    const filePath = path.join(uploadsDir, fileName);
+
+    fs.writeFileSync(filePath, buffer);
+
+    const adjunto = this.adjuntoRepository.create({
+      solicitudId,
+      nombreArchivo: nombreArchivo,
+      rutaUrl: `/attachment/${fileName}`,
+      tipoMime,
+    });
+
+    await this.adjuntoRepository.save(adjunto);
+  }
+
+  async getAttachment(fileName: string, res: any): Promise<void> {
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
+    const filePath = path.join(uploadsDir, fileName);
+
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException('Archivo no encontrado');
+    }
+
+    res.sendFile(filePath);
+  }
+
   async getMyRequests(empleadoId: number) {
     const solicitudes = await this.solicitudRepository.find({
       where: { empleadoId },
-      relations: ['tipoPermiso', 'decisiones'],
+      relations: ['tipoPermiso', 'decisiones', 'adjuntos'],
       order: { fechaSolicitud: 'DESC' },
     });
 
@@ -111,6 +179,11 @@ export class LeavesService {
         decision: d.decision,
         comentario: d.comentario,
         fechaHora: d.fechaHora,
+      })),
+      adjuntos: s.adjuntos?.map((a) => ({
+        adjuntoId: a.adjuntoId,
+        nombreArchivo: a.nombreArchivo,
+        rutaUrl: a.rutaUrl,
       })),
     }));
   }
@@ -157,7 +230,6 @@ export class LeavesService {
   async approveRequest(solicitudId: number, comentario: string, usuarioId: number) {
     const solicitud = await this.solicitudRepository.findOne({
       where: { solicitudId },
-      relations: ['tipoPermiso'],
     });
 
     if (!solicitud) {
@@ -178,29 +250,6 @@ export class LeavesService {
       comentario,
       fechaHora: new Date(),
     });
-
-    if (solicitud.tipoPermiso?.descuentaVacaciones) {
-      const dias = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
-
-      await this.vacacionMovimientoRepository.save({
-        empleadoId: solicitud.empleadoId,
-        solicitudId,
-        tipo: VacacionMovimiento.TIPO_CONSUMO,
-        dias,
-        fecha: new Date(),
-        comentario: `Consumo por aprobación de ${solicitud.tipoPermiso.nombre}`,
-      });
-
-      const saldo = await this.vacacionSaldoRepository.findOne({
-        where: { empleadoId: solicitud.empleadoId },
-      });
-
-      if (saldo) {
-        saldo.diasDisponibles = saldo.diasDisponibles - dias;
-        saldo.diasUsados = saldo.diasUsados + dias;
-        await this.vacacionSaldoRepository.save(saldo);
-      }
-    }
 
     await this.auditRepository.save({
       usuarioId,
@@ -298,10 +347,5 @@ export class LeavesService {
       diasTotales: saldo.diasDisponibles + saldo.diasUsados,
       fechaCorte: saldo.fechaCorte,
     };
-  }
-
-  private calculateDays(start: Date, end: Date): number {
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (24 * 60 * 60 * 1000)) + 1;
   }
 }

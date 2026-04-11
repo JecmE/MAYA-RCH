@@ -37,6 +37,9 @@ let PayrollController = class PayrollController {
     getMyPaycheck(req, periodoId) {
         return this.payrollService.getMyPaycheck(req.user.empleadoId, periodoId);
     }
+    getMyPeriods(req) {
+        return this.payrollService.getMyPeriods(req.user.empleadoId);
+    }
     getConcepts() {
         return this.payrollService.getConcepts();
     }
@@ -84,6 +87,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", void 0)
 ], PayrollController.prototype, "getMyPaycheck", null);
+__decorate([
+    (0, common_1.Get)('my-periods'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], PayrollController.prototype, "getMyPeriods", null);
 __decorate([
     (0, common_1.Get)('concepts'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),

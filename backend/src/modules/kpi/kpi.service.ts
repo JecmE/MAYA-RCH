@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
+import { Repository, Between, In, Raw } from 'typeorm';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { DataSource } from 'typeorm';
+import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
+import { Proyecto } from '../../entities/proyecto.entity';
 
 @Injectable()
 export class KpiService {
@@ -15,6 +18,12 @@ export class KpiService {
     private asistenciaRepository: Repository<RegistroAsistencia>,
     @InjectRepository(Empleado)
     private empleadoRepository: Repository<Empleado>,
+    @InjectRepository(SolicitudPermiso)
+    private solicitudPermisoRepository: Repository<SolicitudPermiso>,
+    @InjectRepository(RegistroTiempo)
+    private registroTiempoRepository: Repository<RegistroTiempo>,
+    @InjectRepository(Proyecto)
+    private proyectoRepository: Repository<Proyecto>,
     private dataSource: DataSource,
   ) {}
 
@@ -80,6 +89,32 @@ export class KpiService {
 
     const kpiMap = new Map(kpis.map((k) => [k.empleadoId, k]));
 
+    const previousMonth = month === 1 ? 12 : month - 1;
+    const previousYear = month === 1 ? year - 1 : year;
+
+    const previousKpis = await this.kpiRepository.find({
+      where: {
+        empleadoId: In(empleadoIds),
+        mes: previousMonth,
+        anio: previousYear,
+      },
+    });
+
+    const previousKpiMap = new Map(previousKpis.map((k) => [k.empleadoId, k]));
+
+    const currentAvg =
+      kpis.length > 0
+        ? kpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / kpis.length
+        : 0;
+
+    const previousAvg =
+      previousKpis.length > 0
+        ? previousKpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / previousKpis.length
+        : 0;
+
+    const comparacionMesAnterior =
+      previousAvg > 0 ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0;
+
     return {
       mes,
       anio: year,
@@ -87,10 +122,8 @@ export class KpiService {
       resumen: {
         totalDiasTrabajados: kpis.reduce((sum, k) => sum + k.diasTrabajados, 0),
         totalTardias: kpis.reduce((sum, k) => sum + k.tardias, 0),
-        promedioCumplimiento:
-          kpis.length > 0
-            ? kpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / kpis.length
-            : 0,
+        promedioCumplimiento: currentAvg,
+        comparacionMesAnterior: Math.round(comparacionMesAnterior * 10) / 10,
       },
       empleados: equipoRaw.map((e: any) => {
         const kpi = kpiMap.get(e.empleado_id);
@@ -152,12 +185,20 @@ export class KpiService {
       kpi = await this.calculateKpi(empleadoId, month, year);
     }
 
-    return {
-      clasificacion: kpi.clasificacion,
-      cumplimientoPct: kpi.cumplimientoPct,
-      tardias: kpi.tardias,
-      faltas: kpi.faltas,
-    };
+    const empleado = await this.empleadoRepository.findOne({
+      where: { empleadoId },
+    });
+
+    return [
+      {
+        empleadoId,
+        nombreCompleto: empleado ? `${empleado.nombres} ${empleado.apellidos}` : '',
+        clasificacion: kpi.clasificacion,
+        cumplimientoPct: kpi.cumplimientoPct,
+        tardias: kpi.tardias,
+        faltas: kpi.faltas,
+      },
+    ];
   }
 
   private async calculateKpi(empleadoId: number, mes: number, anio: number): Promise<KpiMensual> {
@@ -207,5 +248,112 @@ export class KpiService {
     });
 
     return this.kpiRepository.save(kpi);
+  }
+
+  async getEmployeeProfile(empleadoId: number) {
+    const empleado = await this.empleadoRepository.findOne({
+      where: { empleadoId },
+    });
+
+    if (!empleado) {
+      return null;
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const attendance = await this.asistenciaRepository.find({
+      where: {
+        empleadoId,
+        fecha: Raw((alias) => `${alias} >= :sevenDaysAgo`, { sevenDaysAgo }),
+      },
+      order: { fecha: 'DESC' },
+    });
+
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const timesheets = await this.registroTiempoRepository.find({
+      where: {
+        empleadoId,
+        fecha: Raw((alias) => `${alias} >= :firstDayOfMonth`, { firstDayOfMonth }),
+      },
+      relations: ['proyecto'],
+    });
+
+    const projectHoursMap = new Map<number, { nombre: string; horas: number }>();
+    for (const ts of timesheets) {
+      const horas = Number(ts.horas) || 0;
+      if (projectHoursMap.has(ts.proyectoId)) {
+        const existing = projectHoursMap.get(ts.proyectoId)!;
+        existing.horas += horas;
+      } else {
+        projectHoursMap.set(ts.proyectoId, {
+          nombre: ts.proyecto?.nombre || `Proyecto ${ts.proyectoId}`,
+          horas,
+        });
+      }
+    }
+
+    const recentRequests = await this.solicitudPermisoRepository.find({
+      where: { empleadoId },
+      relations: ['tipoPermiso'],
+      order: { fechaSolicitud: 'DESC' },
+      take: 5,
+    });
+
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+    const currentKpi = await this.kpiRepository.findOne({
+      where: { empleadoId, mes: currentMonth, anio: currentYear },
+    });
+
+    const previousKpi = await this.kpiRepository.findOne({
+      where: { empleadoId, mes: previousMonth, anio: previousYear },
+    });
+
+    const comparisonPct =
+      previousKpi && previousKpi.cumplimientoPct > 0
+        ? (((currentKpi?.cumplimientoPct || 0) - previousKpi.cumplimientoPct) /
+            previousKpi.cumplimientoPct) *
+          100
+        : 0;
+
+    return {
+      empleado: {
+        nombreCompleto: `${empleado.nombres} ${empleado.apellidos}`,
+        puesto: empleado.puesto,
+        departamento: empleado.departamento,
+        email: empleado.email,
+      },
+      historialAsistencia: attendance.slice(0, 7).map((a) => ({
+        fecha: a.fecha,
+        entrada: a.horaEntradaReal,
+        salida: a.horaSalidaReal,
+        estado: a.minutosTardia > 0 ? 'tarde' : 'a_tiempo',
+      })),
+      horasPorProyecto: Array.from(projectHoursMap.values()).map((p) => ({
+        nombre: p.nombre,
+        horas: p.horas,
+      })),
+      solicitudesRecientes: recentRequests.map((s) => ({
+        tipo: s.tipoPermiso?.nombre || 'Permiso',
+        fechaInicio: s.fechaInicio,
+        fechaFin: s.fechaFin,
+        estado: s.estado,
+      })),
+      kpiActual: currentKpi
+        ? {
+            cumplimientoPct: currentKpi.cumplimientoPct,
+            clasificacion: currentKpi.clasificacion,
+            tardias: currentKpi.tardias,
+            faltas: currentKpi.faltas,
+          }
+        : null,
+      comparacionMesAnterior: Math.round(comparisonPct * 10) / 10,
+    };
   }
 }

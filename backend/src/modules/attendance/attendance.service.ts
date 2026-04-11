@@ -135,7 +135,12 @@ export class AttendanceService {
     const now = new Date();
     asistencia.horaSalidaReal = now;
     asistencia.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-    asistencia.horasTrabajadas = this.calculateHours(asistencia.horaEntradaReal, now);
+    const horaEntrada =
+      asistencia.horaEntradaReal instanceof Date
+        ? asistencia.horaEntradaReal
+        : new Date(asistencia.horaEntradaReal);
+    const horasTra = this.calculateHours(horaEntrada, now);
+    asistencia.horasTrabajadas = parseFloat(horasTra.toFixed(2));
 
     await this.asistenciaRepository.save(asistencia);
 
@@ -162,12 +167,22 @@ export class AttendanceService {
       where: { empleadoId, fecha: today },
     });
 
+    const empleadoTurno = await this.empleadoTurnoRepository.findOne({
+      where: { empleadoId, activo: true },
+      relations: ['turno'],
+    });
+
+    const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
+    const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+
     if (!asistencia) {
       return {
         estadoJornada: 'sin_registro',
         fecha: today,
         tieneEntrada: false,
         tieneSalida: false,
+        turnoNombre,
+        toleranciaMinutos,
       };
     }
 
@@ -182,6 +197,8 @@ export class AttendanceService {
       observacion: asistencia.observacion,
       tieneEntrada: !!asistencia.horaEntradaReal,
       tieneSalida: !!asistencia.horaSalidaReal,
+      turnoNombre,
+      toleranciaMinutos,
     };
   }
 
@@ -238,10 +255,15 @@ export class AttendanceService {
 
     if (campo === 'hora_entrada_real' || campo === 'hora_salida_real') {
       if (asistencia.horaEntradaReal && asistencia.horaSalidaReal) {
-        asistencia.horasTrabajadas = this.calculateHours(
-          asistencia.horaEntradaReal,
-          asistencia.horaSalidaReal,
-        );
+        const horaEntrada =
+          asistencia.horaEntradaReal instanceof Date
+            ? asistencia.horaEntradaReal
+            : new Date(asistencia.horaEntradaReal);
+        const horaSalida =
+          asistencia.horaSalidaReal instanceof Date
+            ? asistencia.horaSalidaReal
+            : new Date(asistencia.horaSalidaReal);
+        asistencia.horasTrabajadas = this.calculateHours(horaEntrada, horaSalida);
       }
     }
 

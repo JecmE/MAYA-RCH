@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminService, Rol } from '../../../services/admin.service';
 
 interface PermisoItem {
   modulo: string;
@@ -22,7 +23,7 @@ type PermisoKey = 'ver' | 'crear' | 'editar' | 'aprobar' | 'exportar' | 'adminis
   templateUrl: './roles-permisos.html',
   styleUrl: './roles-permisos.css',
 })
-export class RolesPermisos {
+export class RolesPermisos implements OnInit {
   roles: string[] = ['Administrador', 'Supervisor', 'RRHH', 'Empleado'];
   activeRole = 'Administrador';
 
@@ -37,36 +38,213 @@ export class RolesPermisos {
 
   permisosPorRol: Record<string, PermisoItem[]> = {
     Administrador: [
-      { modulo: 'Usuarios', ver: true, crear: true, editar: true, aprobar: false, exportar: true, administrar: true },
-      { modulo: 'Empleados', ver: true, crear: true, editar: true, aprobar: false, exportar: true, administrar: true },
-      { modulo: 'Permisos', ver: true, crear: true, editar: true, aprobar: true, exportar: true, administrar: true },
-      { modulo: 'Planilla', ver: true, crear: true, editar: true, aprobar: true, exportar: true, administrar: true },
-      { modulo: 'Reportes', ver: true, crear: false, editar: false, aprobar: false, exportar: true, administrar: true }
+      {
+        modulo: 'Usuarios',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: false,
+        exportar: true,
+        administrar: true,
+      },
+      {
+        modulo: 'Empleados',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: false,
+        exportar: true,
+        administrar: true,
+      },
+      {
+        modulo: 'Permisos',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: true,
+        exportar: true,
+        administrar: true,
+      },
+      {
+        modulo: 'Planilla',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: true,
+        exportar: true,
+        administrar: true,
+      },
+      {
+        modulo: 'Reportes',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: true,
+        administrar: true,
+      },
     ],
     Supervisor: [
-      { modulo: 'Usuarios', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Empleados', ver: true, crear: false, editar: true, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Permisos', ver: true, crear: false, editar: false, aprobar: true, exportar: true, administrar: false },
-      { modulo: 'Planilla', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Reportes', ver: true, crear: false, editar: false, aprobar: false, exportar: true, administrar: false }
+      {
+        modulo: 'Usuarios',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Empleados',
+        ver: true,
+        crear: false,
+        editar: true,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Permisos',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: true,
+        exportar: true,
+        administrar: false,
+      },
+      {
+        modulo: 'Planilla',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Reportes',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: true,
+        administrar: false,
+      },
     ],
     RRHH: [
-      { modulo: 'Usuarios', ver: true, crear: true, editar: true, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Empleados', ver: true, crear: true, editar: true, aprobar: false, exportar: true, administrar: false },
-      { modulo: 'Permisos', ver: true, crear: true, editar: true, aprobar: true, exportar: true, administrar: false },
-      { modulo: 'Planilla', ver: true, crear: false, editar: true, aprobar: false, exportar: true, administrar: false },
-      { modulo: 'Reportes', ver: true, crear: false, editar: false, aprobar: false, exportar: true, administrar: false }
+      {
+        modulo: 'Usuarios',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Empleados',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: false,
+        exportar: true,
+        administrar: false,
+      },
+      {
+        modulo: 'Permisos',
+        ver: true,
+        crear: true,
+        editar: true,
+        aprobar: true,
+        exportar: true,
+        administrar: false,
+      },
+      {
+        modulo: 'Planilla',
+        ver: true,
+        crear: false,
+        editar: true,
+        aprobar: false,
+        exportar: true,
+        administrar: false,
+      },
+      {
+        modulo: 'Reportes',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: true,
+        administrar: false,
+      },
     ],
     Empleado: [
-      { modulo: 'Usuarios', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Empleados', ver: true, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Permisos', ver: true, crear: true, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Planilla', ver: true, crear: false, editar: false, aprobar: false, exportar: true, administrar: false },
-      { modulo: 'Reportes', ver: true, crear: false, editar: false, aprobar: false, exportar: true, administrar: false }
-    ]
+      {
+        modulo: 'Usuarios',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Empleados',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Permisos',
+        ver: true,
+        crear: true,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Planilla',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: true,
+        administrar: false,
+      },
+      {
+        modulo: 'Reportes',
+        ver: true,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: true,
+        administrar: false,
+      },
+    ],
   };
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private adminService: AdminService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadRoles();
+  }
+
+  private loadRoles(): void {
+    this.adminService.getRoles().subscribe({
+      next: (data: Rol[]) => {
+        const apiRoles = data.map((r) => r.nombre);
+        this.roles = [...new Set(['Administrador', 'Supervisor', 'RRHH', 'Empleado', ...apiRoles])];
+      },
+      error: () => {},
+    });
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -120,9 +298,7 @@ export class RolesPermisos {
       return;
     }
 
-    const yaExiste = this.roles.some(
-      (rol) => rol.toLowerCase() === nombreRol.toLowerCase()
-    );
+    const yaExiste = this.roles.some((rol) => rol.toLowerCase() === nombreRol.toLowerCase());
 
     if (yaExiste) {
       this.mostrarNotificacion('Ese rol ya existe.');
@@ -177,11 +353,51 @@ export class RolesPermisos {
 
   private crearPermisosBase(): PermisoItem[] {
     return [
-      { modulo: 'Usuarios', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Empleados', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Permisos', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Planilla', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false },
-      { modulo: 'Reportes', ver: false, crear: false, editar: false, aprobar: false, exportar: false, administrar: false }
+      {
+        modulo: 'Usuarios',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Empleados',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Permisos',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Planilla',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
+      {
+        modulo: 'Reportes',
+        ver: false,
+        crear: false,
+        editar: false,
+        aprobar: false,
+        exportar: false,
+        administrar: false,
+      },
     ];
   }
 

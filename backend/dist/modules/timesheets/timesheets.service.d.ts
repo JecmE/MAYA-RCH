@@ -13,12 +13,9 @@ export declare class TimesheetsService {
     constructor(tiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, empleadoRepository: Repository<Empleado>, aprobacionRepository: Repository<AprobacionTiempo>, auditRepository: Repository<AuditLog>);
     getMyTimesheets(empleadoId: number, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
         tiempoId: number;
+        empleadoId: number;
         fecha: Date;
-        proyecto: {
-            proyectoId: number;
-            nombre: string;
-            codigo: string;
-        };
+        proyectoId: number;
         horas: number;
         horasValidadas: number;
         actividadDescripcion: string;

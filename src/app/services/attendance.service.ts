@@ -31,6 +31,8 @@ export interface TodayStatus {
   observacion?: string;
   tieneEntrada: boolean;
   tieneSalida: boolean;
+  turnoNombre?: string;
+  toleranciaMinutos?: number;
 }
 
 export interface TeamAttendance {

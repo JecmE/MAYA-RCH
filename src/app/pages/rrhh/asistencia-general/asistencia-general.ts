@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { AttendanceService, AttendanceRecord } from '../../../services/attendance.service';
 
 interface AsistenciaGeneralItem {
   id: number;
@@ -19,51 +20,49 @@ interface AsistenciaGeneralItem {
   templateUrl: './asistencia-general.html',
   styleUrl: './asistencia-general.css',
 })
-export class AsistenciaGeneral {
-  registros: AsistenciaGeneralItem[] = [
-    {
-      id: 1,
-      empleado: 'Carlos Mérida',
-      departamento: 'RRHH',
-      entrada: '7:58 AM',
-      salida: '5:00 PM',
-      horas: '8 h',
-      estado: 'Completa',
-      observacion: 'Sin novedades'
-    },
-    {
-      id: 2,
-      empleado: 'Lucía Torres',
-      departamento: 'Operaciones',
-      entrada: '8:12 AM',
-      salida: '--:--',
-      horas: '7 h',
-      estado: 'Tarde',
-      observacion: '12 min de retraso'
-    },
-    {
-      id: 3,
-      empleado: 'Ana López',
-      departamento: 'Tecnología',
-      entrada: '--:--',
-      salida: '--:--',
-      horas: '0 h',
-      estado: 'Ausente',
-      observacion: 'No registró marcaje'
-    },
-    {
-      id: 4,
-      empleado: 'Mario Paz',
-      departamento: 'Tecnología',
-      entrada: '8:00 AM',
-      salida: '--:--',
-      horas: '6.5 h',
-      estado: 'Presente',
-      observacion: 'Jornada en curso'
-    }
-  ];
+export class AsistenciaGeneral implements OnInit {
+  registros: AsistenciaGeneralItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private attendanceService: AttendanceService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadAttendanceData();
+  }
+
+  private loadAttendanceData(): void {
+    const hoy = new Date().toISOString().split('T')[0];
+    this.attendanceService.getHistory(hoy, hoy).subscribe({
+      next: (data: AttendanceRecord[]) => {
+        this.registros = data.map((record, index) => this.mapAttendanceToItem(record, index));
+      },
+      error: () => {
+        this.registros = [];
+      },
+    });
+  }
+
+  private mapAttendanceToItem(record: AttendanceRecord, index: number): AsistenciaGeneralItem {
+    return {
+      id: record.asistenciaId ?? index,
+      empleado: `Empleado ${record.empleadoId}`,
+      departamento: 'General',
+      entrada: record.horaEntradaReal || '--:--',
+      salida: record.horaSalidaReal || '--:--',
+      horas: record.horasTrabajadas ? `${record.horasTrabajadas} h` : '0 h',
+      estado: this.getEstadoFromRecord(record),
+      observacion: record.observacion || 'Sin novedades',
+    };
+  }
+
+  private getEstadoFromRecord(record: AttendanceRecord): string {
+    if (!record.horaEntradaReal) return 'Ausente';
+    if (record.minutosTardia && record.minutosTardia > 0) return 'Tarde';
+    if (record.horaSalidaReal) return 'Completa';
+    return 'Presente';
+  }
 
   goBack(): void {
     this.router.navigate(['/']);

@@ -28,6 +28,11 @@ export declare class LeavesController {
             comentario: string;
             fechaHora: Date;
         }[];
+        adjuntos: {
+            adjuntoId: number;
+            nombreArchivo: string;
+            rutaUrl: string;
+        }[];
     }[]>;
     getPending(req: any): Promise<any>;
     approve(id: number, body: any, req: any): Promise<{
@@ -50,4 +55,5 @@ export declare class LeavesController {
         diasTotales: number;
         fechaCorte: Date;
     }>;
+    getAttachment(fileName: string, res: any): Promise<void>;
 }

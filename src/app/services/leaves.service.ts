@@ -22,6 +22,17 @@ export interface SolicitudPermiso {
   estado: string;
   fechaSolicitud?: string;
   tipoPermiso?: TipoPermiso;
+  decisiones?: DecisionPermiso[];
+  adjuntos?: AdjuntoSolicitud[];
+  archivo?: string;
+  nombreArchivo?: string;
+  tipoMime?: string;
+}
+
+export interface AdjuntoSolicitud {
+  adjuntoId: number;
+  nombreArchivo: string;
+  rutaUrl: string;
 }
 
 export interface DecisionPermiso {
@@ -78,5 +89,11 @@ export class LeavesService {
 
   getVacationBalanceByEmployee(employeeId: number): Observable<VacationBalance> {
     return this.http.get<VacationBalance>(`${this.apiUrl}/vacation-balance/${employeeId}`);
+  }
+
+  downloadAttachment(rutaUrl: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}${rutaUrl}`, {
+      responseType: 'blob',
+    });
   }
 }

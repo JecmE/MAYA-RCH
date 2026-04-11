@@ -1,10 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { TimesheetsService, RegistroTiempo } from '../../services/timesheets.service';
+import { ProjectsService, Proyecto } from '../../services/projects.service';
 
 interface TimesheetRow {
   id: number;
   project: string;
+  projectId?: number;
   date: string;
   activity: string;
   hours: string;
@@ -19,7 +22,7 @@ interface TimesheetRow {
   templateUrl: './timesheet.html',
   styleUrl: './timesheet.css',
 })
-export class Timesheet {
+export class Timesheet implements OnInit {
   proyecto = '';
   fecha = '';
   horas = '';
@@ -31,57 +34,64 @@ export class Timesheet {
   errorModal = false;
   successModal = false;
 
-  historyData: TimesheetRow[] = [
-    {
-      id: 1,
-      project: 'CRH',
-      date: '3/22/2026',
-      activity: 'Actualización...',
-      hours: '4 h',
-      status: 'Aprobado',
-      comments: 'Horas dentro de lo establecido'
-    },
-    {
-      id: 2,
-      project: 'RRHH',
-      date: '3/23/2026',
-      activity: 'Revisión de permisos',
-      hours: '2 h',
-      status: 'Pendiente',
-      comments: 'En revisión'
-    },
-    {
-      id: 3,
-      project: 'CRH',
-      date: '3/24/2026',
-      activity: 'Carga de datos',
-      hours: '3 h',
-      status: 'Aprobado',
-      comments: 'Registro correcto'
-    },
-    {
-      id: 4,
-      project: 'RRHH',
-      date: '3/25/2026',
-      activity: 'Validación de horas',
-      hours: '5 h',
-      status: 'Pendiente',
-      comments: 'Pendiente de revisión'
-    }
-  ];
+  historyData: TimesheetRow[] = [];
+  proyectos: Proyecto[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private timesheetsService: TimesheetsService,
+    private projectsService: ProjectsService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadProjects();
+    this.loadEntries();
+  }
+
+  private loadProjects(): void {
+    this.projectsService.getAll().subscribe({
+      next: (proys) => {
+        this.proyectos = proys.filter((p) => p.activo);
+      },
+      error: (err) => console.error('Error cargando proyectos:', err),
+    });
+  }
+
+  private loadEntries(): void {
+    this.timesheetsService.getMyEntries().subscribe({
+      next: (entries) => {
+        this.historyData = entries.map((e) => this.mapToRow(e));
+      },
+      error: (err) => {
+        console.error('Error cargando timesheets:', err);
+        this.historyData = [];
+      },
+    });
+  }
+
+  private mapToRow(e: RegistroTiempo): TimesheetRow {
+    const proj = this.proyectos.find((p) => p.proyectoId === e.proyectoId);
+    return {
+      id: e.tiempoId || 0,
+      project: proj?.codigo || `Proyecto ${e.proyectoId}`,
+      projectId: e.proyectoId,
+      date: e.fecha ? new Date(e.fecha).toLocaleDateString('en-US') : '',
+      activity: e.actividadDescripcion || '',
+      hours: e.horas ? `${e.horas} h` : '0 h',
+      status:
+        e.estado === 'aprobado' ? 'Aprobado' : e.estado === 'rechazado' ? 'Rechazado' : 'Pendiente',
+      comments: '',
+    };
+  }
 
   get historyDataFiltrada(): TimesheetRow[] {
     return this.historyData.filter((row) => {
       const proyectoFila = row.project.trim().toLowerCase();
       const proyectoFiltro = this.filtroProyecto.trim().toLowerCase();
 
-      const coincideProyecto =
-        !proyectoFiltro || proyectoFila === proyectoFiltro;
+      const coincideProyecto = !proyectoFiltro || proyectoFila.includes(proyectoFiltro);
 
-      const coincideFecha =
-        !this.filtroFecha || this.convertirFecha(row.date) === this.filtroFecha;
+      const coincideFecha = !this.filtroFecha || this.convertirFecha(row.date) === this.filtroFecha;
 
       return coincideProyecto && coincideFecha;
     });
@@ -92,13 +102,43 @@ export class Timesheet {
   }
 
   handleValidar(): void {
-    const horasNum = parseInt(this.horas, 10);
+    const horasNum = parseFloat(this.horas);
 
     if (!isNaN(horasNum) && horasNum > 8) {
       this.errorModal = true;
-    } else if (!isNaN(horasNum) && horasNum > 0) {
-      this.successModal = true;
+    } else if (!isNaN(horasNum) && horasNum > 0 && this.proyecto && this.fecha) {
+      this.guardarEntrada();
     }
+  }
+
+  private guardarEntrada(): void {
+    const horasNum = parseFloat(this.horas);
+    const proyectoId = this.proyectos.find(
+      (p) => p.codigo === this.proyecto || p.nombre === this.proyecto,
+    )?.proyectoId;
+    if (!proyectoId) {
+      this.errorModal = true;
+      return;
+    }
+
+    this.timesheetsService
+      .createEntry({
+        proyectoId,
+        fecha: this.convertirFechaParaBackend(this.fecha),
+        horas: horasNum,
+        actividadDescripcion: this.actividad,
+      })
+      .subscribe({
+        next: () => {
+          this.successModal = true;
+          this.limpiar();
+          this.loadEntries();
+        },
+        error: (err) => {
+          console.error('Error guardando entrada:', err);
+          this.errorModal = true;
+        },
+      });
   }
 
   closeErrorModal(): void {
@@ -124,11 +164,18 @@ export class Timesheet {
   private convertirFecha(fecha: string): string {
     const partes = fecha.split('/');
     if (partes.length !== 3) return '';
-
     const mes = partes[0].padStart(2, '0');
     const dia = partes[1].padStart(2, '0');
     const anio = partes[2];
+    return `${anio}-${mes}-${dia}`;
+  }
 
+  private convertirFechaParaBackend(fecha: string): string {
+    const partes = fecha.split('/');
+    if (partes.length !== 3) return fecha;
+    const mes = partes[0].padStart(2, '0');
+    const dia = partes[1].padStart(2, '0');
+    const anio = partes[2];
     return `${anio}-${mes}-${dia}`;
   }
 }

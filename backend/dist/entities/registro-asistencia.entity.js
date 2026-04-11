@@ -49,7 +49,7 @@ __decorate([
     __metadata("design:type", Number)
 ], RegistroAsistencia.prototype, "minutosTardia", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'horas_trabajadas', type: 'decimal', precision: 4, scale: 2, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'horas_trabajadas', type: 'decimal', precision: 6, scale: 2, nullable: true }),
     __metadata("design:type", Number)
 ], RegistroAsistencia.prototype, "horasTrabajadas", void 0);
 __decorate([

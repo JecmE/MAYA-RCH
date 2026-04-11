@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminService, ReglaBono } from '../../../services/admin.service';
+import { ReportsService, BonusEligibilityReport } from '../../../services/reports.service';
 
 interface BonoItem {
   id: number;
@@ -44,7 +46,7 @@ interface NuevaReglaForm {
   templateUrl: './bonos-incentivos.html',
   styleUrl: './bonos-incentivos.css',
 })
-export class BonosIncentivos {
+export class BonosIncentivos implements OnInit {
   activeTab: 'resultados' | 'reglas' = 'resultados';
 
   filtroBusqueda = '';
@@ -59,81 +61,80 @@ export class BonosIncentivos {
 
   nuevaRegla: NuevaReglaForm = this.crearFormularioReglaVacio();
 
-  bonosData: BonoItem[] = [
-    {
-      id: 1,
-      empleado: 'Carlos Mérida',
-      departamento: 'RRHH',
-      cumplimiento: '96%',
-      clasificacion: 'Excelente',
-      bono: 'Q 1,500.00',
-      estado: 'Elegible',
-      periodo: 'Octubre 2023',
-      regla: 'Bono Productividad 100%',
-      motivo: 'Cumple criterios'
-    },
-    {
-      id: 2,
-      empleado: 'Lucía Torres',
-      departamento: 'Operaciones',
-      cumplimiento: '89%',
-      clasificacion: 'Bueno',
-      bono: 'Q 1,000.00',
-      estado: 'Elegible',
-      periodo: 'Octubre 2023',
-      regla: 'Bono Productividad 100%',
-      motivo: 'Cumple criterios'
-    },
-    {
-      id: 3,
-      empleado: 'Mario Paz',
-      departamento: 'Tecnología',
-      cumplimiento: '72%',
-      clasificacion: 'Observación',
-      bono: 'Q 0.00',
-      estado: 'No elegible',
-      periodo: 'Octubre 2023',
-      regla: 'Bono Productividad 100%',
-      motivo: 'Excede límite de tardías (4 > 0)'
-    },
-    {
-      id: 4,
-      empleado: 'Ana López',
-      departamento: 'Tecnología',
-      cumplimiento: '98%',
-      clasificacion: 'Excelente',
-      bono: 'Q 1,800.00',
-      estado: 'Elegible',
-      periodo: 'Octubre 2023',
-      regla: 'Bono Asistencia Mensual',
-      motivo: 'Cumple criterios'
-    }
-  ];
+  bonosData: BonoItem[] = [];
+  reglasData: ReglaItem[] = [];
 
-  reglasData: ReglaItem[] = [
-    {
-      id: 'R-01',
-      nombre: 'Bono Productividad 100%',
-      periodo: 'Mensual',
-      vigencia: 'Indefinida',
-      minAsistencia: '100%',
-      maxTardias: 0,
-      estado: 'Activo',
-      condiciones: 'Cumplir asistencia total y cero tardías.'
-    },
-    {
-      id: 'R-02',
-      nombre: 'Bono Asistencia Mensual',
-      periodo: 'Mensual',
-      vigencia: '2023',
-      minAsistencia: '98%',
-      maxTardias: 2,
-      estado: 'Activo',
-      condiciones: 'Asistencia mínima del 98% y máximo 2 tardías.'
-    }
-  ];
+  constructor(
+    private router: Router,
+    private adminService: AdminService,
+    private reportsService: ReportsService,
+  ) {}
 
-  constructor(private router: Router) {}
+  ngOnInit(): void {
+    this.loadData();
+  }
+
+  private loadData(): void {
+    this.adminService.getBonusRules().subscribe({
+      next: (data: ReglaBono[]) => {
+        this.reglasData = data.map((r) => this.mapReglaToItem(r));
+      },
+      error: () => {
+        this.reglasData = [];
+      },
+    });
+
+    const currentDate = new Date();
+    const anio = currentDate.getFullYear();
+    const mes = currentDate.getMonth() + 1;
+    this.filtroPeriodo = `${currentDate.toLocaleString('default', { month: 'long' })} ${anio}`;
+
+    this.reportsService.getBonusEligibility(anio, mes).subscribe({
+      next: (data: BonusEligibilityReport[]) => {
+        this.bonosData = data.map((b) => this.mapBonusToItem(b));
+      },
+      error: () => {
+        this.bonosData = [];
+      },
+    });
+  }
+
+  private mapBonusToItem(b: BonusEligibilityReport): BonoItem {
+    return {
+      id: b.empleadoId,
+      empleado: b.nombreCompleto || `Empleado ${b.empleadoId}`,
+      departamento: 'General',
+      cumplimiento: b.elegible ? '95%' : '70%',
+      clasificacion: b.elegible ? 'Excelente' : 'Observación',
+      bono: b.elegible ? 'Q 1,000.00' : 'Q 0.00',
+      estado: b.elegible ? 'Elegible' : 'No elegible',
+      periodo: this.filtroPeriodo,
+      regla: b.reglaNombre,
+      motivo: b.motivoNoElegible || 'Cumple criterios',
+    };
+  }
+
+  private mapReglaToItem(r: ReglaBono): ReglaItem {
+    return {
+      id: r.reglaBonoId?.toString() || '',
+      nombre: r.nombre,
+      periodo: 'Mensual',
+      vigencia: r.vigenciaFin ? `Hasta ${r.vigenciaFin}` : 'Indefinida',
+      minAsistencia: `${r.minDiasTrabajados || 100}%`,
+      maxTardias: r.maxTardias || 0,
+      estado: r.activo ? 'Activo' : 'Inactivo',
+      condiciones: this.buildCondiciones(r),
+    };
+  }
+
+  private buildCondiciones(r: ReglaBono): string {
+    const conditions: string[] = [];
+    if (r.minDiasTrabajados) conditions.push(`Mínimo ${r.minDiasTrabajados}% asistencia`);
+    if (r.maxTardias !== undefined) conditions.push(`Máximo ${r.maxTardias} tardías`);
+    if (r.maxFaltas) conditions.push(`Máximo ${r.maxFaltas} faltas`);
+    if (r.minHoras) conditions.push(`Mínimo ${r.minHoras} horas`);
+    return conditions.join(', ') || 'Sin condiciones';
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -166,7 +167,7 @@ export class BonosIncentivos {
       minAsistencia: `${this.nuevaRegla.minAsistencia ?? 0}%`,
       maxTardias: this.nuevaRegla.maxTardias ?? 0,
       estado: 'Activo',
-      condiciones: this.nuevaRegla.condiciones.trim() || 'Sin condiciones adicionales.'
+      condiciones: this.nuevaRegla.condiciones.trim() || 'Sin condiciones adicionales.',
     };
 
     this.reglasData = [nueva, ...this.reglasData];
@@ -198,7 +199,7 @@ export class BonosIncentivos {
         ...item,
         estado: elegible ? 'Elegible' : 'No elegible',
         bono: elegible ? item.bono : 'Q 0.00',
-        motivo: elegible ? 'Cumple criterios' : 'No alcanza el cumplimiento mínimo'
+        motivo: elegible ? 'Cumple criterios' : 'No alcanza el cumplimiento mínimo',
       };
     });
 
@@ -209,7 +210,7 @@ export class BonosIncentivos {
     this.reglasData = this.reglasData.map((item) =>
       item.id === regla.id
         ? { ...item, estado: item.estado === 'Activo' ? 'Inactivo' : 'Activo' }
-        : item
+        : item,
     );
 
     this.mostrarNotificacion(`Estado actualizado para ${regla.nombre}.`);
@@ -227,11 +228,9 @@ export class BonosIncentivos {
     const texto = this.filtroBusqueda.trim().toLowerCase();
 
     return this.bonosData.filter((item) => {
-      const coincideBusqueda =
-        !texto || item.empleado.toLowerCase().includes(texto);
+      const coincideBusqueda = !texto || item.empleado.toLowerCase().includes(texto);
 
-      const coincidePeriodo =
-        !this.filtroPeriodo || item.periodo === this.filtroPeriodo;
+      const coincidePeriodo = !this.filtroPeriodo || item.periodo === this.filtroPeriodo;
 
       return coincideBusqueda && coincidePeriodo;
     });
@@ -280,9 +279,7 @@ export class BonosIncentivos {
   }
 
   getReglaEstadoClass(estado: string): string {
-    return estado === 'Activo'
-      ? 'status-badge--eligible'
-      : 'status-badge--default';
+    return estado === 'Activo' ? 'status-badge--eligible' : 'status-badge--default';
   }
 
   private crearFormularioReglaVacio(): NuevaReglaForm {
@@ -293,7 +290,7 @@ export class BonosIncentivos {
       minAsistencia: null,
       maxTardias: null,
       condiciones: '',
-      periodo: 'Mensual'
+      periodo: 'Mensual',
     };
   }
 

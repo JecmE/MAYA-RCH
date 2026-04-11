@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
 import { LeavesService } from './leaves.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -44,13 +45,21 @@ export class LeavesController {
   @Put(':id/approve')
   @Roles('Supervisor', 'RRHH', 'Administrador')
   approve(@Param('id', ParseIntPipe) id: number, @Body() body: any, @Req() req: any) {
-    return this.leavesService.approveRequest(id, body.comentario, req.user.usuarioId);
+    return this.leavesService.approveRequest(
+      id,
+      body.comentario || body.comentarios,
+      req.user.usuarioId,
+    );
   }
 
   @Put(':id/reject')
   @Roles('Supervisor', 'RRHH', 'Administrador')
   reject(@Param('id', ParseIntPipe) id: number, @Body() body: any, @Req() req: any) {
-    return this.leavesService.rejectRequest(id, body.comentario, req.user.usuarioId);
+    return this.leavesService.rejectRequest(
+      id,
+      body.comentario || body.comentarios,
+      req.user.usuarioId,
+    );
   }
 
   @Get('vacation-balance')
@@ -62,5 +71,10 @@ export class LeavesController {
   @Roles('RRHH', 'Administrador')
   getEmployeeVacationBalance(@Param('employeeId', ParseIntPipe) employeeId: number) {
     return this.leavesService.getVacationBalance(employeeId);
+  }
+
+  @Get('attachment/:fileName')
+  getAttachment(@Param('fileName') fileName: string, @Res() res: any) {
+    return this.leavesService.getAttachment(fileName, res);
   }
 }

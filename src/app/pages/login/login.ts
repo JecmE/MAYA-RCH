@@ -28,9 +28,17 @@ export class Login {
 
     this.authService.login({ username: this.username, password: this.password }).subscribe({
       next: (response) => {
-        this.authService.setToken(response.access_token);
+        this.authService.setToken(response.token);
         if (isPlatformBrowser(this.platformId)) {
-          localStorage.setItem('userRole', response.user.roles[0]?.toLowerCase() || 'empleado');
+          const roleMap: { [key: string]: string } = {
+            administrador: 'admin',
+            rrhh: 'rrhh',
+            supervisor: 'supervisor',
+            empleado: 'empleado',
+          };
+          const backendRole = response.user.roles[0]?.toLowerCase() || 'empleado';
+          const mappedRole = roleMap[backendRole] || 'empleado';
+          localStorage.setItem('userRole', mappedRole);
           localStorage.setItem('usuarioId', response.user.usuarioId.toString());
           localStorage.setItem('empleadoId', response.user.empleadoId.toString());
         }

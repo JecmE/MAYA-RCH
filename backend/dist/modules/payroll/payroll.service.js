@@ -249,6 +249,23 @@ let PayrollService = class PayrollService {
             })),
         };
     }
+    async getMyPeriods(empleadoId) {
+        const planillas = await this.planillaEmpleadoRepository.find({
+            where: { empleadoId },
+            relations: ['periodo'],
+            order: { fechaCalculo: 'DESC' },
+        });
+        return planillas
+            .filter((p) => p.periodo)
+            .map((p) => ({
+            periodoId: p.periodo.periodoId,
+            nombre: p.periodo.nombre,
+            fechaInicio: p.periodo.fechaInicio,
+            fechaFin: p.periodo.fechaFin,
+            tipo: p.periodo.tipo,
+            estado: p.periodo.estado,
+        }));
+    }
     async getConcepts() {
         const conceptos = await this.conceptoRepository.find({
             where: { activo: true },

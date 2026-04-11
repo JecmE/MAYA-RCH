@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminService, AuditLog } from '../../../services/admin.service';
 
 interface AuditoriaItem {
   id: number;
@@ -20,51 +21,55 @@ interface AuditoriaItem {
   templateUrl: './auditoria-funcional.html',
   styleUrl: './auditoria-funcional.css',
 })
-export class AuditoriaFuncional {
+export class AuditoriaFuncional implements OnInit {
   filtroBusqueda = '';
   filtroModulo = 'Todos los módulos';
   filtroFecha = '';
 
-  registros: AuditoriaItem[] = [
-    {
-      id: 1,
-      fecha: '03/22/2026 08:30',
-      usuario: 'm.perez',
-      modulo: 'Permisos',
-      accion: 'Aprobación',
-      entidad: 'Solicitud #1024',
-      detalle: 'Vacaciones aprobadas para Carlos Mérida'
-    },
-    {
-      id: 2,
-      fecha: '03/22/2026 09:10',
-      usuario: 'admin',
-      modulo: 'Usuarios',
-      accion: 'Creación',
-      entidad: 'Usuario ltorres',
-      detalle: 'Nuevo acceso generado para supervisora'
-    },
-    {
-      id: 3,
-      fecha: '03/22/2026 10:05',
-      usuario: 'rrhh',
-      modulo: 'Empleados',
-      accion: 'Edición',
-      entidad: 'EMP-003',
-      detalle: 'Actualización de puesto y departamento'
-    },
-    {
-      id: 4,
-      fecha: '03/22/2026 11:40',
-      usuario: 'system',
-      modulo: 'Planilla',
-      accion: 'Cálculo',
-      entidad: 'Período 03-2026',
-      detalle: 'Revisión automática de bonos e incentivos'
-    }
-  ];
+  registros: AuditoriaItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private adminService: AdminService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadAuditLogs();
+  }
+
+  private loadAuditLogs(): void {
+    this.adminService.getAuditLogs().subscribe({
+      next: (data: AuditLog[]) => {
+        this.registros = data.map((log) => this.mapAuditLogToItem(log));
+      },
+      error: () => {
+        this.registros = [];
+      },
+    });
+  }
+
+  private mapAuditLogToItem(log: AuditLog): AuditoriaItem {
+    return {
+      id: log.auditId,
+      fecha: this.formatDateTime(log.fechaHora),
+      usuario: log.usuario,
+      modulo: log.modulo,
+      accion: log.accion,
+      entidad: log.entidadId ? `${log.entidad} #${log.entidadId}` : log.entidad,
+      detalle: log.detalle,
+    };
+  }
+
+  private formatDateTime(dateStr: string): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${month}/${day}/${year} ${hours}:${minutes}`;
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -89,8 +94,7 @@ export class AuditoriaFuncional {
         item.accion.toLowerCase().includes(texto);
 
       const coincideModulo =
-        this.filtroModulo === 'Todos los módulos' ||
-        item.modulo === this.filtroModulo;
+        this.filtroModulo === 'Todos los módulos' || item.modulo === this.filtroModulo;
 
       const coincideFecha =
         !this.filtroFecha || this.normalizarFechaRegistro(item.fecha) === this.filtroFecha;

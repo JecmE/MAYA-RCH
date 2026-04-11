@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminService, Turno as TurnoBackend } from '../../../services/admin.service';
 
 interface TurnoItem {
   id: number;
@@ -31,7 +32,7 @@ interface TurnoForm {
   templateUrl: './turnos.html',
   styleUrl: './turnos.css',
 })
-export class Turnos {
+export class Turnos implements OnInit {
   modalNuevoTurno = false;
   modalVerTurno = false;
   modoEdicion = false;
@@ -49,54 +50,42 @@ export class Turnos {
 
   nuevoTurno: TurnoForm = this.crearFormularioVacio();
 
-  turnosData: TurnoItem[] = [
-    {
-      id: 1,
-      codigo: 'T-01',
-      nombre: 'Turno Administrativo',
-      entrada: '08:00',
-      salida: '17:00',
-      tolerancia: '10 min',
-      horas: '8 h',
-      dias: 'L-V',
-      estado: 'Activo'
-    },
-    {
-      id: 2,
-      codigo: 'T-02',
-      nombre: 'Turno Matutino',
-      entrada: '07:00',
-      salida: '15:00',
-      tolerancia: '5 min',
-      horas: '8 h',
-      dias: 'L-V',
-      estado: 'Activo'
-    },
-    {
-      id: 3,
-      codigo: 'T-03',
-      nombre: 'Turno Vespertino',
-      entrada: '14:00',
-      salida: '22:00',
-      tolerancia: '10 min',
-      horas: '8 h',
-      dias: 'L-S',
-      estado: 'Activo'
-    },
-    {
-      id: 4,
-      codigo: 'T-04',
-      nombre: 'Turno Especial',
-      entrada: '09:00',
-      salida: '13:00',
-      tolerancia: '0 min',
-      horas: '4 h',
-      dias: 'L-V',
-      estado: 'Inactivo'
-    }
-  ];
+  turnosData: TurnoItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private adminService: AdminService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadTurnos();
+  }
+
+  private loadTurnos(): void {
+    this.adminService.getShifts().subscribe({
+      next: (turnos) => {
+        this.turnosData = turnos.map((t) => this.mapToItem(t));
+      },
+      error: (err) => {
+        console.error('Error cargando turnos:', err);
+        this.turnosData = [];
+      },
+    });
+  }
+
+  private mapToItem(t: TurnoBackend): TurnoItem {
+    return {
+      id: t.turnoId || 0,
+      codigo: `T-${t.turnoId || 0}`,
+      nombre: t.nombre || 'Sin nombre',
+      entrada: t.horaEntrada ? t.horaEntrada.substring(0, 5) : '--:--',
+      salida: t.horaSalida ? t.horaSalida.substring(0, 5) : '--:--',
+      tolerancia: `${t.toleranciaMinutos ?? 0} min`,
+      horas: `${t.horasEsperadasDia ?? 8} h`,
+      dias: 'L-V',
+      estado: t.activo ? 'Activo' : 'Inactivo',
+    };
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -121,45 +110,47 @@ export class Turnos {
   }
 
   guardarTurno(): void {
-    const diasTexto = this.formatearDiasSeleccionados(this.nuevoTurno.diasSeleccionados);
-    const horasTexto = this.calcularHoras(this.nuevoTurno.entrada, this.nuevoTurno.salida);
-    const toleranciaTexto = `${this.nuevoTurno.tolerancia ?? 0} min`;
-
     if (this.modoEdicion && this.turnoEditandoId !== null) {
-      this.turnosData = this.turnosData.map((turno) =>
-        turno.id === this.turnoEditandoId
-          ? {
-              ...turno,
-              nombre: this.nuevoTurno.nombre || 'Sin nombre',
-              entrada: this.nuevoTurno.entrada || '--:--',
-              salida: this.nuevoTurno.salida || '--:--',
-              tolerancia: toleranciaTexto,
-              horas: horasTexto,
-              dias: diasTexto,
-              estado: this.nuevoTurno.estado || 'Activo'
-            }
-          : turno
-      );
-
-      this.mostrarNotificacion('Turno actualizado correctamente.');
+      this.adminService
+        .updateShift(this.turnoEditandoId, {
+          nombre: this.nuevoTurno.nombre,
+          horaEntrada: this.nuevoTurno.entrada,
+          horaSalida: this.nuevoTurno.salida,
+          toleranciaMinutos: this.nuevoTurno.tolerancia ?? 0,
+          activo: this.nuevoTurno.estado === 'Activo',
+        })
+        .subscribe({
+          next: () => {
+            this.mostrarNotificacion('Turno actualizado correctamente.');
+            this.loadTurnos();
+            this.cerrarModalNuevoTurno();
+          },
+          error: (err) => {
+            console.error('Error actualizando turno:', err);
+            this.mostrarNotificacion('Error al actualizar turno.');
+          },
+        });
     } else {
-      const nuevo: TurnoItem = {
-        id: this.obtenerSiguienteId(),
-        codigo: this.generarCodigoTurno(),
-        nombre: this.nuevoTurno.nombre || 'Sin nombre',
-        entrada: this.nuevoTurno.entrada || '--:--',
-        salida: this.nuevoTurno.salida || '--:--',
-        tolerancia: toleranciaTexto,
-        horas: horasTexto,
-        dias: diasTexto,
-        estado: this.nuevoTurno.estado || 'Activo'
-      };
-
-      this.turnosData = [nuevo, ...this.turnosData];
-      this.mostrarNotificacion('Turno guardado correctamente.');
+      this.adminService
+        .createShift({
+          nombre: this.nuevoTurno.nombre,
+          horaEntrada: this.nuevoTurno.entrada,
+          horaSalida: this.nuevoTurno.salida,
+          toleranciaMinutos: this.nuevoTurno.tolerancia ?? 0,
+          activo: true,
+        })
+        .subscribe({
+          next: () => {
+            this.mostrarNotificacion('Turno guardado correctamente.');
+            this.loadTurnos();
+            this.cerrarModalNuevoTurno();
+          },
+          error: (err) => {
+            console.error('Error guardando turno:', err);
+            this.mostrarNotificacion('Error al guardar turno.');
+          },
+        });
     }
-
-    this.cerrarModalNuevoTurno();
   }
 
   verTurno(turno: TurnoItem): void {
@@ -182,7 +173,7 @@ export class Turnos {
       salida: turno.salida,
       tolerancia: this.extraerMinutos(turno.tolerancia),
       estado: turno.estado,
-      diasSeleccionados: this.expandirDias(turno.dias)
+      diasSeleccionados: this.expandirDias(turno.dias),
     };
 
     this.modalNuevoTurno = true;
@@ -191,13 +182,19 @@ export class Turnos {
   cambiarEstado(turno: TurnoItem): void {
     const nuevoEstado = turno.estado === 'Activo' ? 'Inactivo' : 'Activo';
 
-    this.turnosData = this.turnosData.map((item) =>
-      item.id === turno.id
-        ? { ...item, estado: nuevoEstado }
-        : item
-    );
-
-    this.mostrarNotificacion(`Estado actualizado a ${nuevoEstado} para ${turno.nombre}.`);
+    this.adminService
+      .updateShift(turno.id, {
+        activo: nuevoEstado === 'Activo',
+      })
+      .subscribe({
+        next: () => {
+          this.mostrarNotificacion(`Estado actualizado a ${nuevoEstado} para ${turno.nombre}.`);
+          this.loadTurnos();
+        },
+        error: (err) => {
+          console.error('Error cambiando estado:', err);
+        },
+      });
   }
 
   limpiarFiltros(): void {
@@ -213,7 +210,9 @@ export class Turnos {
         this.nuevoTurno.diasSeleccionados = [...this.nuevoTurno.diasSeleccionados, dia];
       }
     } else {
-      this.nuevoTurno.diasSeleccionados = this.nuevoTurno.diasSeleccionados.filter((d) => d !== dia);
+      this.nuevoTurno.diasSeleccionados = this.nuevoTurno.diasSeleccionados.filter(
+        (d) => d !== dia,
+      );
     }
   }
 
@@ -231,8 +230,7 @@ export class Turnos {
         turno.codigo.toLowerCase().includes(texto);
 
       const coincideEstado =
-        this.filtroEstado === 'Todos los estados' ||
-        turno.estado === this.filtroEstado;
+        this.filtroEstado === 'Todos los estados' || turno.estado === this.filtroEstado;
 
       return coincideBusqueda && coincideEstado;
     });
@@ -276,7 +274,7 @@ export class Turnos {
       salida: '',
       tolerancia: 0,
       estado: 'Activo',
-      diasSeleccionados: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
+      diasSeleccionados: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'],
     };
   }
 
@@ -291,9 +289,7 @@ export class Turnos {
   }
 
   private obtenerSiguienteId(): number {
-    return this.turnosData.length
-      ? Math.max(...this.turnosData.map((turno) => turno.id)) + 1
-      : 1;
+    return this.turnosData.length ? Math.max(...this.turnosData.map((turno) => turno.id)) + 1 : 1;
   }
 
   private generarCodigoTurno(): string {
@@ -355,7 +351,10 @@ export class Turnos {
       case 'L-D':
         return ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
       default:
-        return dias.split(',').map((dia) => dia.trim()).filter(Boolean);
+        return dias
+          .split(',')
+          .map((dia) => dia.trim())
+          .filter(Boolean);
     }
   }
 }

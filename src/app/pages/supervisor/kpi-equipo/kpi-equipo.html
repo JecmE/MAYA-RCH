@@ -6,22 +6,18 @@
         <p class="page-subtitle">Rendimiento agregado y clasificación de tus colaboradores.</p>
       </div>
 
-<select [(ngModel)]="periodoSeleccionado" class="period-select">
-  <option value="Marzo 2026">Marzo 2026</option>
-  <option value="Febrero 2026">Febrero 2026</option>
-</select>
+      <select [(ngModel)]="periodoSeleccionado" class="period-select">
+        <option value="Marzo 2026">Marzo 2026</option>
+        <option value="Febrero 2026">Febrero 2026</option>
+      </select>
     </div>
 
     <div class="hero-grid">
       <div class="hero-card">
         <div class="hero-icon">★</div>
         <p class="hero-label">Promedio del Equipo</p>
-        <div class="hero-value">
-          {{ promedioEquipo }}<span>%</span>
-        </div>
-        <div class="hero-trend">
-          ↗ +2.4% vs mes anterior
-        </div>
+        <div class="hero-value">{{ promedioEquipo }}<span>%</span></div>
+        <div class="hero-trend">↗ {{ comparacionMesAnterior }}</div>
       </div>
 
       <div class="chart-card">
@@ -159,10 +155,142 @@
           <section class="modal-section">
             <h4>Datos Básicos</h4>
             <div class="info-grid">
-              <div><span>Empleado:</span><strong>{{ empleadoSeleccionado.empleado }}</strong></div>
-              <div><span>Puesto:</span><strong>Desarrollador</strong></div>
-              <div><span>Departamento:</span><strong>Tecnología</strong></div>
-              <div><span>Correo:</span><strong>{{ getCorreoEmpleado(empleadoSeleccionado.empleado) }}</strong></div>
+              <div>
+                <span>Empleado:</span><strong>{{ empleadoSeleccionado.empleado }}</strong>
+              </div>
+              <div>
+                <span>Puesto:</span
+                ><strong>{{ empleadoProfileData?.empleado?.puesto || '-' }}</strong>
+              </div>
+              <div>
+                <span>Departamento:</span
+                ><strong>{{ empleadoProfileData?.empleado?.departamento || '-' }}</strong>
+              </div>
+              <div>
+                <span>Correo:</span
+                ><strong>{{ empleadoProfileData?.empleado?.email || '-' }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="modal-section">
+            <h4>KPI Actual</h4>
+            <div class="kpi-highlight">
+              <p>Rendimiento del Mes</p>
+              <div class="kpi-highlight__value">
+                {{ empleadoProfileData?.kpiActual?.cumplimientoPct ?? empleadoSeleccionado.kpi }}
+              </div>
+              <span
+                [class]="
+                  getClasificacionClass(
+                    empleadoProfileData?.kpiActual?.clasificacion ||
+                      empleadoSeleccionado.clasificacion
+                  )
+                "
+              >
+                {{
+                  empleadoProfileData?.kpiActual?.clasificacion ||
+                    empleadoSeleccionado.clasificacion
+                }}
+              </span>
+            </div>
+          </section>
+
+          <section class="modal-section">
+            <h4>Historial de Asistencia (Últimos 7 días)</h4>
+            <div class="list-block">
+              @if (empleadoProfileData?.historialAsistencia?.length) {
+                @for (
+                  asistencia of empleadoProfileData!.historialAsistencia;
+                  track asistencia.fecha
+                ) {
+                  <div class="list-row">
+                    <span>{{ formatDate(asistencia.fecha) }}</span>
+                    <div class="list-row__right">
+                      <span
+                        >Entrada: <strong>{{ formatTime(asistencia.entrada) }}</strong></span
+                      >
+                      <span
+                        >Salida: <strong>{{ formatTime(asistencia.salida) }}</strong></span
+                      >
+                      <span
+                        class="mini-badge"
+                        [class.mini-badge--green]="asistencia.estado === 'a_tiempo'"
+                        [class.mini-badge--amber]="asistencia.estado === 'tarde'"
+                      >
+                        {{ asistencia.estado === 'a_tiempo' ? 'A tiempo' : 'Tarde' }}
+                      </span>
+                    </div>
+                  </div>
+                }
+              } @else {
+                <div class="list-row">
+                  <span>Sin datos de asistencia</span>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="modal-section">
+            <h4>Horas por Proyecto (Este Mes)</h4>
+            <div class="project-hours">
+              @if (empleadoProfileData?.horasPorProyecto?.length) {
+                @for (proyecto of empleadoProfileData!.horasPorProyecto; track proyecto.nombre) {
+                  <div class="project-hour-card">
+                    <div class="project-hour-copy">
+                      <span>{{ proyecto.nombre }}</span>
+                      <div class="progress">
+                        <div class="progress__fill progress__fill--amber" style="width: 75%"></div>
+                      </div>
+                    </div>
+                    <strong>{{ proyecto.horas }}h</strong>
+                  </div>
+                }
+              } @else {
+                <div class="project-hour-card">
+                  <span>Sin horas registradas este mes</span>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section class="modal-section">
+            <h4>Solicitudes Recientes</h4>
+            <div class="list-block">
+              @if (empleadoProfileData?.solicitudesRecientes?.length) {
+                @for (
+                  solicitud of empleadoProfileData!.solicitudesRecientes;
+                  track solicitud.fechaInicio
+                ) {
+                  <div class="list-row">
+                    <div>
+                      <strong>{{ solicitud.tipo }}</strong>
+                      <p>
+                        {{ formatDate(solicitud.fechaInicio) }} -
+                        {{ formatDate(solicitud.fechaFin) }}
+                      </p>
+                    </div>
+                    <span
+                      class="mini-badge"
+                      [class.mini-badge--green]="solicitud.estado === 'aprobado'"
+                      [class.mini-badge--amber]="solicitud.estado === 'pendiente'"
+                      [class.mini-badge--red]="solicitud.estado === 'rechazado'"
+                    >
+                      {{
+                        solicitud.estado === 'aprobado'
+                          ? 'Aprobado'
+                          : solicitud.estado === 'pendiente'
+                            ? 'Pendiente'
+                            : 'Rechazado'
+                      }}
+                    </span>
+                  </div>
+                }
+              } @else {
+                <div class="list-row">
+                  <span>Sin solicitudes recientes</span>
+                </div>
+              }
             </div>
           </section>
 
@@ -239,38 +367,34 @@
             </div>
           </section>
 
-<section class="modal-section">
-  <h4>Observaciones Generales</h4>
+          <section class="modal-section">
+            <h4>Observaciones Generales</h4>
 
-  <textarea
-    rows="3"
-    class="modal-textarea"
-    placeholder="Agregar observación sobre el desempeño del colaborador..."
-    [(ngModel)]="observacionTemporal"
-  ></textarea>
+            <textarea
+              rows="3"
+              class="modal-textarea"
+              placeholder="Agregar observación sobre el desempeño del colaborador..."
+              [(ngModel)]="observacionTemporal"
+            ></textarea>
 
-  @if (observacionError) {
-    <div class="form-message form-message--error">
-      {{ observacionError }}
-    </div>
-  }
+            @if (observacionError) {
+              <div class="form-message form-message--error">
+                {{ observacionError }}
+              </div>
+            }
 
-  @if (observacionGuardadaMensaje) {
-    <div class="form-message form-message--success">
-      {{ observacionGuardadaMensaje }}
-    </div>
-  }
+            @if (observacionGuardadaMensaje) {
+              <div class="form-message form-message--success">
+                {{ observacionGuardadaMensaje }}
+              </div>
+            }
 
-  <div class="modal-actions">
-    <button
-      type="button"
-      class="save-observation-button"
-      (click)="guardarObservacion()"
-    >
-      Guardar observación
-    </button>
-  </div>
-</section>
+            <div class="modal-actions">
+              <button type="button" class="save-observation-button" (click)="guardarObservacion()">
+                Guardar observación
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>

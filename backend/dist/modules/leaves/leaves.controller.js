@@ -35,16 +35,19 @@ let LeavesController = class LeavesController {
         return this.leavesService.getPendingRequests(req.user.empleadoId);
     }
     approve(id, body, req) {
-        return this.leavesService.approveRequest(id, body.comentario, req.user.usuarioId);
+        return this.leavesService.approveRequest(id, body.comentario || body.comentarios, req.user.usuarioId);
     }
     reject(id, body, req) {
-        return this.leavesService.rejectRequest(id, body.comentario, req.user.usuarioId);
+        return this.leavesService.rejectRequest(id, body.comentario || body.comentarios, req.user.usuarioId);
     }
     getVacationBalance(req) {
         return this.leavesService.getVacationBalance(req.user.empleadoId);
     }
     getEmployeeVacationBalance(employeeId) {
         return this.leavesService.getVacationBalance(employeeId);
+    }
+    getAttachment(fileName, res) {
+        return this.leavesService.getAttachment(fileName, res);
     }
 };
 exports.LeavesController = LeavesController;
@@ -112,6 +115,14 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], LeavesController.prototype, "getEmployeeVacationBalance", null);
+__decorate([
+    (0, common_1.Get)('attachment/:fileName'),
+    __param(0, (0, common_1.Param)('fileName')),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "getAttachment", null);
 exports.LeavesController = LeavesController = __decorate([
     (0, common_1.Controller)('leaves'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

@@ -96,11 +96,12 @@ export class Seguridad {
       return this.sesionesActivas;
     }
 
-    return this.sesionesActivas.filter((sesion) =>
-      sesion.usuario.toLowerCase().includes(query) ||
-      sesion.ip.toLowerCase().includes(query) ||
-      sesion.dispositivo.toLowerCase().includes(query) ||
-      sesion.estado.toLowerCase().includes(query)
+    return this.sesionesActivas.filter(
+      (sesion) =>
+        sesion.usuario.toLowerCase().includes(query) ||
+        sesion.ip.toLowerCase().includes(query) ||
+        sesion.dispositivo.toLowerCase().includes(query) ||
+        sesion.estado.toLowerCase().includes(query),
     );
   }
 
@@ -134,9 +135,7 @@ export class Seguridad {
       return;
     }
 
-    this.usuariosBloqueados = this.usuariosBloqueados.filter(
-      (item) => item.id !== id
-    );
+    this.usuariosBloqueados = this.usuariosBloqueados.filter((item) => item.id !== id);
 
     this.sesionesActivas = this.sesionesActivas.map((sesion) =>
       sesion.usuario === usuario.usuario
@@ -145,16 +144,14 @@ export class Seguridad {
             estado: 'Activa',
             ultimoAcceso: 'Hace un momento',
           }
-        : sesion
+        : sesion,
     );
 
     this.mostrarNotificacion(`Usuario ${usuario.usuario} desbloqueado correctamente.`);
   }
 
   desbloquearUsuarioPorNombre(usuario: string): void {
-    const usuarioBloqueado = this.usuariosBloqueados.find(
-      (item) => item.usuario === usuario
-    );
+    const usuarioBloqueado = this.usuariosBloqueados.find((item) => item.usuario === usuario);
 
     if (!usuarioBloqueado) {
       this.mostrarNotificacion(`El usuario ${usuario} no está bloqueado.`);
@@ -176,7 +173,7 @@ export class Seguridad {
     this.mostrarNotificacion(
       forzarCierre
         ? `Se forzó el cierre de sesión de ${sesion.usuario}.`
-        : `La sesión de ${sesion.usuario} fue invalidada.`
+        : `La sesión de ${sesion.usuario} fue invalidada.`,
     );
   }
 
@@ -186,9 +183,7 @@ export class Seguridad {
 
   restablecerPassword(usuario: string): void {
     this.reseteosPassword += 1;
-    this.mostrarNotificacion(
-      `Se inició el restablecimiento de contraseña para ${usuario}.`
-    );
+    this.mostrarNotificacion(`Se inició el restablecimiento de contraseña para ${usuario}.`);
   }
 
   cerrarTodasSesiones(): void {

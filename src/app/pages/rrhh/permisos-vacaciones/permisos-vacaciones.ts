@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { LeavesService, SolicitudPermiso, TipoPermiso } from '../../../services/leaves.service';
 
 interface SolicitudItem {
   id: string;
@@ -55,7 +56,7 @@ interface NuevaSolicitudForm {
   templateUrl: './permisos-vacaciones.html',
   styleUrl: './permisos-vacaciones.css',
 })
-export class PermisosVacaciones {
+export class PermisosVacaciones implements OnInit {
   activeTab: 'solicitudes' | 'saldos' | 'movimientos' | 'tipos' = 'solicitudes';
 
   filtroBusqueda = '';
@@ -72,64 +73,78 @@ export class PermisosVacaciones {
 
   nuevaSolicitud: NuevaSolicitudForm = this.crearFormularioSolicitudVacio();
 
-  solicitudes: SolicitudItem[] = [
-    {
-      id: 'S-101',
-      empleado: 'Carlos Mérida',
-      tipo: 'Vacaciones',
-      fechaSolicitud: '08/11/2023',
-      periodo: '15/11/23 - 20/11/23',
-      saldo: '5 días',
-      estado: 'Pendiente',
-      comentario: 'Viaje familiar',
-      adjunto: 'Si'
-    },
-    {
-      id: 'S-102',
-      empleado: 'Lucía Torres',
-      tipo: 'Permiso Médico',
-      fechaSolicitud: '10/11/2023',
-      periodo: '10/11/23 (4 hrs)',
-      saldo: '12 días',
-      estado: 'Aprobado',
-      comentario: 'Revisión anual',
-      adjunto: 'No'
-    },
-    {
-      id: 'S-103',
-      empleado: 'Ana Gómez',
-      tipo: 'Día Personal',
-      fechaSolicitud: '12/11/2023',
-      periodo: '12/11/23 (Todo el día)',
-      saldo: '0 días',
-      estado: 'Rechazado',
-      comentario: 'Sin goce de sueldo',
-      adjunto: 'Si'
-    }
-  ];
+  solicitudes: SolicitudItem[] = [];
+  saldosData: SaldoItem[] = [];
+  movimientosData: MovimientoItem[] = [];
+  tiposData: TipoPermisoItem[] = [];
 
-  saldosData: SaldoItem[] = [
-    { empleado: 'Carlos Mérida', disponibles: 15, usados: 10, restantes: 5 },
-    { empleado: 'Lucía Torres', disponibles: 20, usados: 8, restantes: 12 },
-    { empleado: 'Mario Paz', disponibles: 15, usados: 5, restantes: 10 },
-    { empleado: 'Ana Gómez', disponibles: 18, usados: 18, restantes: 0 }
-  ];
+  constructor(
+    private router: Router,
+    private leavesService: LeavesService,
+  ) {}
 
-  movimientosData: MovimientoItem[] = [
-    { empleado: 'Carlos Mérida', tipo: 'Uso', fecha: '15/11/23', cantidad: 5, motivo: 'Vacaciones aprobadas' },
-    { empleado: 'Lucía Torres', tipo: 'Ajuste', fecha: '10/11/23', cantidad: 2, motivo: 'Corrección administrativa' },
-    { empleado: 'Mario Paz', tipo: 'Uso', fecha: '08/11/23', cantidad: 3, motivo: 'Permiso personal' },
-    { empleado: 'Ana Gómez', tipo: 'Asignación', fecha: '01/11/23', cantidad: 15, motivo: 'Asignación anual' }
-  ];
+  ngOnInit(): void {
+    this.loadData();
+  }
 
-  tiposData: TipoPermisoItem[] = [
-    { nombre: 'Vacaciones', requiereDoc: 'No', descuentaVacaciones: 'Si', estado: 'Activo' },
-    { nombre: 'Permiso Médico', requiereDoc: 'Si', descuentaVacaciones: 'No', estado: 'Activo' },
-    { nombre: 'Día Personal', requiereDoc: 'No', descuentaVacaciones: 'Si', estado: 'Activo' },
-    { nombre: 'Duelo', requiereDoc: 'Si', descuentaVacaciones: 'No', estado: 'Activo' }
-  ];
+  private loadData(): void {
+    this.leavesService.getMyRequests().subscribe({
+      next: (data: SolicitudPermiso[]) => {
+        this.solicitudes = data.map((s) => this.mapSolicitudToItem(s));
+      },
+      error: () => {
+        this.solicitudes = [];
+      },
+    });
 
-  constructor(private router: Router) {}
+    this.leavesService.getTypes().subscribe({
+      next: (data: TipoPermiso[]) => {
+        this.tiposData = data.map((t) => this.mapTipoToItem(t));
+      },
+      error: () => {
+        this.tiposData = [];
+      },
+    });
+
+    this.leavesService.getVacationBalance().subscribe({
+      next: (balance) => {
+        this.saldosData = [
+          {
+            empleado: 'Empleado Actual',
+            disponibles: balance.diasTotales,
+            usados: balance.diasUsados,
+            restantes: balance.diasDisponibles,
+          },
+        ];
+      },
+      error: () => {
+        this.saldosData = [];
+      },
+    });
+  }
+
+  private mapSolicitudToItem(s: SolicitudPermiso): SolicitudItem {
+    return {
+      id: s.solicitudId?.toString() || '',
+      empleado: `Empleado ${s.empleadoId}`,
+      tipo: s.tipoPermiso?.nombre || 'Permiso',
+      fechaSolicitud: s.fechaSolicitud || new Date().toLocaleDateString(),
+      periodo: `${s.fechaInicio} - ${s.fechaFin}`,
+      saldo: '',
+      estado: (s.estado as 'Pendiente' | 'Aprobado' | 'Rechazado') || 'Pendiente',
+      comentario: s.motivo || '',
+      adjunto: 'No',
+    };
+  }
+
+  private mapTipoToItem(t: TipoPermiso): TipoPermisoItem {
+    return {
+      nombre: t.nombre,
+      requiereDoc: t.requiereDocumento ? 'Si' : 'No',
+      descuentaVacaciones: t.descuentaVacaciones ? 'Si' : 'No',
+      estado: t.activo ? 'Activo' : 'Inactivo',
+    };
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -164,12 +179,14 @@ export class PermisosVacaciones {
       id: this.generarIdSolicitud(),
       empleado: this.nuevaSolicitud.empleado.trim() || 'Sin empleado',
       tipo: this.nuevaSolicitud.tipo || 'Sin tipo',
-      fechaSolicitud: this.formatearFechaInput(this.nuevaSolicitud.fechaSolicitud) || this.obtenerFechaActualTexto(),
+      fechaSolicitud:
+        this.formatearFechaInput(this.nuevaSolicitud.fechaSolicitud) ||
+        this.obtenerFechaActualTexto(),
       periodo: this.nuevaSolicitud.periodo.trim() || 'Sin período',
       saldo: this.nuevaSolicitud.saldo.trim() || '0 días',
       estado: this.nuevaSolicitud.estado || 'Pendiente',
       comentario: this.nuevaSolicitud.comentario.trim() || 'Sin comentario',
-      adjunto: this.nuevaSolicitud.adjunto || 'No'
+      adjunto: this.nuevaSolicitud.adjunto || 'No',
     };
 
     this.solicitudes = [nueva, ...this.solicitudes];
@@ -190,7 +207,7 @@ export class PermisosVacaciones {
 
   aprobarSolicitud(solicitud: SolicitudItem): void {
     this.solicitudes = this.solicitudes.map((item) =>
-      item.id === solicitud.id ? { ...item, estado: 'Aprobado' } : item
+      item.id === solicitud.id ? { ...item, estado: 'Aprobado' } : item,
     );
 
     this.mostrarNotificacion(`Solicitud ${solicitud.id} aprobada correctamente.`);
@@ -198,7 +215,7 @@ export class PermisosVacaciones {
 
   rechazarSolicitud(solicitud: SolicitudItem): void {
     this.solicitudes = this.solicitudes.map((item) =>
-      item.id === solicitud.id ? { ...item, estado: 'Rechazado' } : item
+      item.id === solicitud.id ? { ...item, estado: 'Rechazado' } : item,
     );
 
     this.mostrarNotificacion(`Solicitud ${solicitud.id} rechazada correctamente.`);
@@ -213,13 +230,10 @@ export class PermisosVacaciones {
         item.empleado.toLowerCase().includes(texto) ||
         item.tipo.toLowerCase().includes(texto);
 
-      const coincideTipo =
-        this.filtroTipo === 'Todos los tipos' ||
-        item.tipo === this.filtroTipo;
+      const coincideTipo = this.filtroTipo === 'Todos los tipos' || item.tipo === this.filtroTipo;
 
       const coincideEstado =
-        this.filtroEstado === 'Todos los estados' ||
-        item.estado === this.filtroEstado;
+        this.filtroEstado === 'Todos los estados' || item.estado === this.filtroEstado;
 
       return coincideBusqueda && coincideTipo && coincideEstado;
     });
@@ -234,7 +248,9 @@ export class PermisosVacaciones {
   }
 
   get enVacaciones(): number {
-    return this.solicitudes.filter((item) => item.tipo === 'Vacaciones' && item.estado === 'Aprobado').length;
+    return this.solicitudes.filter(
+      (item) => item.tipo === 'Vacaciones' && item.estado === 'Aprobado',
+    ).length;
   }
 
   get rechazadas(): number {
@@ -288,7 +304,7 @@ export class PermisosVacaciones {
       saldo: '',
       estado: 'Pendiente',
       comentario: '',
-      adjunto: 'No'
+      adjunto: 'No',
     };
   }
 

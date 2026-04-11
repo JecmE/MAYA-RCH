@@ -1,32 +1,20 @@
 <div class="attendance-history-page">
   <main class="attendance-history-main">
-
     <div class="page-header">
-      <button
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
+      <button (click)="goBack()" class="back-button">←</button>
       <div>
-        <h2 class="page-title">Historial de asistencias</h2>
+        <h2 class="page-title">Historial de asistencia</h2>
       </div>
     </div>
 
     <div class="filter-card">
-      <div class="section-badge">
-        Parámetros de búsqueda
-      </div>
+      <div class="section-badge">Parámetros de búsqueda</div>
 
       <div class="filter-form">
         <div class="date-field">
-          <label class="form-label">
-            Fecha inicio <span class="required">*</span>
-          </label>
+          <label class="form-label">Fecha inicio</label>
           <div class="input-with-icon">
-            <div class="input-icon">
-              📅
-            </div>
+            <div class="input-icon">📅</div>
             <input
               type="date"
               [(ngModel)]="fechaInicio"
@@ -36,13 +24,9 @@
         </div>
 
         <div class="date-field">
-          <label class="form-label">
-            Fecha fin <span class="required">*</span>
-          </label>
+          <label class="form-label">Fecha fin</label>
           <div class="input-with-icon">
-            <div class="input-icon">
-              📅
-            </div>
+            <div class="input-icon">📅</div>
             <input
               type="date"
               [(ngModel)]="fechaFin"
@@ -52,16 +36,8 @@
         </div>
 
         <div class="actions-group">
-          <button
-            (click)="filtrar()"
-            class="action-button action-button--primary"
-          >
-            Filtrar
-          </button>
-          <button
-            (click)="limpiar()"
-            class="action-button action-button--secondary"
-          >
+          <button (click)="filtrar()" class="action-button action-button--primary">Filtrar</button>
+          <button (click)="limpiar()" class="action-button action-button--secondary">
             Limpiar
           </button>
         </div>
@@ -82,7 +58,7 @@
             </tr>
           </thead>
           <tbody class="attendance-table__body">
-            @for (row of filteredData; track row.id) {
+            @for (row of paginatedData; track row.id) {
               <tr class="attendance-table__row">
                 <td class="table-cell table-cell--first table-cell--strong">{{ row.date }}</td>
                 <td class="table-cell">{{ row.in }}</td>
@@ -101,18 +77,36 @@
       </div>
 
       <div class="table-footer">
-        <span>Mostrando 1 a {{ filteredData.length }} de {{ filteredData.length }} registros</span>
+        <span
+          >Mostrando {{ showingStart }} a {{ showingEnd }} de
+          {{ filteredData.length }} registros</span
+        >
         <div class="pagination-group">
-          <button class="pagination-button pagination-button--disabled">
+          <button
+            class="pagination-button"
+            [class.pagination-button--disabled]="currentPage === 1"
+            (click)="previousPage()"
+          >
             Anterior
           </button>
-          <button class="pagination-button pagination-button--active">1</button>
-          <button class="pagination-button">
+          @for (page of getPageNumbers(); track page) {
+            <button
+              class="pagination-button"
+              [class.pagination-button--active]="currentPage === page"
+              (click)="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+          }
+          <button
+            class="pagination-button"
+            [class.pagination-button--disabled]="currentPage === totalPages"
+            (click)="nextPage()"
+          >
             Siguiente
           </button>
         </div>
       </div>
     </div>
-
   </main>
 </div>

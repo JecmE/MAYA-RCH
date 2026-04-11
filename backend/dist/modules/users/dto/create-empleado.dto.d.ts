@@ -8,7 +8,7 @@ export declare class CreateEmpleadoDto {
     supervisorId?: number;
     puesto?: string;
     tarifaHora?: number;
-    departamentoId?: number;
+    departamento?: string;
 }
 export declare class UpdateEmpleadoDto {
     codigoEmpleado?: string;
@@ -21,5 +21,4 @@ export declare class UpdateEmpleadoDto {
     departamento?: string;
     puesto?: string;
     tarifaHora?: number;
-    departamentoId?: number;
 }

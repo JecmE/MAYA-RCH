@@ -48,6 +48,11 @@ export class PayrollController {
     return this.payrollService.getMyPaycheck(req.user.empleadoId, periodoId);
   }
 
+  @Get('my-periods')
+  getMyPeriods(@Req() req: any) {
+    return this.payrollService.getMyPeriods(req.user.empleadoId);
+  }
+
   @Get('concepts')
   @Roles('RRHH', 'Administrador')
   getConcepts() {

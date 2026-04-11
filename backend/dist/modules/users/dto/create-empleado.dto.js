@@ -55,10 +55,10 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateEmpleadoDto.prototype, "tarifaHora", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
-], CreateEmpleadoDto.prototype, "departamentoId", void 0);
+    __metadata("design:type", String)
+], CreateEmpleadoDto.prototype, "departamento", void 0);
 class UpdateEmpleadoDto {
 }
 exports.UpdateEmpleadoDto = UpdateEmpleadoDto;
@@ -112,9 +112,4 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], UpdateEmpleadoDto.prototype, "tarifaHora", void 0);
-__decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", Number)
-], UpdateEmpleadoDto.prototype, "departamentoId", void 0);
 //# sourceMappingURL=create-empleado.dto.js.map

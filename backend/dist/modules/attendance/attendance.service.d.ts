@@ -28,6 +28,8 @@ export declare class AttendanceService {
         fecha: Date;
         tieneEntrada: boolean;
         tieneSalida: boolean;
+        turnoNombre: string;
+        toleranciaMinutos: number;
         asistenciaId?: undefined;
         horaEntradaReal?: undefined;
         horaSalidaReal?: undefined;
@@ -45,6 +47,8 @@ export declare class AttendanceService {
         observacion: string;
         tieneEntrada: boolean;
         tieneSalida: boolean;
+        turnoNombre: string;
+        toleranciaMinutos: number;
     }>;
     getHistory(empleadoId: number, fechaInicio?: string, fechaFin?: string): Promise<{
         asistenciaId: number;

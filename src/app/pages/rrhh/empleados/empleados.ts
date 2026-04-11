@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { UsersService, Empleado } from '../../../services/users.service';
 
 interface EmpleadoItem {
   id: number;
@@ -32,9 +33,9 @@ interface NuevoEmpleadoForm {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './empleados.html',
-  styleUrls: ['./empleados.css']
+  styleUrls: ['./empleados.css'],
 })
-export class Empleados {
+export class Empleados implements OnInit {
   modalNuevoEmpleado = false;
   modalVerEmpleado = false;
 
@@ -49,48 +50,42 @@ export class Empleados {
   filtroDepartamento = 'Todos los departamentos';
   filtroEstado = 'Todos los estados';
 
-  empleadosData: EmpleadoItem[] = [
-    {
-      id: 1,
-      codigo: 'EMP-001',
-      nombre: 'Carlos Mérida',
-      puesto: 'Desarrollador Sr.',
-      departamento: 'Tecnología',
-      correo: 'carlos@empresa.com',
-      estado: 'Activo'
-    },
-    {
-      id: 2,
-      codigo: 'EMP-002',
-      nombre: 'Lucía Torres',
-      puesto: 'Analista QA',
-      departamento: 'Tecnología',
-      correo: 'lucia@empresa.com',
-      estado: 'Activo'
-    },
-    {
-      id: 3,
-      codigo: 'EMP-003',
-      nombre: 'Mario Paz',
-      puesto: 'Diseñador UI/UX',
-      departamento: 'Marketing',
-      correo: 'mario@empresa.com',
-      estado: 'Activo'
-    },
-    {
-      id: 4,
-      codigo: 'EMP-004',
-      nombre: 'Ana Gómez',
-      puesto: 'Especialista MKT',
-      departamento: 'Marketing',
-      correo: 'ana@empresa.com',
-      estado: 'Inactivo'
-    }
-  ];
+  empleadosData: EmpleadoItem[] = [];
 
   nuevoEmpleado: NuevoEmpleadoForm = this.crearFormularioVacio();
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private usersService: UsersService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadEmpleados();
+  }
+
+  private loadEmpleados(): void {
+    this.usersService.getAll().subscribe({
+      next: (empleados) => {
+        this.empleadosData = empleados.map((e) => this.mapToItem(e));
+      },
+      error: (err) => {
+        console.error('Error cargando empleados:', err);
+        this.empleadosData = [];
+      },
+    });
+  }
+
+  private mapToItem(e: Empleado): EmpleadoItem {
+    return {
+      id: e.empleadoId || 0,
+      codigo: e.codigoEmpleado || '',
+      nombre: e.nombreCompleto || `${e.nombres} ${e.apellidos}`.trim() || 'Sin nombre',
+      puesto: e.puesto || 'Sin puesto',
+      departamento: e.departamento || 'Sin departamento',
+      correo: e.email || '',
+      estado: e.activo ? 'Activo' : 'Inactivo',
+    };
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -117,37 +112,49 @@ export class Empleados {
   }
 
   guardarEmpleado(): void {
-    const nombreCompleto =
-      `${this.nuevoEmpleado.nombres} ${this.nuevoEmpleado.apellidos}`.trim();
+    const nombreCompleto = `${this.nuevoEmpleado.nombres} ${this.nuevoEmpleado.apellidos}`.trim();
 
     if (this.modoEdicion && this.empleadoEditandoId !== null) {
-      this.empleadosData = this.empleadosData.map((empleado) =>
-        empleado.id === this.empleadoEditandoId
-          ? {
-              ...empleado,
-              nombre: nombreCompleto || 'Sin nombre',
-              puesto: this.nuevoEmpleado.puesto || 'Sin puesto',
-              departamento: this.nuevoEmpleado.departamento || 'Sin departamento',
-              correo: this.nuevoEmpleado.correo || 'sin-correo@empresa.com',
-              estado: this.nuevoEmpleado.estado || 'Activo'
-            }
-          : empleado
-      );
-
-      this.mostrarNotificacionExito('Empleado actualizado correctamente.');
+      this.usersService
+        .update(this.empleadoEditandoId, {
+          nombres: this.nuevoEmpleado.nombres,
+          apellidos: this.nuevoEmpleado.apellidos,
+          email: this.nuevoEmpleado.correo,
+          telefono: this.nuevoEmpleado.telefono,
+          puesto: this.nuevoEmpleado.puesto,
+          departamento: this.nuevoEmpleado.departamento,
+        })
+        .subscribe({
+          next: () => {
+            this.mostrarNotificacionExito('Empleado actualizado correctamente.');
+            this.loadEmpleados();
+          },
+          error: (err) => {
+            console.error('Error actualizando empleado:', err);
+          },
+        });
     } else {
-      const nuevo: EmpleadoItem = {
-        id: this.obtenerSiguienteId(),
-        codigo: this.generarCodigoEmpleado(),
-        nombre: nombreCompleto || 'Sin nombre',
-        puesto: this.nuevoEmpleado.puesto || 'Sin puesto',
-        departamento: this.nuevoEmpleado.departamento || 'Sin departamento',
-        correo: this.nuevoEmpleado.correo || 'sin-correo@empresa.com',
-        estado: this.nuevoEmpleado.estado || 'Activo'
-      };
-
-      this.empleadosData = [nuevo, ...this.empleadosData];
-      this.mostrarNotificacionExito('Empleado guardado correctamente.');
+      this.usersService
+        .create({
+          codigoEmpleado: this.generarCodigoEmpleado(),
+          nombres: this.nuevoEmpleado.nombres,
+          apellidos: this.nuevoEmpleado.apellidos,
+          email: this.nuevoEmpleado.correo,
+          telefono: this.nuevoEmpleado.telefono,
+          puesto: this.nuevoEmpleado.puesto,
+          departamento: this.nuevoEmpleado.departamento,
+          fechaIngreso: this.nuevoEmpleado.fechaIngreso || new Date().toISOString().split('T')[0],
+          activo: true,
+        })
+        .subscribe({
+          next: () => {
+            this.mostrarNotificacionExito('Empleado guardado correctamente.');
+            this.loadEmpleados();
+          },
+          error: (err) => {
+            console.error('Error guardando empleado:', err);
+          },
+        });
     }
 
     this.nuevoEmpleado = this.crearFormularioVacio();
@@ -168,8 +175,10 @@ export class Empleados {
 
   editarEmpleado(empleado: EmpleadoItem): void {
     const partesNombre = empleado.nombre.trim().split(' ');
-    const nombres = partesNombre.slice(0, 1).join(' ');
-    const apellidos = partesNombre.slice(1).join(' ');
+    const nombres = partesNombre
+      .slice(0, Math.max(1, Math.floor(partesNombre.length / 2)))
+      .join(' ');
+    const apellidos = partesNombre.slice(Math.floor(partesNombre.length / 2)).join(' ');
 
     this.modoEdicion = true;
     this.empleadoEditandoId = empleado.id;
@@ -185,7 +194,7 @@ export class Empleados {
       supervisor: '',
       turno: '',
       fechaIngreso: '',
-      estado: empleado.estado || 'Activo'
+      estado: empleado.estado || 'Activo',
     };
 
     this.modalNuevoEmpleado = true;
@@ -212,8 +221,7 @@ export class Empleados {
         empleado.departamento === this.filtroDepartamento;
 
       const coincideEstado =
-        this.filtroEstado === 'Todos los estados' ||
-        empleado.estado === this.filtroEstado;
+        this.filtroEstado === 'Todos los estados' || empleado.estado === this.filtroEstado;
 
       return coincideBusqueda && coincideDepartamento && coincideEstado;
     });
@@ -235,7 +243,7 @@ export class Empleados {
     const departamentos = new Set(
       this.empleadosData
         .map((empleado) => empleado.departamento)
-        .filter((departamento) => departamento && departamento !== 'Sin departamento')
+        .filter((departamento) => departamento && departamento !== 'Sin departamento'),
     );
 
     return departamentos.size;
@@ -246,8 +254,8 @@ export class Empleados {
       new Set(
         this.empleadosData
           .map((empleado) => empleado.departamento)
-          .filter((departamento) => !!departamento && departamento !== 'Sin departamento')
-      )
+          .filter((departamento) => !!departamento && departamento !== 'Sin departamento'),
+      ),
     ).sort((a, b) => a.localeCompare(b));
   }
 
@@ -274,7 +282,7 @@ export class Empleados {
       supervisor: '',
       turno: '',
       fechaIngreso: '',
-      estado: 'Activo'
+      estado: 'Activo',
     };
   }
 
@@ -288,16 +296,8 @@ export class Empleados {
     }, 3000);
   }
 
-  private obtenerSiguienteId(): number {
-    if (this.empleadosData.length === 0) {
-      return 1;
-    }
-
-    return Math.max(...this.empleadosData.map((empleado) => empleado.id)) + 1;
-  }
-
   private generarCodigoEmpleado(): string {
-    const siguienteNumero = this.obtenerSiguienteId();
-    return `EMP-${String(siguienteNumero).padStart(3, '0')}`;
+    const timestamp = Date.now().toString().slice(-8);
+    return `EMP-${timestamp}`;
   }
 }

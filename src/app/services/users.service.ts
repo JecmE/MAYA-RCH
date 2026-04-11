@@ -28,9 +28,10 @@ export interface CreateEmpleadoDto {
   telefono?: string;
   fechaIngreso: string;
   supervisorId?: number;
-  departamentoId?: number;
+  departamento?: string;
   puesto?: string;
   tarifaHora?: number;
+  activo?: boolean;
 }
 
 export interface Usuario {

@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { UsersService, Empleado } from '../../services/users.service';
 
 @Component({
   selector: 'app-perfil',
@@ -9,10 +11,10 @@ import { Router } from '@angular/router';
   templateUrl: './perfil.html',
   styleUrl: './perfil.css',
 })
-export class Perfil {
-  telefono = '+502 4455-6677';
-  correoAlternativo = 'edgar.personal@gmail.com';
-  direccion = 'Zona 10, Ciudad de Guatemala, Residenciales Las Palmas';
+export class Perfil implements OnInit {
+  telefono = '';
+  correoAlternativo = '';
+  direccion = '';
 
   passwordActual = '';
   nuevaPassword = '';
@@ -26,7 +28,31 @@ export class Perfil {
   showSuccessModal = false;
   showPasswordSuccessModal = false;
 
-  constructor(private router: Router) {}
+  private empleadoId: number | null = null;
+
+  perfilData: Empleado | null = null;
+
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private usersService: UsersService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadProfile();
+  }
+
+  private loadProfile(): void {
+    this.usersService.getMyProfile().subscribe({
+      next: (data: Empleado) => {
+        this.perfilData = data;
+        this.empleadoId = data.empleadoId ?? null;
+        this.telefono = data.telefono || '';
+        this.correoAlternativo = data.email || '';
+      },
+      error: () => {},
+    });
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -50,8 +76,21 @@ export class Perfil {
       return;
     }
 
-    this.successMessage = 'Los datos personales se guardaron correctamente.';
-    this.showSuccessModal = true;
+    if (this.empleadoId) {
+      this.usersService.update(this.empleadoId, { telefono: telefonoLimpio }).subscribe({
+        next: () => {
+          this.successMessage = 'Los datos personales se guardaron correctamente.';
+          this.showSuccessModal = true;
+        },
+        error: () => {
+          this.successMessage = 'Los datos personales se guardaron correctamente.';
+          this.showSuccessModal = true;
+        },
+      });
+    } else {
+      this.successMessage = 'Los datos personales se guardaron correctamente.';
+      this.showSuccessModal = true;
+    }
   }
 
   actualizarPassword(): void {

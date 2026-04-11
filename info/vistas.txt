@@ -1,0 +1,1307 @@
+1) Rol Empleado
+B. Vista de Asistencia
+Objetivo
+Permitir al empleado registrar asistencia y consultar su historial.
+Qué debe mostrar
+Esta pantalla debe mezclar dos cosas:
+•	el marcaje actual 
+•	el historial de asistencia 
+Cómo dividirla
+Hazla en 2 bloques principales:
+Bloque 1: Marcaje actual
+Coloca arriba una tarjeta principal con:
+•	título: Asistencia de hoy 
+•	fecha actual 
+•	turno vigente 
+•	tolerancia 
+•	estado del día: 
+o	Pendiente 
+o	Incompleta 
+o	Completa 
+•	hora de entrada registrada 
+•	hora de salida registrada 
+•	botón Marcar entrada 
+•	botón Marcar salida 
+•	mensaje de confirmación: 
+o	“Entrada registrada correctamente” 
+o	“Salida registrada correctamente” 
+Bloque 2: Historial de asistencia
+Debajo coloca una tabla con:
+•	fecha 
+•	entrada 
+•	salida 
+•	tardía 
+•	horas trabajadas 
+•	estado 
+•	observaciones 
+Filtros
+En la parte superior de la tabla:
+•	fecha inicio 
+•	fecha fin 
+•	botón Filtrar 
+•	botón Limpiar 
+Qué ingresa el empleado aquí
+•	marcar entrada 
+•	marcar salida 
+•	filtrar por fechas 
+Qué consulta aquí
+•	su historial 
+•	estado del día 
+•	horas trabajadas 
+•	tardías 
+•	observaciones 
+
+C. Vista de Solicitud de Permisos / Vacaciones
+Objetivo
+Crear solicitudes y revisar su estado.
+Cómo dividirla
+Hazla en 2 secciones:
+Bloque 1: Nueva solicitud
+Debe ir en la parte superior o lado izquierdo si tu plantilla lo permite.
+Campos del formulario
+•	Tipo de permiso
+dropdown 
+•	Modalidad 
+o	por días 
+o	por horas 
+•	Fecha de inicio 
+•	Fecha de fin 
+•	Hora inicio y Hora fin si aplica por horas 
+•	Motivo
+textarea 
+•	Adjuntar documento
+botón o área de carga de archivo 
+Información adicional visible
+•	saldo de vacaciones disponible 
+•	mensaje de regla: 
+o	“Este tipo requiere documento” 
+o	“Esta solicitud descuenta vacaciones” 
+Botones
+•	Enviar solicitud 
+•	Cancelar 
+
+Bloque 2: Mis solicitudes
+Debajo o al lado derecho coloca una tabla/listado con:
+•	fecha de solicitud 
+•	tipo 
+•	período solicitado 
+•	estado 
+•	comentario de aprobación/rechazo 
+•	adjunto 
+•	opción de ver detalle 
+Filtros
+•	pendientes 
+•	aprobadas 
+•	rechazadas 
+•	todas 
+Qué ingresa el empleado aquí
+•	nueva solicitud 
+•	motivo 
+•	fechas 
+•	adjuntos 
+Qué consulta aquí
+•	estado de solicitudes 
+•	comentarios del supervisor o RRHH 
+•	saldo de vacaciones 
+
+D. Vista de Timesheet
+Objetivo
+Registrar horas trabajadas por proyecto y consultar registros.
+Cómo dividirla
+En 2 bloques:
+Bloque 1: Registro de horas
+Formulario simple arriba.
+Campos
+•	Proyecto
+dropdown 
+•	Fecha 
+•	Actividad
+textarea corto o input largo 
+•	Horas
+input numérico 
+Validaciones visibles
+•	límite diario permitido 
+•	advertencia si excede horas disponibles 
+•	mensaje: 
+o	“No puedes registrar más horas que las permitidas” 
+o	“Las horas superan las horas trabajadas del día” 
+Botones
+•	Guardar registro 
+•	Limpiar 
+
+Bloque 2: Historial de registros
+Tabla con:
+•	proyecto 
+•	fecha 
+•	actividad 
+•	horas 
+•	estado 
+•	comentario del supervisor 
+Filtros
+•	fecha inicio 
+•	fecha fin 
+•	proyecto 
+•	estado 
+Qué ingresa el empleado aquí
+•	proyecto 
+•	fecha 
+•	actividad 
+•	horas 
+Qué consulta aquí
+•	registros enviados 
+•	estado del registro 
+•	comentario del supervisor 
+
+E. Vista de KPIs Personales
+Objetivo
+Mostrar de forma clara su desempeño mensual.
+Cómo dividirla
+Esta vista debe ser más visual.
+Bloque 1: Resumen principal
+Coloca tarjetas arriba con:
+•	días trabajados 
+•	tardías 
+•	faltas 
+•	horas esperadas 
+•	horas trabajadas 
+•	cumplimiento 
+•	clasificación 
+Bloque 2: Gráfico
+Un gráfico de barras o línea con:
+•	cumplimiento por mes
+o 
+•	horas trabajadas vs horas esperadas 
+Bloque 3: Historial mensual
+Tabla con:
+•	mes 
+•	días trabajados 
+•	tardías 
+•	faltas 
+•	cumplimiento 
+•	clasificación 
+Bloque 4: Explicación
+Una pequeña tarjeta o cuadro informativo:
+•	Excelente 
+•	Bueno 
+•	Observación 
+•	Riesgo 
+Con una breve explicación de qué significa cada uno.
+Qué ingresa el empleado aquí
+•	realmente no ingresa data 
+•	solo puede cambiar filtro de período si quieres 
+Qué consulta aquí
+•	métricas 
+•	clasificación 
+•	evolución mensual 
+
+F. Vista de Boleta de Pago
+Objetivo
+Permitir consultar y descargar el detalle de planilla.
+Cómo dividirla
+Hazla en 3 bloques:
+Bloque 1: Selector de período
+Arriba:
+•	dropdown o selector de mes/período 
+•	botón Consultar 
+Bloque 2: Resumen de pago
+Tarjetas o cuadro resumen con:
+•	salario base 
+•	bonificaciones 
+•	deducciones 
+•	ISR 
+•	neto a pagar 
+Bloque 3: Detalle de conceptos
+Tabla con:
+•	concepto 
+•	tipo 
+•	monto 
+•	observación si aplica 
+Acciones
+•	botón Exportar PDF 
+•	botón Descargar boleta 
+Qué ingresa el empleado aquí
+•	solo selecciona el período 
+Qué consulta aquí
+•	su boleta 
+•	deducciones 
+•	bonificaciones 
+•	neto 
+
+G. Vista de Perfil
+Objetivo
+Consultar su información y actualizar datos permitidos.
+Cómo dividirla
+En 2 bloques:
+Bloque 1: Información personal
+Campos visibles:
+•	nombre completo 
+•	correo 
+•	puesto 
+•	departamento 
+•	supervisor 
+•	usuario 
+•	estado de cuenta 
+Bloque 2: Edición de datos permitidos
+Según lo que quieras permitir:
+•	teléfono 
+•	dirección 
+•	correo alternativo 
+•	foto de perfil 
+Bloque 3 opcional: Seguridad
+•	cambiar contraseña 
+•	contraseña actual 
+•	nueva contraseña 
+•	confirmar contraseña 
+•	botón Guardar cambios 
+Qué ingresa el empleado aquí
+•	actualización de datos permitidos 
+•	cambio de contraseña 
+Qué consulta aquí
+•	sus datos de perfil y relación jerárquica 
+
+2) Cómo dejarlo en tu documento o en Figma
+Para que quede uniforme con el Dashboard, puede describir cada vista así:
+Nombre de la vista
+Objetivo
+Secciones
+Datos que ingresa el usuario
+Datos que visualiza el usuario
+Acciones principales
+
+3) Formato listo para seguir usando
+Te dejo un ejemplo corto con la vista B:
+B. Vista de Asistencia
+Objetivo: Permitir al empleado registrar su entrada y salida, así como consultar su historial de asistencia.
+Secciones principales:
+•	Tarjeta de asistencia del día 
+•	Historial de asistencia 
+•	Filtros por fecha 
+Datos que ingresa el usuario:
+•	Marcaje de entrada 
+•	Marcaje de salida 
+•	Rango de fechas para consulta 
+Datos que visualiza el usuario:
+•	Turno vigente 
+•	Tolerancia 
+•	Hora registrada 
+•	Estado de jornada 
+•	Historial de asistencia 
+Acciones principales:
+•	Marcar entrada 
+•	Marcar salida 
+•	Filtrar historial 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Vistas del rol Supervisor
+1. Vistas heredadas del rol Empleado
+El Supervisor también debe contar con estas vistas personales:
+A. Dashboard / Inicio del Supervisor
+Objetivo: Mostrar tanto su estado personal como el resumen general de su equipo.
+Elementos personales:
+•	saludo con nombre 
+•	fecha y hora actual 
+•	botón principal de Marcar entrada / Marcar salida 
+•	estado del día: 
+o	pendiente 
+o	incompleta 
+o	completa 
+•	turno asignado 
+Resumen personal:
+•	tardías del mes 
+•	horas trabajadas 
+•	permisos pendientes 
+•	KPI del mes 
+Resumen del equipo:
+•	empleados a cargo 
+•	permisos/vacaciones pendientes 
+•	horas pendientes de aprobación 
+•	KPI promedio del equipo 
+Accesos rápidos personales:
+•	Mi asistencia 
+•	Mis solicitudes 
+•	Mi timesheet 
+•	Mis KPIs 
+•	Mi boleta 
+Accesos rápidos de supervisor:
+•	Pendientes 
+•	Asistencia del equipo 
+•	Timesheet del equipo 
+•	KPIs del equipo 
+
+B. Mi Asistencia
+Objetivo: Permitir al supervisor registrar su propia asistencia y consultar su historial.
+Elementos:
+•	botón Marcar entrada 
+•	botón Marcar salida 
+•	hora registrada más reciente 
+•	estado de jornada 
+•	turno vigente 
+•	tolerancia 
+•	tabla de historial: 
+o	fecha 
+o	entrada 
+o	salida 
+o	tardía 
+o	horas trabajadas 
+o	estado 
+o	observaciones 
+•	filtros por rango de fechas 
+
+C. Mis Solicitudes / Vacaciones
+Objetivo: Permitir al supervisor crear sus propias solicitudes y consultar su seguimiento.
+Elementos:
+•	formulario para nueva solicitud: 
+o	tipo de permiso 
+o	fecha inicio 
+o	fecha fin 
+o	por días o por horas 
+o	motivo 
+o	adjuntar documento 
+•	validación visual de campos obligatorios 
+•	saldo de vacaciones visible 
+•	listado de solicitudes: 
+o	fecha 
+o	tipo 
+o	estado 
+o	comentario de aprobación/rechazo 
+o	adjunto 
+•	filtros: 
+o	pendientes 
+o	aprobadas 
+o	rechazadas 
+
+D. Mi Timesheet
+Objetivo: Permitir al supervisor registrar sus propias horas por proyecto.
+Elementos:
+•	formulario: 
+o	proyecto 
+o	fecha 
+o	actividad 
+o	horas 
+•	validación de límite diario 
+•	mensaje de error si excede horas permitidas 
+•	tabla de registros: 
+o	proyecto 
+o	fecha 
+o	actividad 
+o	horas 
+o	estado 
+o	comentario del aprobador 
+•	filtros por fecha y proyecto 
+
+E. Mis KPIs
+Objetivo: Mostrar el desempeño personal del supervisor.
+Elementos:
+•	tarjetas resumen: 
+o	días trabajados 
+o	tardías 
+o	faltas 
+o	horas esperadas 
+o	horas trabajadas 
+o	cumplimiento 
+o	clasificación 
+•	gráfico de cumplimiento mensual 
+•	historial de KPIs por mes 
+•	explicación breve de la clasificación 
+
+F. Mi Boleta de Pago
+Objetivo: Permitir al supervisor consultar su planilla personal.
+Elementos:
+•	selector de período 
+•	resumen: 
+o	salario base 
+o	bonificaciones 
+o	deducciones 
+o	ISR 
+o	neto a pagar 
+•	detalle de conceptos 
+•	botón de exportar PDF o descargar boleta 
+
+G. Mi Perfil
+Objetivo: Consultar y actualizar sus datos permitidos.
+Elementos:
+•	nombre 
+•	correo 
+•	puesto 
+•	departamento 
+•	supervisor o jefe superior si aplica 
+•	opción de cambiar contraseña 
+•	edición de datos personales permitidos 
+
+2. Vistas adicionales del rol Supervisor
+Estas son las que lo diferencian del Empleado.
+H. Bandeja de Pendientes
+Objetivo: Aprobar o rechazar solicitudes del equipo rápidamente.
+Elementos:
+•	pestañas: 
+o	permisos/vacaciones 
+o	horas de proyecto 
+•	tabla: 
+o	empleado 
+o	tipo 
+o	fecha 
+o	estado 
+o	urgencia 
+•	botón Ver detalle 
+•	botón Aprobar 
+•	botón Rechazar 
+•	campo obligatorio de comentario 
+•	acceso a adjuntos 
+•	filtros por empleado, fecha y estado 
+
+I. Asistencia del Equipo
+Objetivo: Supervisar puntualidad y cumplimiento del equipo.
+Elementos:
+•	tabla por colaborador: 
+o	nombre 
+o	fecha 
+o	entrada 
+o	salida 
+o	tardía 
+o	horas trabajadas 
+o	estado 
+•	filtros por rango de fechas 
+•	búsqueda por empleado 
+•	resumen de tardías y faltas por persona 
+
+J. Timesheet del Equipo
+Objetivo: Revisar y validar las horas registradas por los colaboradores.
+Elementos:
+•	listado de registros: 
+o	empleado 
+o	proyecto 
+o	fecha 
+o	actividad 
+o	horas 
+o	estado 
+•	botones aprobar / rechazar 
+•	comentario obligatorio 
+•	filtros por proyecto, empleado y fecha 
+
+K. KPIs del Equipo
+Objetivo: Consultar el desempeño agregado de los colaboradores a cargo.
+Elementos:
+•	KPI promedio del equipo 
+•	clasificación por empleado 
+•	ranking de cumplimiento 
+•	alertas: 
+o	riesgo 
+o	observación 
+•	gráficos por mes 
+•	tabla comparativa del equipo 
+
+L. Detalle de Empleado del Equipo
+Objetivo: Consultar la información consolidada de un colaborador específico.
+Elementos:
+•	datos básicos del colaborador 
+•	historial de asistencia 
+•	solicitudes recientes 
+•	horas por proyecto 
+•	KPI actual 
+•	observaciones generales 
+
+Menú lateral del Supervisor
+Así te recomiendo dejarlo:
+•	Inicio 
+•	Mi asistencia 
+•	Mis solicitudes 
+•	Mi timesheet 
+•	Mis KPIs 
+•	Mi boleta 
+•	Pendientes 
+•	Asistencia del equipo 
+•	Timesheet del equipo 
+•	KPIs del equipo 
+•	Perfil 
+
+
+
+
+
+
+
+
+
+
+
+
+Vistas del rol RRHH
+El rol RRHH administra la operación funcional del sistema. Tiene acceso a la gestión de empleados, turnos, asistencia general, permisos y vacaciones, proyectos, KPIs globales, bonos, planilla, reportes y auditoría funcional.
+
+1. Vista principal de RRHH
+A. Dashboard / Inicio de RRHH
+Objetivo: Tener una visión general del estado operativo de RRHH y acceso rápido a los módulos más importantes.
+Elementos
+•	saludo con nombre 
+•	fecha y hora actual 
+•	resumen general: 
+o	total de empleados activos 
+o	tardías del día 
+o	permisos pendientes 
+o	vacaciones activas 
+o	empleados en riesgo 
+o	elegibles a bono 
+o	estado de planilla del período 
+•	accesos rápidos: 
+o	Empleados 
+o	Turnos 
+o	Asistencia 
+o	Permisos/Vacaciones 
+o	Proyectos 
+o	KPIs 
+o	Bonos 
+o	Planilla 
+o	Reportes 
+o	Auditoría 
+Qué muestra
+•	indicadores globales 
+•	accesos a procesos operativos 
+•	alertas o pendientes relevantes 
+Qué ingresa RRHH aquí
+•	normalmente no ingresa data aquí 
+•	solo navega a los demás módulos 
+
+2. Vistas de gestión operativa de RRHH
+B. Gestión de Empleados
+Objetivo: Administrar la información general del personal.
+Elementos
+•	barra de búsqueda: 
+o	nombre 
+o	departamento 
+o	puesto 
+o	estado 
+•	tabla de empleados: 
+o	nombre 
+o	código o ID 
+o	puesto 
+o	departamento 
+o	supervisor 
+o	turno 
+o	estado 
+•	acciones: 
+o	Nuevo empleado 
+o	Editar 
+o	Desactivar 
+o	Ver detalle 
+Formulario de empleado
+Debe incluir:
+•	nombres y apellidos 
+•	documento o identificación 
+•	correo 
+•	teléfono 
+•	puesto 
+•	departamento 
+•	supervisor 
+•	turno asignado 
+•	fecha de ingreso 
+•	estado 
+Qué ingresa RRHH aquí
+•	alta de empleado 
+•	edición 
+•	asignación de supervisor 
+•	asignación de turno 
+•	activación/desactivación 
+Qué muestra
+•	listado general del personal 
+•	detalle individual 
+•	estado del empleado 
+
+C. Vista de Turnos
+Objetivo: Crear, editar y asignar turnos laborales.
+Elementos
+•	listado de turnos 
+•	botón Nuevo turno 
+•	tabla con: 
+o	nombre del turno 
+o	hora de entrada 
+o	hora de salida 
+o	tolerancia 
+o	estado 
+•	acciones: 
+o	editar 
+o	desactivar 
+o	asignar a empleados 
+Formulario de turno
+•	nombre del turno 
+•	hora de entrada 
+•	hora de salida 
+•	tolerancia 
+•	días aplicables 
+•	estado 
+Asignación de turnos
+•	empleado 
+•	turno 
+•	fecha inicio 
+•	fecha fin 
+Qué ingresa RRHH aquí
+•	creación y edición de turnos 
+•	asignaciones por período 
+Qué muestra
+•	catálogo de turnos 
+•	historial de asignación 
+
+D. Vista de Asistencia General
+Objetivo: Consultar y corregir la asistencia de todos los empleados.
+Elementos
+•	filtros: 
+o	empleado 
+o	departamento 
+o	fecha inicio 
+o	fecha fin 
+o	estado 
+•	tabla global: 
+o	empleado 
+o	fecha 
+o	entrada 
+o	salida 
+o	tardía 
+o	horas trabajadas 
+o	estado 
+o	observaciones 
+•	acción: 
+o	Ajuste manual 
+Formulario o modal de ajuste
+•	empleado 
+•	fecha 
+•	campo a modificar 
+•	valor anterior 
+•	nuevo valor 
+•	motivo obligatorio 
+Bloque adicional
+•	historial de ajustes realizados 
+Qué ingresa RRHH aquí
+•	filtros 
+•	ajustes manuales 
+•	motivo del ajuste 
+Qué muestra
+•	asistencia general 
+•	inconsistencias 
+•	historial de correcciones 
+
+
+E. Vista de Permisos y Vacaciones
+Objetivo: Controlar solicitudes, aprobaciones, saldos y tipos de permiso.
+Elementos
+•	pestañas: 
+o	Solicitudes 
+o	Saldos de vacaciones 
+o	Movimientos 
+o	Tipos de permiso 
+Solicitudes
+Tabla con:
+•	empleado 
+•	tipo 
+•	período 
+•	estado 
+•	comentario 
+•	adjunto 
+Acciones:
+•	ver detalle 
+•	intervenir cuando aplique 
+Saldos de vacaciones
+Tabla con:
+•	empleado 
+•	días disponibles 
+•	días usados 
+•	días restantes 
+Movimientos de vacaciones
+Tabla con:
+•	empleado 
+•	tipo de movimiento 
+•	fecha 
+•	cantidad 
+•	motivo 
+Tipos de permiso
+Formulario o tabla para:
+•	nombre del tipo 
+•	requiere documento 
+•	descuenta vacaciones 
+•	estado 
+Qué ingresa RRHH aquí
+•	configuración de tipos de permiso 
+•	intervención en solicitudes 
+•	ajustes de vacaciones si tu lógica lo permite 
+Qué muestra
+•	solicitudes 
+•	saldos 
+•	kardex de vacaciones 
+•	tipos configurados 
+
+
+
+
+
+F. Vista de Proyectos
+Objetivo: Administrar proyectos usados en el timesheet.
+Elementos
+•	tabla de proyectos: 
+o	nombre 
+o	código 
+o	estado 
+o	responsable 
+•	acciones: 
+o	crear 
+o	editar 
+o	activar/desactivar 
+o	asignar empleados 
+Formulario de proyecto
+•	nombre 
+•	código 
+•	descripción 
+•	responsable 
+•	estado 
+Asignación de empleados
+•	empleado 
+•	proyecto 
+•	fecha inicio 
+•	fecha fin 
+Resumen adicional
+•	horas acumuladas por proyecto 
+Qué ingresa RRHH aquí
+•	alta y edición de proyectos 
+•	asignación de empleados 
+Qué muestra
+•	catálogo de proyectos 
+•	horas acumuladas 
+•	asignaciones 
+
+G. Vista de KPIs Globales
+Objetivo: Consultar métricas de desempeño organizacional.
+Elementos
+•	filtros por período 
+•	tarjetas resumen: 
+o	cumplimiento promedio 
+o	tardías del mes 
+o	faltas del mes 
+o	empleados en riesgo 
+•	gráficos: 
+o	por departamento 
+o	por equipo 
+o	por clasificación 
+•	tabla general: 
+o	empleado 
+o	departamento 
+o	tardías 
+o	faltas 
+o	horas trabajadas 
+o	cumplimiento 
+o	clasificación 
+Qué ingresa RRHH aquí
+•	filtros por período, área o empleado 
+Qué muestra
+•	KPIs generales 
+•	comparaciones 
+•	alertas organizacionales 
+
+H. Vista de Bonos e Incentivos
+Objetivo: Configurar reglas y consultar resultados de elegibilidad.
+Elementos
+•	tabla de reglas de bono 
+•	botón Nueva regla 
+•	formulario: 
+o	nombre de regla 
+o	vigencia 
+o	criterio mínimo de asistencia 
+o	máximo de tardías 
+o	otras condiciones 
+•	tabla de resultados: 
+o	empleado 
+o	período 
+o	elegible/no elegible 
+o	motivo 
+Acciones
+•	crear 
+•	editar 
+•	activar/desactivar regla 
+•	exportar resultados 
+Qué ingresa RRHH aquí
+•	reglas de bono 
+•	vigencia 
+•	criterios 
+Qué muestra
+•	resultados mensuales 
+•	elegibilidad 
+•	motivo del resultado 
+
+I. Vista de Planilla
+Objetivo: Ejecutar, revisar y cerrar el cálculo de planilla.
+Elementos
+•	selector o tabla de períodos 
+•	acciones: 
+o	crear período 
+o	abrir período 
+o	cerrar período 
+o	ejecutar cálculo 
+Resumen del período
+•	total empleados calculados 
+•	total bruto 
+•	total deducciones 
+•	total neto 
+•	estado del período 
+Tabla por empleado
+•	empleado 
+•	salario base 
+•	bonificaciones 
+•	deducciones 
+•	ISR 
+•	neto 
+Detalle
+Al abrir un empleado:
+•	detalle de movimientos 
+•	conceptos aplicados 
+•	observaciones 
+Acciones
+•	exportar 
+•	publicar boletas 
+Qué ingresa RRHH aquí
+•	creación de períodos 
+•	ejecución del cálculo 
+•	cierre del período 
+Qué muestra
+•	resultados de planilla 
+•	detalle por empleado 
+•	estado del proceso 
+
+J. Vista de Reportes
+Objetivo: Centralizar la generación de reportes exportables.
+Elementos
+•	selector de tipo de reporte: 
+o	asistencia 
+o	permisos 
+o	horas por proyecto 
+o	KPIs 
+o	planilla 
+•	filtros: 
+o	fecha 
+o	empleado 
+o	departamento 
+o	proyecto 
+•	botón Generar 
+•	botón Exportar Excel 
+•	botón Exportar PDF 
+Qué ingresa RRHH aquí
+•	filtros de búsqueda 
+•	selección de reporte 
+Qué muestra
+•	resultados del reporte 
+•	vista previa o tabla resumida 
+
+
+K. Vista de Auditoría Funcional
+Objetivo: Consultar trazabilidad de acciones operativas del sistema.
+Elementos
+•	filtros: 
+o	fecha 
+o	usuario 
+o	módulo 
+o	acción 
+•	tabla de auditoría: 
+o	fecha/hora 
+o	usuario 
+o	módulo 
+o	acción 
+o	detalle 
+•	opción de ver detalle: 
+o	antes 
+o	después 
+o	motivo si aplica 
+Qué ingresa RRHH aquí
+•	filtros 
+Qué muestra
+•	bitácora de cambios y acciones funcionales 
+
+
+
+
+Menú lateral de RRHH
+Te recomiendo dejarlo así:
+•	Inicio 
+•	Empleados 
+•	Turnos 
+•	Asistencia 
+•	Permisos/Vacaciones 
+•	Proyectos 
+•	KPIs 
+•	Bonos 
+•	Planilla 
+•	Reportes 
+•	Auditoría 
+•	Perfil 
+
+
+
+
+
+
+
+
+
+
+
+
+Vistas del rol Administrador
+El rol Administrador se enfoca en la gestión técnica del sistema. Sus vistas están orientadas al control de usuarios, roles, parámetros globales, auditoría técnica, seguridad, logs y soporte.
+
+1. Vista principal del Administrador
+A. Dashboard / Inicio del Administrador
+Objetivo: Monitorear el estado general del sistema y acceder rápidamente a los módulos técnicos.
+Elementos
+•	saludo con nombre 
+•	fecha y hora actual 
+•	resumen técnico: 
+o	usuarios activos 
+o	usuarios bloqueados 
+o	intentos fallidos de acceso 
+o	sesiones activas 
+o	eventos recientes de auditoría 
+o	estado general del sistema 
+•	accesos rápidos: 
+o	Usuarios 
+o	Roles y permisos 
+o	Parámetros 
+o	Auditoría y logs 
+o	Seguridad 
+o	Soporte 
+Qué muestra
+•	salud general del sistema 
+•	alertas de seguridad 
+•	actividad reciente 
+•	accesos a configuración y soporte 
+Qué ingresa el Administrador aquí
+•	normalmente no ingresa data en esta vista 
+•	solo navega y revisa indicadores 
+
+2. Vistas de administración técnica
+B. Vista de Gestión de Usuarios
+Objetivo: Administrar cuentas de acceso al sistema.
+Elementos
+•	barra de búsqueda: 
+o	nombre 
+o	usuario 
+o	correo 
+o	estado 
+•	tabla de usuarios: 
+o	nombre 
+o	usuario 
+o	correo 
+o	rol 
+o	estado 
+o	empleado asociado 
+•	acciones: 
+o	Crear usuario 
+o	Editar 
+o	Activar/Desactivar 
+o	Bloquear/Desbloquear 
+o	Restablecer contraseña 
+o	Ver detalle 
+Formulario de usuario
+Debe incluir:
+•	nombre o relación con empleado 
+•	username 
+•	correo 
+•	contraseña temporal si aplica 
+•	rol 
+•	estado 
+•	empleado asociado 
+Qué ingresa el Administrador aquí
+•	creación de usuarios 
+•	edición de usuarios 
+•	bloqueo/desbloqueo 
+•	restablecimiento de contraseña 
+•	asociación a empleado 
+Qué muestra
+•	listado de usuarios 
+•	relación usuario-empleado 
+•	estado de acceso 
+
+
+C. Vista de Roles y Permisos
+Objetivo: Gestionar el acceso por rol y las acciones permitidas en el sistema.
+Elementos
+•	listado de roles: 
+o	Empleado 
+o	Supervisor 
+o	RRHH 
+o	Administrador 
+•	tabla o matriz de permisos por módulo 
+Permisos por acción
+•	ver 
+•	crear 
+•	editar 
+•	aprobar 
+•	exportar 
+•	administrar 
+Pantalla o modal de detalle
+Para cada rol mostrar:
+•	módulos habilitados 
+•	acciones permitidas 
+•	restricciones específicas 
+Qué ingresa el Administrador aquí
+•	asignación o edición de permisos por rol 
+•	revisión de acceso por módulo 
+Qué muestra
+•	estructura RBAC 
+•	alcance de cada perfil 
+
+D. Vista de Parámetros Globales
+Objetivo: Configurar reglas generales del sistema.
+Elementos
+•	secciones o pestañas: 
+o	Horas y validaciones 
+o	Vacaciones 
+o	KPIs 
+o	Planilla 
+o	Generales 
+Campos posibles
+•	límite diario de horas 
+•	límite semanal de horas 
+•	días laborables 
+•	criterios de clasificación KPI 
+•	políticas de vacaciones 
+•	parámetros de cálculo general 
+Acciones
+•	Guardar cambios 
+•	Restablecer valores 
+•	Ver historial de cambios 
+Qué ingresa el Administrador aquí
+•	configuración global del sistema 
+•	cambios de parámetros 
+Qué muestra
+•	valores actuales 
+•	historial de configuración 
+
+E. Vista de Auditoría y Logs
+Objetivo: Supervisar la trazabilidad técnica y operativa del sistema.
+Elementos
+•	pestañas: 
+o	Auditoría funcional 
+o	Logs de acceso 
+o	Logs de errores 
+Filtros
+•	módulo 
+•	usuario 
+•	fecha 
+•	tipo de evento 
+•	severidad 
+Tabla
+•	fecha/hora 
+•	usuario 
+•	módulo 
+•	acción o evento 
+•	descripción 
+•	severidad 
+Detalle del evento
+•	antes / después si aplica 
+•	mensaje técnico 
+•	origen del evento 
+•	observaciones 
+Qué ingresa el Administrador aquí
+•	filtros de búsqueda 
+Qué muestra
+•	eventos del sistema 
+•	errores 
+•	trazabilidad de acciones 
+
+F. Vista de Seguridad
+Objetivo: Controlar incidentes de acceso y comportamiento de seguridad.
+Elementos
+•	tarjetas resumen: 
+o	intentos fallidos 
+o	usuarios bloqueados 
+o	sesiones activas 
+o	restablecimientos de contraseña recientes 
+Tablas o bloques
+•	usuarios bloqueados 
+•	intentos fallidos por usuario 
+•	sesiones activas 
+•	expiración de tokens 
+Acciones
+•	desbloquear usuario 
+•	invalidar sesión 
+•	forzar cierre de sesión 
+•	restablecer contraseña 
+Qué ingresa el Administrador aquí
+•	acciones de seguridad 
+•	filtros 
+Qué muestra
+•	incidentes de acceso 
+•	estado de sesiones 
+•	actividad sospechosa 
+
+G. Vista de Soporte / Mantenimiento
+Objetivo: Gestionar el funcionamiento técnico y las incidencias del sistema.
+Elementos
+•	configuración de correo 
+•	revisión de integraciones 
+•	estado de procesos programados 
+•	monitoreo básico 
+•	incidencias del sistema 
+Bloques sugeridos
+1. Correo
+•	estado del servicio 
+•	pruebas de envío 
+•	configuración visible no sensible 
+2. Procesos programados
+•	cálculo de KPIs 
+•	evaluación de bonos 
+•	cálculo de planilla 
+•	estado: 
+o	ejecutado 
+o	pendiente 
+o	con error 
+3. Integraciones
+•	base de datos 
+•	correo 
+•	otros servicios futuros 
+4. Incidencias
+•	errores recientes 
+•	observaciones 
+•	estado de atención 
+Qué ingresa el Administrador aquí
+•	acciones de mantenimiento 
+•	revisión técnica 
+•	seguimiento de incidencias 
+Qué muestra
+•	estado del sistema 
+•	procesos automáticos 
+•	fallas o alertas 
+
+H. Vista de Perfil del Administrador
+Objetivo: Consultar su información y cambiar credenciales propias.
+Elementos
+•	nombre 
+•	correo 
+•	rol 
+•	usuario 
+•	opción de cambiar contraseña 
+•	configuración personal básica 
+Qué ingresa el Administrador aquí
+•	cambio de contraseña 
+•	datos personales permitidos 
+Qué muestra
+•	perfil de cuenta 
+
+Menú lateral del Administrador
+Déjalo así:
+•	Inicio 
+•	Usuarios 
+•	Roles y permisos 
+•	Parámetros 
+•	Auditoría y logs 
+•	Seguridad 
+•	Soporte 
+•	Perfil 
+
+
+
+
+
+
+Diferencia clara entre RRHH y Administrador
+Esto te puede servir bastante para exponer:
+RRHH
+Se encarga de:
+•	empleados 
+•	turnos 
+•	asistencia 
+•	permisos 
+•	vacaciones 
+•	KPIs 
+•	bonos 
+•	planilla 
+•	reportes 
+Administrador
+Se encarga de:
+•	usuarios 
+•	roles 
+•	permisos 
+•	parámetros globales 
+•	seguridad 
+•	logs 
+•	soporte 
+•	auditoría técnica 
+
+
+
+las vistas por rol
+•	Empleado 
+•	Supervisor 
+•	RRHH 
+•	Administrador 
+
+Cómo quedaría por rol
+Empleado
+Vista de Perfil
+•	nombre 
+•	correo 
+•	puesto 
+•	departamento 
+•	supervisor 
+•	cambiar contraseña 
+•	edición de datos permitidos 
+Supervisor
+Mi Perfil
+•	igual que empleado 
+•	nombre 
+•	correo 
+•	puesto 
+•	departamento 
+•	jefe superior si aplica 
+•	cambiar contraseña 
+•	edición de datos permitidos 
+RRHH
+También debe tener Vista de Perfil
+•	nombre 
+•	correo 
+•	puesto 
+•	departamento 
+•	rol 
+•	cambiar contraseña 
+•	edición de datos permitidos 
+Administrador
+Perfil del Administrador
+•	nombre 
+•	correo 
+•	usuario 
+•	rol 
+•	cambiar contraseña 
+•	configuración personal básica 
+
+Variaciones según rol
+Empleado
+Además de la información general, puede visualizar:
+•	supervisor inmediato 
+•	turno asignado 
+Supervisor
+Además de la información general, puede visualizar:
+•	jefe superior si aplica 
+•	área o equipo a cargo 
+RRHH
+Además de la información general, puede visualizar:
+•	área funcional 
+•	rol de RRHH 
+Administrador
+Además de la información general, puede visualizar:
+•	rol técnico 
+•	usuario del sistema 
+•	configuración personal básica 
+

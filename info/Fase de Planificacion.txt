@@ -1,0 +1,584 @@
+Sistema de Información
+A. Definición del problema o problemas que resuelve el Sistema de
+Información, u oportunidad de negocio.
+Problemas actuales:
+• La asistencia se registra en papel/Excel, lo que provoca errores,
+duplicidad de datos y retrabajo.
+• No existe un flujo formal de permisos/ausencias con aprobación, por lo
+que hay poca trazabilidad (quién autorizó, cuándo y por qué).
+• El reporte mensual para planilla (tardías, faltas, permisos
+aprobados/rechazados) se arma manualmente y puede salir
+inconsistente.
+• No se tiene una vista sobre el perfil del usuario.
+
+Oportunidad de negocio:
+• Reducir tiempo de RRHH en tareas repetitivas, mejorar exactitud de
+planilla y tener control interno.
+
+B. Fijar los objetivos del sistema.
+Objetivo general:
+Implementar un Sistema de Información que registre asistencia, gestione
+permisos con aprobación y genere reportes mensuales confiables para
+planilla.
+Objetivos específicos:
+• Gestionar permisos/ausencias con estados (pendiente, aprobado,
+rechazado) y comentarios.
+• Mantener trazabilidad de acciones (aprobaciones, cambios, ajustes).
+• Generar reportes mensuales exportables (Excel) para RRHH/planilla.
+• Controlar accesos con roles (Empleado, Supervisor, RRHH/Admin).
+• Visualizar perfiles de los empleados.
+C. Identificación de las restricciones del Sistema de Información.
+• Tamaño de operación:
+Se considera que la empresa cuenta con 30 empleados, por lo tanto, debe
+ser una solución “ligera” sin incurrir en costos altos.
+• Conectividad:
+El sistema debe funcionar en red local o internet estable; si se cae internet,
+se manejará la política “Solo en línea”, la cual indica que, si no hay
+conexión, no se permite marcar y podrá notificar a RRHH, o esperar a que
+haya conexión nuevamente.
+• Presupuesto y mantenimiento:
+Se priorizan herramientas open source y despliegue simple
+(Docker/servidor Linux).
+• Adopción del usuario:
+interfaz intuitiva con la finalidad de que el usuario pueda marcar y solicitar
+permiso en pocos clics.
+• Seguridad y privacidad:
+control de acceso por roles, contraseñas seguras, bitácora de acciones,
+respaldos.
+• Calidad de datos inicial:
+migración de Excel puede venir con inconsistencias, por lo que, se deberá
+realizar una depuración mínima.
+
+
+
+D. Definición de la plataforma de Sistema Operativo y su justificación.
+El sistema se desarrollará como una aplicación web multiplataforma, accesible
+desde los principales navegadores disponibles en Windows, Linux y entornos
+Apple (macOS/iOS), sin depender de un sistema operativo específico para los
+usuarios.
+Justificación:
+• Compatibilidad en distintos sistemas operativos: Navegador de soporte
+oficial: Google Chrome (última versión estable - 5); ejecución compatible
+también con Edge, Firefox y Safari en Windows/Linux/macOS.
+
+• Sin instalaciones complejas: Los usuarios no deben instalar un programa
+por sistema operativo; únicamente ingresan al sistema mediante una URL
+desde su navegador.
+
+• Menor mantenimiento y mayor adopción: Al centralizar el uso en el
+navegador, se reducen problemas de compatibilidad por versiones del SO y
+se facilita el soporte (RRHH/empleados solo necesitan un navegador
+actualizado).
+
+• Basado en estándares web: El sistema utilizará tecnologías estándar, lo
+que asegura interoperabilidad entre navegadores modernos y equipos
+heterogéneos.
+
+• Escalabilidad de acceso: Permite usar computadoras de escritorio o
+laptops (Windows/Linux/macOS) e incluso dispositivos móviles
+(iOS/Android) con diseño responsivo.
+
+E. Definición del Sistema Gestor de Base de Datos y su justificación.
+
+Gestor definido: Microsoft SQL Server
+Justificación:
+• Alineación con ecosistema Microsoft: si la organización ya utiliza
+herramientas Microsoft, SQL Server se puede integrar muy bien y facilita la
+administración y el análisis de datos.
+• Robusto para transacciones y auditoría: es adecuado para datos
+transaccionales como permisos, aprobaciones y bitácora, manteniendo
+consistencia e integridad y soportando consultas para reportes mensuales.
+• Seguridad y control: ofrece mecanismos sólidos de roles, permisos,
+cifrado, auditoría y respaldos, importantes para información de RRHH.
+• Herramientas de administración y mantenimiento maduras: facilita
+tareas como monitoreo, respaldos, restauración y optimización, reduciendo
+riesgos operativos.
+• Escalabilidad: aunque hoy son 30 empleados, SQL Server puede crecer sin
+cambiar de motor; solo se ajusta la edición y recursos cuando sea
+necesario.
+F. Definición de la Herramienta de Desarrollo y su justificación.
+Stack:
+• Frontend: Angular (SPA) para pantallas del sistema (login, marcaje,
+permisos, reportes).
+• Backend: NestJS (Node.js más TypeScript) para la API REST y lógica de
+negocio (autenticación, roles, reglas de tardías, aprobaciones,
+reportes).
+• Base de datos: Microsoft SQL Server para el almacenamiento
+transaccional (asistencia, permisos, auditoría).
+Justificación:
+• Estandarización en TypeScript: Angular (frontend) y NestJS (backend)
+comparten TypeScript, reduciendo curva de aprendizaje y facilitando
+mantenimiento del código.
+o Arquitectura modular y escalable: NestJS trabaja por módulos
+(usuarios, asistencia, permisos, reportes), lo cual se adapta bien al
+crecimiento por funcionalidades.
+o Compatibilidad multiplataforma: al ser una aplicación web, funciona
+desde navegadores en Windows, Linux y entorno Apple, sin
+instalaciones adicionales en los equipos del usuario.
+o Robustez en datos y reportes: SQL Server es un motor maduro para
+operaciones transaccionales y generación de reportes mensuales de
+planilla.
+o Desarrollo controlado y trazable: el ORM permite centralizar modelos,
+validaciones y migraciones, reduciendo errores y facilitando cambios
+en el esquema.
+
+G. Metodología de Desarrollo que se utilizará y su justificación.
+
+Metodología de desarrollo: Ágil (Scrum).
+Justificación:
+• Serán sprints de 2 semanas porque se estará llevando a cabo por
+tiempos libres. También se tomó en cuenta porque es un proyecto
+mediano y conviene tener avances visibles rápido, corregir temprano y
+no acumular cambios.
+• Requerimientos como reglas de tardías, tipos de permisos y formato de
+reportes suelen ajustarse con RRHH al ver prototipos.
+• Permite entregar valor rápido: primero marcaje, luego permisos, luego
+reportes, y al final mejoras.
+
+H. Herramienta o Mecanismo de Control del Proyecto
+Herramienta definida: Azure DevOps para el seguimiento y control del proyecto.
+
+Justificación:
+• Scrum requiere gestionar un Product Backlog y Sprint Backlog, así como
+dar visibilidad al avance; Azure DevOps permitirá organizar y priorizar
+historias de usuario, tareas y entregables por sprint.
+• Facilita el control del trabajo mediante tableros (Scrum/Kanban), lo que
+apoya la ejecución de los eventos de Scrum: Planning (selección de
+trabajo del sprint), Daily (seguimiento rápido del
+estado), Review (validación de incrementos) y Retrospective (mejora
+continua).
+• Permite mantener trazabilidad del progreso y evidencia del proyecto
+(estados, comentarios y registro de incidencias), alineándose con el
+enfoque iterativo e incremental de Scrum.
+Dirección de Proyecto
+A. BUSINESS CASE
+Nombre del Proyecto: Sistema de Control de Asistencia y Permisos
+• Problema/Oportunidad: Registro manual de asistencia en papel/Excel causa
+errores, duplicidad y retrabajo. No hay flujo formal de permisos ni trazabilidad.
+Reportes mensuales inconsistentes.
+• Objetivos: Automatizar registro de asistencia, gestionar permisos con
+aprobación, generar reportes confiables, reducir tiempo de RRHH.
+• Justificación: Reducción de errores en planilla, ahorro de tiempo
+administrativo, mayor control interno, trazabilidad de aprobaciones, mejora en
+la toma de decisiones.
+• Alcance: Gestionar permisos/ausencias con estados (pendiente, aprobado,
+rechazado) y comentarios, Mantener trazabilidad de acciones (aprobaciones,
+cambios, ajustes), Generar reportes mensuales exportables (Excel) para RRHH,
+Controlar accesos con roles (Empleado, Supervisor, RRHH/Admin), y Visualizar
+perfiles de los empleados.
+• Costo Estimado: Bajo (open source).
+• Beneficios Esperados: 30% reducción en tiempo de procesamiento de planilla,
+eliminación de errores manuales, trazabilidad completa, mejora en
+cumplimiento normativo.
+• Riesgos Principales: Resistencia al cambio, inconsistencia en migración de
+datos, caída de conectividad.
+• Criterios de Éxito: Sistema operativo en 4 meses, adopción del 90% de
+empleados, reportes mensuales generados sin errores.
+B. ENUNCIADO DEL PROYECTO
+Desarrollar e implementar un sistema web de control de asistencia y gestión de
+permisos para Servicios Integrales Maya, que reemplace el registro manual en
+papel/Excel, automatice el flujo de aprobaciones, genere reportes confiables y ofrezca
+trazabilidad completa de las acciones, mejorando la eficiencia de RRHH y la exactitud
+de los datos.
+C. ALCANCE DEL PROYECTO
+Incluye:
+• Módulo de solicitud y aprobación de permisos/ausencias con estados
+(pendiente, aprobado, rechazado) y comentarios.
+• Roles de usuario: Empleado, Supervisor, RRHH/Admin.
+• Generación de reportes mensuales exportables a Excel (tardías, faltas,
+permisos).
+• Bitácora de auditoría (trazabilidad de aprobaciones y cambios).
+• Perfiles de empleados con información básica.
+• Interfaz web responsiva, compatible con navegadores modernos.
+• Migración asistida de datos históricos desde Excel.
+Excluye:
+• Integración con sistema de planilla externo.
+• App móvil nativa (solo web responsiva).
+• Notificaciones por SMS.
+D. ESTRUCTURA DE DESCOMPOSICIÓN DEL PROYECTO (EDP)
+• 1. Gestión del Proyecto
+o 1.1 Inicio del proyecto
+▪ 1.1.1 Levantamiento inicial con RRHH (alcance y necesidades)
+▪ 1.1.2 Identificación de interesados y roles del proyecto
+▪ 1.1.3 Definición de alcance y entregables por fase
+• 1.2 Planificación y seguimiento (Scrum)
+▪ 1.2.1 Creación del Product Backlog (historias de usuario)
+▪ 1.2.2 Priorización con Product Owner (RRHH)
+▪ 1.2.3 Planificación de sprints (1–2 semanas)
+▪ 1.2.4 Control del avance en Azure DevOps (tablero y estados)
+▪ 1.2.5 Registro de cambios (Change Log) y control de alcance
+• 1.3 Comunicación
+o 1.3.1 Calendario de reuniones (Planning, Review, Retro)
+o 1.3.2 Minutas/actas de reunión (decisiones, acuerdos, pendientes)
+o 1.3.3 Gestión de consultas y aprobaciones con RRHH (canal oficial)
+• 1.4 Control de calidad y entrega
+o 1.4.1 Definición de criterios de aceptación por historia
+o 1.4.2 Definición de “Done” (DoD) por sprint
+o 1.4.3 Checklist de pruebas (login, marcaje, permisos, reportes)
+o 1.4.4 Preparación de demo por sprint (evidencia de avance)
+• 2. Desarrollo del Sistema
+o 2.1 Análisis y diseño funcional
+▪ 2.1.1 Reglas de negocio: tardías, faltas, permisos y aprobaciones
+▪ 2.1.2 Flujos del sistema: marcaje, permisos, aprobaciones, reportes
+▪ 2.1.3 Definición de roles del sistema (Empleado, Supervisor,
+RRHH/Admin)
+▪ 2.1.4 Definición de reportes: estructura, filtros y exportación
+• 2.2 Diseño de base de datos (SQL Server)
+o 2.2.1 Modelo entidad-relación (ERD)
+o 2.2.2 Diccionario de datos (campos, tipos, reglas)
+o 2.2.3 Diseño de tablas principales:
+o Usuarios / Roles / Permisos
+o Empleados / Turnos
+o Asistencia (entrada/salida, tardías)
+o Solicitudes de permisos (estado, fechas, motivo)
+o Bitácora/Auditoría
+o 2.2.4 Definición de llaves, índices y restricciones (integridad referencial)
+o 2.2.5 Scripts de creación (schema) y datos semilla para pruebas
+• 2.3 Backend API (Node.js)
+o 2.3.1 Estructura del proyecto backend (módulos)
+o 2.3.2 Configuración de conexión a SQL Server
+o 2.3.3 Endpoints de autenticación:
+▪ login / logout
+▪ recuperación/restablecimiento (si aplica)
+o 2.3.4 Endpoints de usuarios y roles (solo RRHH/Admin)
+o 2.3.5 Endpoints de empleados y turnos (CRUD)
+o 2.3.6 Endpoints de asistencia:
+▪ marcar entrada/salida
+▪ consultar historial
+▪ cálculo de tardías
+o 2.3.7 Endpoints de permisos:
+▪ crear solicitud
+▪ aprobar/rechazar
+▪ historial y trazabilidad
+o 2.3.8 Endpoints de reportes:
+▪ exportación (CSV/Excel/PDF según alcance)
+o 2.3.9 Manejo de errores, validaciones, logs y seguridad básica
+o 2.4 Frontend (Next.js)
+▪ 2.4.1 Diseño de UI (pantallas principales)
+▪ 2.4.2 Pantallas de autenticación:
+• Login
+▪ 2.4.3 Panel por rol:
+• Empleado (marcaje, permisos, historial)
+• Supervisor (pendientes, aprobaciones)
+• RRHH/Admin (empleados, reportes, administración)
+▪ 2.4.4 Módulo de asistencia:
+• botón entrada/salida
+• confirmaciones y estado del día
+▪ 2.4.5 Módulo de permisos:
+• formulario de solicitud
+• lista de solicitudes y estados
+• aprobación/rechazo con comentario
+▪ 2.4.6 Módulo de reportes:
+• filtros por mes
+• vista y exportación
+▪ 2.4.7 Manejo de sesiones, validaciones de formularios y mensajes de error
+o 2.5 Integración de autenticación y roles
+▪ 2.5.1 Definir roles y permisos por pantalla/acción
+▪ 2.5.2 Protecciones de rutas (frontend) y endpoints (backend)
+▪ 2.5.3 Control de acceso: qué puede ver/hacer cada rol
+▪ 2.5.4 Bitácora de acciones críticas (aprobaciones, cambios, ajustes)
+• 3. Implementación
+o 3.1 Migración y limpieza de datos
+▪ 3.1.1 Identificar fuentes (Excel/papel) y estructura de datos
+▪ 3.1.2 Normalización y depuración mínima (nombres, duplicados,
+formatos)
+▪ 3.1.3 Carga inicial a SQL Server (empleados, turnos, usuarios)
+▪ 3.1.4 Validación de consistencia con RRHH
+o 3.2 Despliegue
+▪ 3.2.1 Configuración de ambiente (DEV/QA/PROD si aplica)
+▪ 3.2.2 Instalación y configuración de SQL Server local
+▪ 3.2.3 Configuración de variables del sistema (credenciales, rutas,
+parámetros)
+▪ 3.2.4 Publicación del sistema (URL interna o acceso definido)
+▪ 3.2.5 Prueba de funcionamiento end-to-end (marcaje → permiso →
+reporte)
+o 3.3 Pruebas de usuario y capacitación
+▪ 3.3.1 Plan de pruebas de aceptación (UAT) con RRHH
+▪ 3.3.2 Ejecución de pruebas: casos principales por rol
+▪ 3.3.3 Capacitación breve por perfiles (Empleado, Supervisor, RRHH)
+▪ 3.3.4 Ajustes finales antes de “Go-Live”
+• 4. Soporte Post-Implementación
+o 4.1 Monitoreo inicial (primeras semanas)
+▪ 4.1.1 Seguimiento de incidencias y dudas de usuarios
+▪ 4.1.2 Control de estabilidad y desempeño básico
+▪ 4.1.3 Validación del primer reporte mensual real
+o 4.2 Ajustes por retroalimentación
+▪ 4.2.1 Registro de mejoras solicitadas (priorización)
+▪ 4.2.2 Correcciones menores y mejoras UX
+▪ 4.2.3 Ajustes de reglas (tardías/permisos/reportes) si aplica
+o 4.3 Documentación
+▪ 4.3.1 Manual de usuario (Empleado, Supervisor, RRHH)
+▪ 4.3.2 Manual técnico (instalación/configuración/BD)
+▪ 4.3.3 Evidencia final del proyecto (capturas, actas, resultados)
+E. CULTURAS Y ESTILOS DE ORGANIZACIÓN
+• Cultura orientada a procesos: RRHH busca estandarizar y formalizar flujos.
+• Enfoque colaborativo: Supervisores y RRHH trabajan juntos en aprobaciones.
+• Resistencia al cambio moderada: Empleados acostumbrados a métodos
+manuales.
+• Valoración de la transparencia: Trazabilidad y control interno son prioritarios.
+F. COMUNICACIONES EN LA ORGANIZACIÓN
+1. Estructura de comunicación (quién con quién y para qué)
+• Product Owner (RRHH): Karla Sofía Hernández
+o Definirá prioridades del Product Backlog, valida entregables y aprueba
+cambios relevantes.
+• Equipo Scrum (Scrum Masters más Desarrollo): Edgar García y José
+Cuevas
+o Planifican el sprint, dan seguimiento diario, registran avances/bloqueos
+y presentan el incremento.
+• Usuarios clave (Supervisores y Empleados):
+o Participan en validaciones funcionales (UAT) y retroalimentación sobre
+usabilidad y flujo real.
+• Dirección:
+o Recibe resumen ejecutivo de avances y fecha de salida a producción.
+2. Comunicación formal por eventos Scrum (ritmo del proyecto)
+a. Sprint Planning (cada viernes, 30–60 min) – con RRHH
+o Canal: reunión presencial o virtual más registro en Azure DevOps.
+o Contenido: selección de historias del sprint, criterios de aceptación,
+prioridades, definición de “Done”.
+o Evidencia: sprint creado y tareas asignadas en Azure DevOps.
+b. Daily Scrum (diario, 5–10 min) – equipo técnico
+o Canal: breve reunión o check-in (presencial o chat
+interno) más actualización de tareas en Azure DevOps.
+o Contenido: qué se hizo ayer, qué se hará hoy, bloqueos.
+o Evidencia: tareas movidas de estado y comentarios en
+cada work item.
+c. Sprint Review (fin de sprint, 30 min) – con RRHH y, si aplica, supervisores
+o Canal: demo presencial/virtual.
+o Contenido: demostración del incremento (pantallas y flujos), validación
+contra criterios de aceptación.
+o Evidencia: historias aceptadas o devueltas con observaciones en Azure
+DevOps.
+d. Retrospective (fin de sprint, 15–20 min) – equipo técnico
+o Canal: reunión interna.
+o Contenido: qué funcionó, qué falló, acciones de mejora para el siguiente
+sprint.
+o Evidencia: acciones de mejora registradas como tareas del siguiente
+sprint.
+3. Canales oficiales y uso (para evitar desorden)
+• Correo electrónico (formal):
+o Aprobaciones clave, acuerdos finales, comunicación con Dirección,
+convocatoria a reuniones.
+o Uso: confirmaciones y decisiones que deban quedar “oficiales”.
+• Reuniones presenciales/virtuales:
+o Planning, Review y validaciones de reglas (tardías, permisos, reportes).
+• Azure DevOps (canal principal del equipo técnico):
+o Backlog, tareas del sprint, estados, incidencias (bugs), criterios de
+aceptación y comentarios.
+o Uso: toda solicitud técnica o cambio debe quedar
+como work item (trazabilidad).
+4. Frecuencia y entregables de comunicación
+• Reporte de avance semanal (1 vez por semana):
+Resumen del sprint en curso: historias completadas, pendientes, bloqueos,
+próximos pasos (registrado en Azure DevOps y enviado a RRHH por correo si se
+requiere).
+• Comunicación con Supervisores/Empleados (según fase):
+o Durante piloto/QA: sesiones cortas para probar flujos y recopilar feedback.
+o Antes del despliegue: comunicación de fecha de arranque, instrucciones
+de uso y soporte.
+5. Matriz rápida de comunicación (resumen)
+• RRHH (PO): Planning semanal más Review fin de sprint más reportes
+semanales.
+• Equipo técnico: Daily más Retro fin de sprint más actualización continua
+en Azure DevOps.
+• Supervisores/Empleados: validación en piloto/QA y capacitación previa al
+despliegue.
+• Dirección: resumen ejecutivo cuando se requiera (hitos: piloto aprobado,
+salida a producción).
+G. ESTRUCTURAS DE LA ORGANIZACIÓN
+• Tipo: Funcional con elementos matriciales.
+o La empresa opera principalmente por áreas funcionales (por ejemplo:
+RRHH, Operaciones/Supervisión, Dirección).
+o El proyecto se coordina desde RRHH, pero requiere colaboración temporal
+de otras áreas (supervisores y dirección) y de un equipo externo de
+desarrollo.
+o Se considera matriz ligera porque:
+▪ los miembros internos (RRHH/supervisores) no dejan sus tareas
+normales,
+▪ solo aportan tiempo para validaciones, aprobación y pruebas,
+▪ el equipo de desarrollo ejecuta la parte técnica.
+• Estructura de participación (roles y responsabilidades)
+o Dirección (nivel estratégico)
+▪ Autoriza presupuesto y decisiones de alto impacto (por ejemplo: fecha
+de arranque oficial, cambios mayores).
+▪ Aprueba políticas generales (si aplica): uso del sistema como fuente
+oficial para planilla.
+o RRHH – Product Owner (Karla Sofía Hernández)
+▪ Lidera el proyecto desde el punto de vista del negocio.
+▪ Define y prioriza el Product Backlog.
+▪ Aprueba requisitos, reglas de negocio (tardías, permisos, reportes) y
+acepta entregables por sprint (Sprint Review).
+o Supervisores (usuarios clave / aprobadores)
+▪ Definen necesidades operativas del flujo de permisos.
+▪ Validan pantallas y procesos en piloto/QA.
+▪ Son responsables de aprobación/rechazo de permisos según la política
+definida.
+o Equipo de desarrollo externo (Edgar García y José Cuevas)
+▪ Construye la solución técnica (frontend/backend/BD).
+▪ Propone soluciones, estima esfuerzo y ejecuta sprints bajo Scrum.
+▪ Registra avances, incidencias y evidencias en Azure DevOps
+• Toma de decisiones (quién decide qué)
+o Karla Sofía (RRHH) aprueba:
+▪ Requisitos funcionales y no funcionales.
+▪ Reglas de negocio: tolerancia de tardías, tipos de permisos,
+validaciones.
+▪ Formato y contenido del reporte mensual para planilla.
+▪ Aceptación del incremento en cada sprint (Done/No Done).
+• Dirección aprueba:
+o Presupuesto y recursos necesarios (si aplica).
+o Cambios de alcance mayores (features nuevas no planificadas).
+o Go-Live (fecha y estrategia de implementación).
+• Equipo de desarrollo decide/proporciona:
+o Diseño técnico, arquitectura, estructura del código y soluciones de
+implementación.
+o Estimaciones y planificación técnica del sprint (en coordinación con
+RRHH).
+• Flujo de coordinación (cómo se conecta con Scrum)
+o RRHH participa como Product Owner en Planning y Review.
+o Supervisores participan como stakeholders en validaciones
+(piloto/QA).
+o Dirección participa por hitos (aprobación de presupuesto y salida a
+producción).
+o El desarrollo mantiene trazabilidad y seguimiento en Azure DevOps.
+H. ACTIVOS DE LOS PROCESOS DE LA ORGANIZACIÓN
+1. Procesos existentes (AS-IS)
+• Registro de ausencias
+o Marcaje actual en hojas de papel o listas impresas (firma/hora) y/o
+captura posterior en Excel.
+o Consolidación manual al cierre de semana o mes para identificar:
+▪ faltas
+• Gestión de permisos y ausencias
+o Solicitud por mensaje / verbal / papel, sin un flujo formal.
+o Aprobación por supervisor de forma verbal o por chat, sin evidencia
+consistente.
+o RRHH registra de forma manual el resultado (a veces no queda
+registro).
+• Proceso de control de ausencias
+o Reporte mensual armado en Excel con revisión manual y correcciones.
+o Dependencia de la “memoria” del supervisor o del empleado si faltan
+evidencias.
+2. Políticas y reglas internas vigentes (TO-BE / a formalizar)
+• Política de solicitudes
+o Solicitud solo en línea: el registro se realiza únicamente cuando el
+sistema tiene conexión.
+o En caso de caída, se aplica contingencia (por ejemplo: ajuste posterior
+por RRHH con motivo y trazabilidad).
+• Reglas de asistencia
+o Horario oficial por puesto/turno (entrada/salida).
+o Tolerancia para tardías (ej. 5–10 min, según defina RRHH).
+o Criterios para falta: ausencia de marcaje sin permiso aprobado.
+• Controles de acceso
+o Acceso por roles (Empleado, Supervisor, RRHH/Admin).
+o Restricción de visibilidad: un empleado solo ve sus datos; supervisor ve
+su equipo; RRHH ve global.
+3. Base de conocimiento y documentación existente
+• Datos históricos
+o Archivos Excel con asistencia histórica por empleado (fechas, notas,
+tardías registradas manualmente).
+o Registros en papel con firmas o anotaciones.
+• Formatos / plantillas
+o Formato físico de “Solicitud de permiso” (fecha, motivo, firma
+empleado, firma supervisor).
+o Formato de planilla o estructura usada por RRHH para consolidar
+tardías/faltas.
+• Glosario interno
+o Definiciones locales usadas por RRHH:
+▪ “tardía”, “falta”, “permiso”, “ausencia justificada”
+▪ códigos o abreviaturas en Excel/papel
+4. Herramientas actuales de apoyo
+• Excel como herramienta principal de consolidación de planilla.
+• Correo/chat como canal informal para permisos.
+• Archivos compartidos (carpetas) para almacenar documentos físicos
+escaneados.
+5. problemas recurrentes
+• Inconsistencias por doble registro (papel → Excel) y errores de digitación.
+• Retrabajo mensual para armar reportes de planilla.
+• Falta de trazabilidad en permisos (no queda evidencia de
+aprobación/rechazo).
+• Dependencia de personas: si alguien falta o no se recuerda, se pierde
+información.
+• Datos incompletos o duplicados en históricos de Excel.
+6. Cómo se usarán estos activos en el proyecto (muy importante)
+• Los libros de Excel y formatos existentes servirán para:
+o definir reglas del sistema (campos necesarios, estructura del reporte
+mensual),
+o diseñar la base de datos,
+o preparar la migración de datos inicial,
+o validar que el reporte del sistema coincida con lo que RRHH necesita.
+I. FACTORES AMBIENTALES DE LA EMPRESA
+• Tamaño: 30 empleados.
+• Sector: Servicios generales / RRHH básico.
+• Infraestructura: Computadoras con Windows, acceso a internet, sin servidor
+dedicado.
+• Restricciones: Presupuesto limitado, preferencia por open source,
+conectividad estable necesaria.
+• Normativas: Cumplimiento de leyes laborales locales en registro de horas y
+permisos.
+J. INTERESADOS Y GOBIERNO DEL PROYECTO
+• Karla Sofía Hernández con rol Sponsor / RRHH, con influencia alta y
+expectativas de un Sistema confiable, reducción de carga laboral, reportes
+exactos.
+• Dirección / Patrocinador: con influencia alta y expectativas de un Control
+interno, retorno de inversión, cumplimiento legal.
+• Supervisores: usuarios clave con rol Media, con influencia media y
+expectativas de una Aprobación rápida de permisos, vista de equipo, facilidad
+de uso.
+• Empleados / Usuarios finales: con influencia baja y expectativas de
+una Interfaz simple, marcaje rápido, claridad en permisos.
+• Equipo de desarrollo: con influencia alta y expectativas de Claridad en
+requisitos, acceso a información, retroalimentación.
+Gobierno del Proyecto:
+• Comité de proyecto: Karla Sofía (RRHH), representante de dirección, líder
+técnico.
+• Decisiones técnicas: Equipo de desarrollo.
+• Aprobación de cambios: Sponsor (Karla Sofía) y comité.
+K. ACTA DE CONSTITUCIÓN DEL PROYECTO
+Nombre del Proyecto: Sistema de Control de Asistencia y Permisos (SCAP)
+Sponsor: Karla Sofía Hernández – Encargada de RRHH
+Gerente del Proyecto: Por asignar
+Fecha de Inicio: 29/1/2026
+Fecha de Fin Estimada: 4 meses
+Propósito / Justificación del proyecto
+Actualmente la empresa registra ausencias en formatos manuales y Excel, lo que
+genera errores, retrabajo y falta de trazabilidad en permisos. El proyecto SCAP busca
+digitalizar el control de asistencia y permisos para mejorar la exactitud de la
+información, fortalecer el control interno y optimizar la generación del reporte
+mensual para planilla.
+Objetivos:
+1. Automatizar el registro de asistencia de aproximadamente 30
+empleados (entrada/salida e historial).
+2. Implementar un flujo digital de solicitud y aprobación/rechazo de
+permisos con trazabilidad (quién aprobó, cuándo y observación).
+3. Generar reportes mensuales automáticos para planilla (tardías, faltas y
+permisos aprobados/rechazados).
+4. Reducir en al menos 30% el tiempo dedicado a tareas manuales de RRHH
+relacionadas con consolidación de asistencia y permisos.
+Alcance:
+• Registro de usuarios y roles: Empleado, Supervisor, RRHH/Admin.
+• Gestión de permisos/ausencias con estados: pendiente, aprobado, rechazado,
+incluyendo comentario.
+• Bitácora básica de acciones (aprobaciones, ajustes autorizados).
+• Reporte mensual para planilla y exportación (según necesidad: Excel).
+• Capacitación básica para RRHH, supervisores y empleados
+Fuera de alcance (excluye)
+• Cálculo de nómina/planilla completa (solo se entrega reporte para planilla).
+• Integración con sistemas externos (ERP, biométricos, reloj físico) (a menos que
+se solicite formalmente como cambio de alcance).
+• Aplicación móvil nativa (Android/iOS) (se cubre por web responsive si aplica).
+Criterios de Aceptación:
+• Sistema operativo en ambiente de producción y estable (sin fallas críticas).
+• Al menos 90% de empleados registrando asistencia en el sistema durante el
+periodo de adopción.
+• Flujo de permisos funcionando con trazabilidad completa
+(aprobación/rechazo con responsable y fecha).
+Riesgos Principales:
+• Migración de datos con errores: depuración previa, carga controlada,
+validación por RRHH.
+• Resistencia de usuarios: capacitación breve, comunicación clara y piloto
+inicial.
+• Caídas de conectividad: política definida + procedimiento de contingencia
+documentado
+Presupuesto Aprobado: No Aplica
+Firmas de Autorización:
+• Karla Sofía Hernández:_________________
+• Representante de Dirección:_____________
+• Gerente del Proyecto:_________________

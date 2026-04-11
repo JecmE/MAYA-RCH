@@ -1,0 +1,734 @@
+a) Representaciones del software en función de los datos
+El sistema MAYA CRH se fundamenta en un conjunto de datos estructurados
+que permiten controlar la operación de RRHH: empleados, usuarios, roles,
+asistencia, permisos/vacaciones, proyectos, timesheet, KPIs, bonos,
+planilla y auditoría. La entidad central es EMPLEADO, que almacena datos de
+identificación y relación jerárquica mediante supervisor_id, permitiendo
+representar equipos (supervisor a colaboradores). Relacionado en una relación
+1:1 se encuentra USUARIO, que gestiona credenciales y estado de acceso
+(activo/bloqueado), habilitando autenticación y seguridad.
+El control de permisos de acceso se maneja mediante un modelo RBAC (RoleBased Access Control) usando ROL y la tabla puente USUARIO_ROL, lo cual
+permite asignar perfiles como Empleado, Supervisor y RRHH/Administrador .
+Este diseño soporta el requisito de control de visibilidad: empleado ve su
+información, supervisor ve su equipo y RRHH/Administrador ve todo.
+Para el módulo de asistencia, el sistema utiliza TURNO como catálogo de
+horarios y tolerancia, y EMPLEADO_TURNO para asignar turnos por período,
+evitando solapamientos y permitiendo que un empleado cambie de turno en el
+tiempo. El registro diario se guarda en REGISTRO_ASISTENCIA, con una
+restricción UNIQUE (empleado_id, fecha) para evitar duplicidad de registros por
+día. Esta tabla conserva marcaje real (entrada/salida), minutos de tardía, horas
+trabajadas, estado de jornada y observaciones. Cuando se requiere corrección
+manual, se utiliza AJUSTE_ASISTENCIA, que registra el campo modificado,
+evalores antes/después, motivo, usuario que realizó el ajuste y fecha/hora,
+asegurando trazabilidad.
+En el módulo de permisos y vacaciones, TIPO_PERMISO administra un catálogo
+configurable, incluyendo banderas como requiere_documento y
+descuenta_vacaciones. Las solicitudes se registran en SOLICITUD_PERMISO,
+soportando permisos por días u horas. El flujo de aprobación se almacena en
+DECISION_PERMISO con comentario obligatorio y sello de tiempo, y los
+justificantes se almacenan en ADJUNTO_SOLICITUD como metadatos
+(nombre, tipo, ruta/URL). Para vacaciones, el sistema mantiene
+VACACION_SALDO como resumen de días disponibles/usados y
+VACACION_MOVIMIENTO como kardex (acumulación/consumo/ajuste),
+permitiendo auditoría y reconstrucción de saldos históricos.
+Para proyectos y registro de horas, PROYECTO funciona como catálogo de
+proyectos activos/inactivos. Opcionalmente, EMPLEADO_PROYECTO permite
+controlar asignaciones por período. El timesheet se almacena en
+REGISTRO_TIEMPO, que contiene fecha, horas y descripción de actividad, con
+estados (pendiente/aprobado/rechazado). La trazabilidad de aprobaciones se
+registra en APROBACION_TIEMPO con comentario obligatorio, usuario y
+fecha/hora.
+El módulo de métricas se soporta con KPI_MENSUAL, que consolida datos por
+empleado y mes (días esperados/trabajados, tardías, faltas, horas
+esperadas/trabajadas, cumplimiento y clasificación). Esto permite dashboards
+personales, por equipo y globales. Adicionalmente, la elegibilidad de incentivos
+se gestiona con REGLA_BONO (criterios y vigencia) y BONO_RESULTADO
+(resultado mensual elegible/no elegible con motivo).
+Para administración del comportamiento del sistema, PARAMETRO_SISTEMA
+guarda valores clave (políticas de validación de horas, límites por día/semana,
+días laborables y parámetros de vacaciones y clasificación KPI). La
+recuperación de contraseña se soporta con RESET_PASSWORD_TOKEN con
+seguridad basada en hash y expiración.
+Finalmente, la trazabilidad transversal del sistema se concentra en
+AUDIT_LOG, donde se registran acciones críticas (marcajes, ajustes,
+aprobaciones, cambios de parámetros, cálculos de KPIs/bonos/planilla y
+exportaciones), y se conserva como solo lectura.
+Planilla: para soportar deducciones, bonificaciones, horas extra e ISR, el
+sistema incorpora PERIODO_PLANILLA (períodos de cálculo),
+PLANILLA_EMPLEADO (cabecera por empleado y período),
+MOVIMIENTO_PLANILLA (detalle de conceptos aplicados) y
+CONCEPTO_PLANILLA (catálogo de conceptos de nómina). El impuesto se
+calcula consultando TABLA_ISR (rangos por año) como tabla de referencia.
+b) Representaciones en función de la arquitectura
+La arquitectura del sistema MAYA CRH se define como Cliente/Servidor y se
+implementa en forma de aplicación web. Se organiza por capas para asegurar
+escalabilidad, mantenibilidad y control centralizado de reglas.
+1. Capa de presentación (Front-End)
+Implementada con Angular, expone interfaces separadas por perfil:
+• Portal del Empleado: marcaje, historial, solicitudes, timesheet, KPIs,
+boleta de planilla.
+• Panel del Supervisor: historial del equipo, bandeja de aprobaciones,
+KPIs del equipo, revisión de horas.
+• Panel RRHH/Administrador: administración de
+empleados/usuarios/roles, turnos, parámetros, reportes, auditoría y
+cálculo de planilla.
+Angular consume endpoints REST y aplica validaciones de formulario,
+componentes reutilizables, guards por rol e interceptores para token.
+2. Capa de aplicación (Back-End)
+Implementada como API REST con Node.js + ExpressJS, centraliza:
+• Autenticación (login/logout/recuperación) y autorización por roles.
+• Reglas de negocio: cálculo de tardías, control de marcajes
+duplicados, flujos de permisos, validación de horas timesheet,
+cálculo de KPIs mensuales, evaluación de bonos y cálculo de
+planilla/ISR.
+• Procesos transaccionales: marcajes, aprobación/rechazo, ajuste
+manual y cálculo de planilla.
+Se recomienda una organización por capas internas en el back-end:
+• Dominio: entidades y contratos.
+• Aplicación: servicios/casos de uso.
+• Infraestructura: repositorios y acceso SQL Server.
+• Presentación: controladores y rutas.
+3. Capa de datos e infraestructura
+• SQL Server: repositorio principal de datos relacionales, integridad
+referencial y soporte de reportes.
+• Servicio de correo (Gmail): notificaciones transaccionales
+(pendiente/aprobado/rechazado).
+• Gestión de secretos: variables de entorno en local; en nube, Key
+Vault.
+• Operación: logs del servidor, auditoría funcional y monitoreo
+(futuro).
+Procesos programados (recomendado)
+Para asegurar consistencia, se contemplan tareas programadas
+(cron/worker):
+• Cálculo mensual de KPI_MENSUAL.
+• Evaluación mensual de BONO_RESULTADO.
+• Cálculo por período de PLANILLA_EMPLEADO y
+MOVIMIENTO_PLANILLA.
+Estas tareas registran auditoría.
+c) Representaciones en función de la interfaz
+El sistema se estructura en módulos de interfaz que responden a los
+requerimientos y roles.
+Módulo 1: Autenticación y perfil
+• Pantalla de login.
+• Recuperación de contraseña (solicitud y restablecimiento).
+• Perfil del usuario (actualización de datos básicos permitidos).
+• Gestión de usuarios/empleados (RRHH/Administrador ): alta,
+modificación, desactivación, consulta.
+Módulo 2: Asistencia
+• Marcaje de entrada/salida (1 clic).
+• Estado del día (pendiente/incompleta/completa).
+• Historial personal filtrable por fecha.
+• Historial del equipo (Supervisor).
+• Ajustes manuales (RRHH/Administrador ) con motivo y trazabilidad.
+• Gestión de turnos (RRHH/Administrador ): catálogo y asignaciones por
+período.
+Módulo 3: Permisos, ausencias y vacaciones
+• Crear solicitud (por días o por horas) con motivo.
+• Adjuntar justificantes (si el tipo lo requiere).
+• Mis solicitudes (estado + detalle de decisiones).
+• Bandeja de pendientes (Supervisor/RRHH).
+• Aprobar/Rechazar con comentario obligatorio.
+• Consulta de saldo de vacaciones y movimientos.
+Módulo 4: Proyectos y timesheet
+• Catálogo de proyectos (RRHH/Administrador ).
+• Registro de horas por proyecto/fecha/actividad.
+• Validación de horas (según límite o marcaje).
+• Consulta de registros propios filtrable por fecha/proyecto.
+• Registros del equipo (Supervisor).
+• Aprobación/Rechazo de horas (si está habilitado).
+Módulo 5: KPIs, dashboards, métricas
+• Dashboard personal: cumplimiento, tardías, horas vs esperadas.
+• Dashboard de equipo (Supervisor): KPIs agregados del equipo.
+• Dashboard global (RRHH/Administrador): KPIs de toda la organización.
+• Clasificación automática (Excelente/Bueno/Observación/Riesgo)
+basada en parámetros.
+Módulo 6: validación de bonos e incentivos
+• Reglas de bono (RRHH/Administrador) y reporte de elegibilidad mensual.
+Módulo 7: Reportes exportables
+• Reporte mensual de asistencia y permisos.
+• Reporte de horas por proyecto por período.
+• Reporte de KPIs mensuales por empleado/equipo.
+• Exportación a Excel y PDF.
+Módulo 8: Administración y configuración
+• Parámetros del sistema (políticas de horas, vacaciones, KPIs, bonos).
+• Asignación de supervisores.
+• Configuración de turnos, tolerancias y políticas.
+Módulo 9: Auditoría / bitácora
+• Consulta de bitácora con filtros por fecha, usuario, módulo y acción.
+• Vista de detalle por evento (qué cambió y quién lo hizo).
+Módulo 10: Planilla
+• Gestión de períodos (abrir/cerrar).
+• Cálculo de planilla por período (RRHH/Administrador ).
+• Boleta de pago por empleado (consulta por empleado).
+• Catálogo de conceptos (bonificación/deducción, modo cálculo).
+• Reporte mensual exportable.
+d) Representaciones en función de los procedimientos
+A continuación, se describen procedimientos clave (paso a paso) que reflejan
+los flujos de negocio principales del sistema.
+Procedimiento 1: Inicio de sesión y control por rol
+1. El usuario ingresa username y contraseña.
+2. El servidor valida credenciales y estado (activo/bloqueado).
+3. Si es válido, genera token de sesión y registra último_login.
+4. El front-end redirige según rol (Empleado/Supervisor/RRHH).
+5. Cada endpoint valida token y permisos (RBAC) antes de ejecutar
+acciones.
+Procedimiento 2: Marcaje de entrada/salida (Asistencia)
+1. El empleado inicia sesión y abre la pantalla de Asistencia.
+2. Presiona “Marcar entrada” o “Marcar salida”.
+3. El sistema valida que no exista marcaje duplicado para el día.
+4. Obtiene turno vigente y tolerancia.
+5. Registra la hora real (entrada o salida).
+6. Calcula minutos de tardía y horas trabajadas.
+7. Actualiza estado_jornada y muestra el resultado al empleado.
+8. Registra auditoría del marcaje.
+Procedimiento 3: Ajuste manual de asistencia (RRHH/Administrador )
+1. RRHH busca el registro del empleado por fecha.
+2. Selecciona el campo a corregir (entrada, salida, observación).
+3. El sistema valida coherencia (salida no menor que entrada, etc.).
+4. Actualiza el registro en REGISTRO_ASISTENCIA.
+5. Inserta AJUSTE_ASISTENCIA con valores antes/después y motivo.
+6. Inserta evento en AUDIT_LOG.
+Procedimiento 4: Solicitud de permiso/vacaciones con adjunto
+1. El empleado crea solicitud, define fechas/horas, motivo y tipo.
+2. El sistema valida formato y reglas del tipo (requiere documento).
+3. Si es vacaciones, valida saldo y políticas (meses mínimos, anticipación).
+4. Guarda solicitud en estado “pendiente”.
+5. Guarda adjuntos y registra auditoría.
+6. Envía correo al supervisor notificando solicitud pendiente.
+Procedimiento 5: Aprobación/Rechazo de permiso
+1. Supervisor ingresa a “Pendientes” y selecciona solicitud.
+2. El sistema valida que el solicitante pertenezca a su equipo (o rol RRHH).
+3. Supervisor aprueba/rechaza con comentario obligatorio.
+4. El sistema guarda DECISION_PERMISO y actualiza estado.
+5. Si descuenta vacaciones y fue aprobado: genera
+VACACION_MOVIMIENTO (consumo) y actualiza saldo.
+6. Registra auditoría y notifica al empleado por correo.
+Procedimiento 6: Registro de horas por proyecto (Timesheet)
+1. El empleado selecciona proyecto, fecha y actividad y registra horas.
+2. El sistema valida proyecto activo y asignación.
+3. Valida horas contra límite diario o contra horas trabajadas según
+marcaje.
+4. Guarda registro en estado pendiente y registra auditoría.
+Procedimiento 7: Aprobación/Rechazo de horas (Supervisor)
+1. Supervisor revisa registros del equipo.
+2. Selecciona registro y aprueba/rechaza con comentario.
+3. El sistema guarda APROBACION_TIEMPO y actualiza
+estado/horas_validadas.
+4. Registra auditoría.
+Procedimiento 8: Cálculo mensual de KPIs
+1. Al cierre de mes (job o acción RRHH), el sistema consolida
+asistencia/permisos/horas.
+2. Calcula métricas y guarda KPI_MENSUAL por empleado.
+3. Aplica reglas de clasificación y guarda clasificación.
+4. Registra auditoría de cálculo.
+Procedimiento 9: evaluación de bonos
+1. Evalúa REGLA_BONO vigente y genera BONO_RESULTADO.
+2. Registra auditoría de cálculo.
+Procedimiento 10: Cálculo de Planilla por período (incluye ISR)
+1. RRHH crea/abre PERIODO_PLANILLA con fechas.
+2. El sistema consolida insumos: asistencia, permisos aprobados, bonos,
+horas validadas.
+3. Calcula horas pagables, monto bruto y aplica conceptos automáticos.
+4. Calcula ISR consultando TABLA_ISR según año y base imponible.
+5. Registra MOVIMIENTO_PLANILLA (bonos, deducciones, ISR).
+6. Genera PLANILLA_EMPLEADO con neto, totales y tarifa usada.
+7. Permite exportar reporte mensual y habilita boleta para empleados.
+8. Registra auditoría del cálculo y cierre de período.
+Modelo de Usuario
+1) Empleado (usuario final)
+Quién es: Personal operativo y administrativo (30). Usa el sistema desde PC o
+celular, con tiempo limitado.
+Objetivo principal: marcar asistencia y mantener control de su información sin
+fricción.
+Qué hace en el sistema:
+• Asistencia: marcar entrada/salida; ver estado del día
+(pendiente/incompleta/completa).
+• Historial personal: consultar tardías, horas trabajadas y observaciones
+por fecha.
+• Permisos/Vacaciones: crear solicitud por horas o días; adjuntar
+justificante; ver estados y comentarios de aprobación.
+• Timesheet: registrar horas por proyecto/actividad; consultar registros.
+• KPIs personales: ver sus métricas mensuales (cumplimiento, tardías,
+horas vs esperadas) y clasificación.
+• Planilla (si se habilita boleta): consultar su boleta mensual (resumen +
+detalle de bonificaciones/deducciones).
+Necesidades/Expectativas:
+• Flujo muy corto (marcar en 1–2 clics).
+• Feedback inmediato (confirmación + hora registrada).
+• Transparencia: ver su historial para confiar en el sistema.
+• Mínima carga administrativa (formularios rápidos, campos claros).
+Riesgos y puntos de dolor:
+• Temor a que el sistema “lo marque tarde por error”.
+• Frustración si el marcaje falla por red/dispositivo.
+• Confusión con estados (pendiente vs incompleta).
+2) Supervisor / Jefe inmediato (aprobador y seguimiento)
+Quién es: Responsable de un equipo (jerarquía por supervisor_id).
+Objetivo principal: aprobar solicitudes y dar seguimiento sin perder tiempo.
+Qué hace en el sistema:
+• Bandeja de pendientes: revisar solicitudes del equipo
+(permisos/vacaciones).
+• Decisiones: aprobar/rechazar con comentario obligatorio (trazabilidad).
+• Asistencia del equipo: consultar tardías/faltas y estado del día.
+• Timesheet del equipo: revisar/aprobar horas registradas (si está
+habilitado).
+• KPIs del equipo: ver métricas agregadas para detectar riesgos o baja
+asistencia.
+Necesidades/Expectativas:
+• Vista de pendientes tipo “inbox” con filtros por fecha/empleado.
+• Decisiones rápidas (aprobar/rechazar en 2 pasos).
+• Evidencia clara (comentario guardado + registro histórico).
+• Control sin ser “técnico” (interfaz guiada).
+Riesgos y puntos de dolor:
+• Sobrecarga si hay muchas solicitudes y no hay filtros.
+• Falta de claridad si no se ve el contexto (saldo, fechas, motivo, adjuntos).
+• Conflictos si no queda registro (por eso trazabilidad es clave).
+3) RRHH (operador principal del sistema)
+Quién es: Encargada (Karla Sofía Hernández) y personal autorizado.
+Objetivo principal: consolidar información confiable para control interno y
+planilla, con mínima manipulación manual.
+Qué hace en el sistema:
+• Gestión de empleados: altas/bajas, cambios de puesto/departamento,
+asignación de supervisor.
+• Turnos: crear/editar turnos, asignar turnos por período, tolerancia.
+• Permisos/Vacaciones: consultar, intervenir en aprobaciones según
+política; asegurar documentación.
+• Ajustes de asistencia: corregir registros con motivo (solo casos
+excepcionales).
+• Reportes: generar reporte mensual (tardías, faltas, permisos)
+exportable.
+• KPIs/Bonos: revisar KPIs mensuales y elegibilidad de bonos.
+• Planilla: ejecutar cálculo por período, revisar movimientos, exportar y
+publicar boletas.
+Necesidades/Expectativas:
+• Datos consistentes (integridad) y auditoría fuerte.
+• Exportación Excel/PDF sin ajustes manuales.
+• Parámetros claros (días laborables, límites de horas, políticas de
+vacaciones).
+• Trazabilidad completa para resolver reclamos.
+Riesgos y puntos de dolor:
+• Desconfianza si el sistema no explica “por qué” una tardía o descuento.
+• Dependencia de Excel si el reporte no sale listo.
+• Problemas operativos si no hay control de períodos de planilla
+(abierto/cerrado).
+4) Administrador del sistema (TI / soporte)
+Quién es: responsable técnico del sistema (configuración, soporte, seguridad).
+Objetivo principal: garantizar disponibilidad, seguridad y control de cambios.
+Qué hace en el sistema:
+• Gestión de usuarios/roles/permisos.
+• Parámetros globales del sistema y políticas (vacaciones, límites,
+validación de horas).
+• Gestión de auditoría y revisión de eventos críticos.
+• Mantenimiento: respaldos, logs, monitoreo, configuración de correo.
+• Soporte: desbloqueos, restablecimiento de contraseña, corrección de
+configuración.
+Necesidades/Expectativas:
+• Control total y trazabilidad.
+• Configuración segura (secrets en variables/KeyVault).
+• Herramientas para diagnóstico (logs, auditoría, métricas).
+Riesgos y puntos de dolor:
+• Falta de visibilidad de errores (si no hay logs/alertas).
+• Problemas de seguridad (intentos de login, tokens, credenciales).
+Percepción del Usuario
+1) Empleado (usuario final)
+• Imagen mental esperada
+o “Es como un reloj de marcaje digital, pero más completo.”
+o “Puedo entrar rápido, marcar y seguir trabajando.”
+o “Si pido un permiso, puedo ver en qué estado va.”
+o “Puedo revisar mis horas y mi boleta sin pedir ayuda.”
+• Lo que más valora
+o rapidez
+o claridad
+o confirmaciones visibles
+o confianza en el registro de asistencia
+o transparencia en solicitudes y estado personal
+• Riesgo de percepción negativa
+o “Me están vigilando demasiado.”
+o “El sistema puede perjudicarme si falla.”
+o “No entiendo por qué aparezco tarde o con una observación.”
+• Cómo mitigarlo
+o mostrar confirmaciones después de cada acción
+o permitir consulta de historial
+o mostrar estados claros y explicaciones breves
+o permitir revisar solicitudes y boleta sin intermediarios
+2) Supervisor
+• Imagen mental esperada
+o “Es un buzón de aprobaciones y seguimiento del equipo.”
+o “Me ayuda a ordenar permisos, horas y asistencia.”
+o “Lo que apruebo o rechazo queda respaldado.”
+• Lo que más valora
+o lista clara de pendientes
+o rapidez para aprobar o rechazar
+o filtros por empleado, fecha y estado
+o contexto suficiente para tomar decisiones
+o evidencia de lo realizado
+• Riesgo de percepción negativa
+o “Me agrega más trabajo del necesario.”
+o “No tengo suficiente información para aprobar.”
+o “Se vuelve confuso cuando tengo muchas solicitudes.”
+• Cómo mitigarlo
+o centralizar pendientes en una sola vista
+o incluir detalle resumido y adjuntos
+o exigir comentario obligatorio en decisiones
+o mostrar KPIs y asistencia del equipo de forma clara
+3) RRHH
+• Imagen mental esperada
+o “Es la fuente oficial de control y evidencia del área.”
+o “Me ayuda a reducir errores y consolidaciones manuales.”
+o “Me permite generar reportes y planilla con mayor confianza.”
+• Lo que más valora
+o reportes confiables
+o exportación rápida
+o trazabilidad
+o control de reglas y parámetros
+o acceso global a la información
+• Riesgo de percepción negativa
+o “Si no explica los cálculos, no me sirve.”
+o “Si sigue requiriendo Excel, no aporta suficiente valor.”
+o “Si no controla bien turnos, permisos y planilla, me genera más trabajo.”
+• Cómo mitigarlo
+o mostrar detalle de cálculos y movimientos
+o incluir reportes listos para exportar
+o mantener bitácora de cambios
+o dar visibilidad sobre parámetros, saldos y decisiones
+4) Administrador del sistema
+• Imagen mental esperada
+o “Es la consola de control técnico y seguridad del sistema.”
+o “Me permite administrar accesos, revisar errores y mantener la operación.”
+o “Puedo intervenir rápidamente cuando hay incidentes.”
+• Lo que más valora
+o control sobre usuarios y roles
+o visibilidad de logs y auditoría
+o facilidad para soporte y mantenimiento
+o seguridad de acceso y configuración
+• Riesgo de percepción negativa
+o “No tengo herramientas suficientes para diagnosticar problemas.”
+o “Los errores no muestran contexto.”
+o “El sistema no me permite controlar bien la seguridad o los permisos.”
+• Cómo mitigarlo
+o incluir paneles de usuarios, roles y parámetros
+o mostrar auditoría y logs claramente
+o centralizar soporte y monitoreo
+o permitir acciones rápidas de desbloqueo, reseteo y validación
+5) Visión general del sistema (imagen institucional)
+• Imagen que debe transmitir el sistema
+o formalidad
+o confiabilidad
+o transparencia
+o orden
+o facilidad de uso
+• Cómo debería ser percibido
+o como una herramienta que organiza y centraliza procesos
+o como un sistema justo, con reglas visibles y trazabilidad
+o como una plataforma útil para todos los roles, no solo para control
+• Mensaje que debe dejar
+o “El sistema estandariza el proceso.”
+o “La información está disponible y es consultable.”
+o “Las decisiones quedan registradas.”
+o “No depende de memoria, papel o consolidaciones manuales.”
+Diseño a nivel de Componentes
+b) Detalle de los módulos que componen el sistema
+• Módulo de Autenticación y Gestión de Acceso: Constituye la puerta de
+entrada al sistema y la primera línea de seguridad. Su propósito es verificar la
+identidad de los usuarios y, basado en su perfil (Empleado, Supervisor, RRHH,
+Administrador), concederles los permisos necesarios para acceder únicamente
+a las funcionalidades y datos que les corresponden.
+Implementa un modelo de control de acceso basado en roles para una gestión
+segura de los permisos, haciendo de su importancia crítica, ya que, sin un
+control de acceso robusto, la información sensible de RRHH quedaría expuesta
+y se perdería la capacidad de auditar quién hace qué en el sistema.
+Este módulo resuelve el problema del acceso sin control del proceso anterior,
+estableciendo una puerta de entrada única y segura con un alcance que abarca
+la gestión del ciclo de vida completo de las cuentas de usuario, desde su
+creación hasta su desactivación, siendo un módulo del cual dependen todos
+los demás módulos del sistema.
+• Módulo de Administración y Configuración: De uso exclusivo para RRHH y
+Administrador, su propósito es centralizar la configuración de todas las reglas
+de negocio que pueden cambiar en el tiempo sin necesidad de reprogramar el
+sistema. Su importancia recae en que las empresas no son estáticas y cambian
+horarios, crean nuevos tipos de permiso, ajustan políticas de vacaciones o
+modifican límites de horas.
+Gracias a este módulo RRHH puede adaptar el sistema a esas nuevas
+necesidades de forma autónoma, sin depender del equipo técnico, resolviendo
+el problema de la rigidez de los sistemas tradicionales, donde cualquier cambio
+mínimo requería modificar código y hacer nuevos despliegues.
+• Módulo de Auditoría y Bitácora: Su propósito es registrar de forma inmutable
+todas las acciones críticas que realizan los usuarios, garantizando
+transparencia, rendición de cuentas y la posibilidad de reconstruir eventos
+pasados con total precisión.
+En RRHH, donde las disputas sobre marcajes, permisos o descuentos son
+comunes, este módulo es fundamental ya que permite verificar exactamente
+qué ocurrió, quién lo hizo y cuándo, eliminando discusiones sin fundamento.
+resolviendo el problema de la falta de trazabilidad del proceso anterior, donde
+las aprobaciones verbales o los ajustes en Excel quedaban sin registro.
+Su alcance cubre eventos como accesos al sistema, creación y modificación de
+usuarios, aprobaciones y rechazos de permisos, ajustes manuales de
+asistencia, cambios de configuración, cálculos de nómina y exportación de
+reportes. Todos los demás módulos deben notificar a Auditoría cuando ocurre
+una acción relevante.
+• Módulo de Registro de Asistencia: Es el módulo de uso más frecuente,
+utilizado a diario por todos los empleados. Su propósito es digitalizar el proceso
+de marcaje de entrada y salida, reemplazando por completo las hojas de papel
+y los archivos Excel, y automatizando el cálculo de tardanzas y horas
+trabajadas. Su correcto funcionamiento impacta directamente en la confianza
+de los empleados hacia el sistema y en la exactitud de los datos que alimentan
+procesos posteriores como la planilla.
+Resuelve los problemas de errores de digitación, dobles registros, pérdida de
+hojas de marcaje y el retrabajo que RRHH invertía en consolidar información
+manualmente.
+Su alcance incluye la captura de marcajes con un solo clic, la validación para
+evitar duplicados, el cálculo automático de tardanzas basado en turno y
+tolerancia, la visualización del estado de la jornada y la consulta de historial
+personal y de equipo.
+• Módulo de Gestión de Permisos, Ausencias y Vacaciones: Su propósito es
+formalizar y digitalizar el flujo completo de solicitudes de ausencia, desde que
+el empleado las crea hasta que son aprobadas o rechazadas, incluyendo la
+gestión de los saldos de vacaciones.
+En el proceso anterior, los permisos se manejaban de manera informal
+(mensajes, llamadas, papeles), generando falta de control, pérdida de
+información y conflictos. Este módulo aporta orden y evidencia en la gestión de
+las ausencias resolviendo la falta de trazabilidad, la pérdida de justificantes y la
+dificultad para calcular correctamente los saldos de vacaciones.
+Su alcance comprende la creación de solicitudes (por días u horas), el adjunto
+de documentos justificantes, una bandeja de aprobación para supervisores, el
+registro de decisiones con comentario obligatorio, el cálculo y actualización
+automática de saldos de vacaciones, y el envío de notificaciones por correo.
+• Módulo de Proyectos y Timesheet: Habilita el control detallado de las horas
+que los empleados dedican a proyectos específicos. Su propósito es permitir el
+registro de tiempo por proyecto, actividad y fecha, posibilitando el análisis de
+productividad y el costeo por proyecto.
+Es importante para empresas que necesitan saber cuánto tiempo se invierte en
+cada iniciativa para facturar adecuadamente, evaluar rentabilidad o justificar la
+asignación de recursos. Resolviendo la falta de visibilidad sobre la distribución
+del tiempo de los empleados y la imposibilidad de generar reportes confiables
+de horas por proyecto.
+Su alcance incluye el mantenimiento de un catálogo de proyectos, el registro de
+horas con validaciones contra límites configurables, la consulta de registros
+propios y del equipo, y un flujo opcional de aprobación por parte del supervisor.
+• Módulo de KPIs, Dashboards y Métricas: Transforma los datos operativos
+(asistencia, permisos, horas) en información de valor para la toma de
+decisiones.
+Su propósito es calcular automáticamente indicadores clave de rendimiento y
+presentarlos a través de dashboards visuales e interactivos, adaptados a cada
+rol, permitiendo a cada usuario entender su desempeño o el de su equipo de un
+vistazo, identificando áreas de mejora o riesgos. Resuelve la falta de visibilidad
+sobre el rendimiento del personal, proporcionando a RRHH inteligencia de
+negocio.
+Su alcance incluye el cálculo mensual de KPIs (días trabajados vs esperados,
+horas trabajadas vs esperadas, porcentaje de asistencia, índice de
+puntualidad), la clasificación automática de empleados (Excelente, Bueno, En
+observación, En riesgo) y dashboards segmentados por rol.
+• Módulo de Validación de Bonos e Incentivos: Automatiza la aplicación de
+políticas de incentivos económicos, asegurando que se otorguen de manera
+objetiva, consistente y auditable, basándose exclusivamente en el desempeño
+real registrado en el sistema.
+Los bonos mal otorgados generan desmotivación, mientras que los bien
+administrados incentivan la productividad. Este módulo elimina los errores
+manuales en la asignación de incentivos. Resuelve la falta de un proceso claro
+y auditable para la asignación de bonos.
+Su alcance comprende la configuración flexible de reglas de bono (mínimo de
+días trabajados, máximo de tardanzas, horas mínimas), la ejecución de un
+proceso automático de evaluación mensual y la generación de reportes de
+elegibilidad que detallan los resultados.
+• Módulo de Planilla: Integra los resultados de todos los módulos anteriores
+para llevar a cabo el cálculo final de la nómina. Su propósito es calcular de
+manera automática, precisa y auditable la liquidación mensual de cada
+empleado, considerando todos los conceptos que impactan su pago como lo
+son las horas trabajadas, permisos, horas por proyecto, bonos generados y las
+deducciones correspondientes, incluyendo el ISR.
+La planilla es el proceso más sensible de RRHH, y su automatización es
+fundamental para evitar errores que pueden traducirse en reclamos legales o
+multas. Resuelve el proceso manual y fragmentado anterior, basado en Excel y
+consultas a múltiples fuentes.
+Su alcance incluye la gestión de períodos de planilla, la configuración de
+conceptos de ingreso y deducción, el cálculo automático de horas pagables, la
+aplicación de bonos, el cálculo del ISR según tablas vigentes, la generación de
+boletas de pago y la exportación de reportes consolidados.
+• Módulo de Reportes: Centraliza la generación de todos los informes operativos
+y gerenciales del sistema. Su propósito es consolidar y presentar la información
+proveniente de los demás módulos en formatos estructurados y exportables,
+facilitando el análisis, la toma de decisiones y el cumplimiento de obligaciones
+de reporte.
+El valor del sistema no está solo en capturar datos, sino en poder extraerlos de
+manera útil. Sin este módulo, la información quedaría solo almacenada en la
+base de datos. Resolviendo la necesidad de que RRHH tenga que armar
+reportes manualmente en Excel, con el riesgo de errores y pérdida de tiempo.
+Su alcance abarca la generación de reportes predefinidos (planilla mensual,
+horas por proyecto, KPIs mensuales), la aplicación de filtros avanzados (fechas,
+empleados, departamentos, proyectos) y la exportación a formatos estándar
+como Excel y PDF.
+c) Funciones de cada uno de los módulos que componen el sistema
+Módulo de Autenticación y Gestión de Acceso:
+• Iniciar sesión: Valida las credenciales del usuario contra la base de datos.
+Si son correctas y la cuenta está activa, genera un token de sesión (JWT) que
+permite al usuario navegar por el sistema sin tener que autenticarse en cada
+pantalla. Es la función de entrada fundamental y la primera barrera de
+seguridad.
+• Cerrar sesión: Invalida el token de sesión activo, asegurando que el usuario
+no pueda seguir utilizando el sistema sin volver a autenticarse.
+Especialmente importante en entornos con computadoras compartidas
+para evitar accesos no autorizados.
+• Recuperar contraseña: Permite al usuario solicitar un restablecimiento de
+contraseña si la ha olvidado. El sistema envía un correo con un enlace único
+y temporal para crear una nueva contraseña, reduciendo la carga de soporte
+RRHH.
+• Consultar y gestionar perfil propio: Muestra al usuario su información
+personal y le permite actualizar campos definidos como editables (ej.
+teléfono), fomentando la autogestión y manteniendo los datos actualizados.
+• Validar token de sesión: Se ejecuta implícitamente en cada llamada a la
+API. Verifica que el token enviado sea válido, no haya expirado y corresponda
+a un usuario con permisos para ejecutar la acción solicitada, asegurando la
+autorización en cada operación.
+Módulo de Administración y Configuración:
+• Gestionar turnos: Permite a RRHH crear, modificar o desactivar turnos,
+definiendo hora de entrada, hora de salida, minutos de tolerancia y horas
+esperadas por día. Esencial para adaptar el sistema a cambios en los
+horarios de la empresa.
+• Gestionar usuarios: Permite la administración completa de cuentas de
+usuario: creación de nuevas cuentas, modificación de datos, desactivación
+de cuentas de empleados que ya no laboran y restablecimiento de
+contraseñas.
+• Asignar roles: Permite vincular uno o más roles a un usuario, definiendo sus
+permisos dentro del sistema. Un usuario puede tener múltiples roles (ej.
+supervisor con funciones de RRHH).
+• Gestionar tipos de permiso: Configura el catálogo de ausencias,
+definiendo para cada tipo si requiere documento justificante y si descuenta
+del saldo de vacaciones, adaptándose a las políticas específicas de la
+empresa.
+• Gestionar proyectos: Administra el catálogo de proyectos, creando
+nuevos, modificando datos o marcándolos como inactivos cuando finalizan,
+para asegurar que los empleados solo registren horas en proyectos válidos.
+• Configurar parámetros del sistema: Centraliza la definición de valores
+globales que afectan a múltiples módulos: días laborales, límites de horas
+para timesheet, rangos para clasificación de KPIs, políticas de vacaciones,
+etc.
+• Asignar supervisores: Establece la jerarquía del equipo, definiendo qué
+empleado es supervisor de qué otros. Fundamental para que el sistema
+sepa qué solicitudes debe ver cada supervisor.
+Módulo de Auditoría y Bitácora:
+• Registrar acción crítica: Almacena automáticamente en la base de datos
+un registro inmutable de cualquier evento relevante: quién, qué acción,
+cuándo, desde qué módulo, sobre qué entidad y, cuando corresponde,
+valores anteriores y nuevos.
+• Consultar bitácora: Ofrece una interfaz para que RRHH o Administrador
+filtren y revisen los eventos registrados, permitiendo búsquedas por fecha,
+usuario, módulo o tipo de acción para facilitar la supervisión e investigación.
+• Mantener inmutabilidad: Asegura, tanto a nivel de base de datos como de
+lógica de aplicación, que los registros de auditoría no puedan ser
+modificados ni eliminados por ningún usuario, garantizando su validez como
+fuente de verdad.
+Módulo de Registro de Asistencia:
+• Registrar entrada: Captura la fecha y hora exacta en que el empleado
+presiona Marcar entrada, guardando un nuevo registro en la tabla de
+asistencia. Reemplaza el marcaje en papel y garantiza que la hora quede
+registrada de forma inalterable.
+• Registrar salida: Captura la hora de salida del empleado y actualiza el
+registro del día correspondiente, completando la información de su jornada
+laboral.
+• Validar marcaje: Impide que un empleado pueda registrar más de una
+entrada o más de una salida en un mismo día, previniendo errores y posibles
+intentos de manipulación.
+• Calcular tardías: Compara la hora de entrada real con la esperada según su
+turno y tolerancia. Si supera el límite, calcula automáticamente los minutos
+de tardanza y los guarda.
+• Mostrar estado del día: Presenta al empleado un indicador claro del estado
+de su jornada actual ya sea Pendiente, Incompleta o Completa, dándole
+visibilidad inmediata.
+• Consultar historial personal: Permite al empleado visualizar su propio
+historial de marcajes, pudiendo filtrar por rango de fechas para verificar que
+todos sus registros son correctos.
+• Consultar historial de equipo: Permite al supervisor acceder al historial
+completo de asistencia de todos los empleados a su cargo, facilitando la
+supervisión y control del equipo.
+• Ajustar registro manualmente: Otorga a RRHH la capacidad de corregir un
+marcaje en casos excepcionales, siempre con justificación y quedando
+registrado en la tabla de ajustes y en la bitácora de auditoría.
+Módulo de Gestión de Permisos, Ausencias y Vacaciones:
+• Crear solicitud de permiso: Permite al empleado generar una nueva
+solicitud de ausencia, seleccionando tipo, fechas y horas, escribiendo un
+motivo y, si es requerido, adjuntando un archivo justificante.
+• Gestionar solicitudes pendientes: Presenta al supervisor una bandeja con
+todas las solicitudes de su equipo en estado pendiente, organizadas para
+facilitar su revisión.
+• Aprobar o rechazar solicitud: Permite al supervisor tomar una decisión
+sobre una solicitud pendiente, con la condición obligatoria de incluir un
+comentario que justifique su acción.
+• Consultar estado de solicitudes: Permite al empleado conocer el estado
+actual de su solicitud y, si ya fue resuelta, ver quién la aprobó o rechazó,
+cuándo y con qué comentario.
+• Gestionar saldo de vacaciones: Calcula automáticamente, en base a la
+fecha de ingreso y la política de la empresa, los días disponibles, utilizados
+y el saldo restante de vacaciones.
+• Actualizar saldo por consumo: Cuando una solicitud de vacaciones es
+aprobada, resta automáticamente los días solicitados del saldo disponible
+y registra el movimiento para mantener un historial completo.
+Módulo de Proyectos y Timesheet:
+• Registrar horas por proyecto: Permite al empleado ingresar las horas
+dedicadas a un proyecto específico en una fecha determinada, incluyendo
+descripción de la actividad.
+• Validar horas registradas: Verifica que las horas ingresadas cumplan las
+reglas configuradas como, no exceder límite diario, no superar horas
+marcadas en asistencia, no sobrepasar máximo semanal.
+• Consultar registros propios: Permite al empleado visualizar su historial de
+horas imputadas, pudiendo filtrar por proyecto o rango de fechas.
+• Consultar registros del equipo: Permite al supervisor acceder a todos los
+registros de horas de los miembros de su equipo.
+• Aprobar o rechazar horas: Flujo opcional que permite al supervisor validar
+la calidad de las horas reportadas, incluyendo comentario obligatorio y
+quedando el estado reflejado para el empleado.
+Módulo de KPIs, Dashboards y Métricas:
+• Calcular KPIs mensuales: Ejecuta un proceso al cierre de mes que,
+basándose en registros de asistencia y permisos, calcula indicadores como
+porcentaje de asistencia, índice de puntualidad y horas trabajadas vs
+esperadas.
+• Clasificar calidad del empleado: Aplica reglas configuradas sobre los KPIs
+calculados para asignar automáticamente categorías como Excelente,
+Bueno, En observación o En riesgo.
+• Mostrar dashboard personal: Presenta al empleado, de forma gráfica, sus
+propios KPIs del mes actual, dándole visibilidad sobre su desempeño.
+• Mostrar dashboard de equipo: Presenta al supervisor una vista agregada
+de los KPIs de todos los miembros de su equipo.
+• Mostrar dashboard global: Presenta a RRHH y gerencia una visión
+consolidada de los KPIs de toda la organización, segmentable por
+departamentos.
+Módulo de Validación de Bonos e Incentivos:
+• Configurar reglas de bono: Permite a RRHH definir de manera flexible los
+criterios de elegibilidad para un bono, con temas como, mínimo de días
+trabajados, máximo de tardanzas, máximo de faltas, horas mínimas, etc.
+• Evaluar elegibilidad mensual: Ejecuta un proceso automático que verifica
+qué empleados cumplen con todas las reglas de bono vigentes en el
+período, guardando el resultado.
+• Generar reporte de elegibilidad: Produce un listado detallado de
+empleados, indicando para cada uno si es elegible y, en caso negativo, el
+motivo específico.
+• Registrar resultados en auditoría: Almacena cada evaluación y su
+resultado en la bitácora de auditoría para garantizar la trazabilidad del
+proceso.
+Módulo de Planilla (Nómina):
+• Gestionar períodos de planilla: Permite a RRHH crear y administrar
+períodos de pago, definiendo fechas y controlando su estado (abierto,
+cerrado) para estructurar el proceso de liquidación.
+• Calcular planilla por período: Ejecuta el proceso central de nómina: suma
+horas trabajadas, aplica tarifa por hora, añade bonos elegibles, aplica
+deducciones y calcula ISR para generar la liquidación individual.
+• Calcular ISR: Subfunción que, tomando la base imponible, consulta la
+tabla de ISR del año, identifica el rango y aplica porcentaje y cuota fija para
+determinar el impuesto a retener.
+• Gestionar conceptos de planilla: Configura el catálogo de conceptos de
+ingreso y deducción, definiendo su naturaleza y forma de cálculo.
+• Generar boletas de pago: Produce un documento individual para cada
+empleado detallando conceptos, total bruto, deducciones y neto a percibir.
+• Exportar planilla: Genera un reporte consolidado de toda la nómina del
+período en formatos Excel y PDF para uso de RRHH, finanzas o integración
+bancaria.
+Módulo de Reportes:
+• Generar reporte mensual de planilla: Consolida en un informe los datos
+de tardías, faltas y permisos del período, proporcionando a RRHH la
+información necesaria para validar la planilla.
+• Generar reporte de horas por proyecto: Compila todas las horas
+registradas en timesheet, agrupadas por proyecto y empleado, para análisis
+de costos o facturación.
+• Generar reporte de KPIs: Exporta los indicadores de rendimiento
+calculados para cada empleado, incluyendo su clasificación de calidad.
+• Aplicar filtros avanzados: Permite al usuario parametrizar la información
+según necesidades específicas como, rango de fechas, empleados
+concretos, departamentos o proyectos, para obtener informes a medida.

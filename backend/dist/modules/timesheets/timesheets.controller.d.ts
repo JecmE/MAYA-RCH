@@ -4,12 +4,9 @@ export declare class TimesheetsController {
     constructor(timesheetsService: TimesheetsService);
     getMyTimesheets(req: any, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
         tiempoId: number;
+        empleadoId: number;
         fecha: Date;
-        proyecto: {
-            proyectoId: number;
-            nombre: string;
-            codigo: string;
-        };
+        proyectoId: number;
         horas: number;
         horasValidadas: number;
         actividadDescripcion: string;

@@ -16,6 +16,9 @@ const registro_asistencia_entity_1 = require("../../entities/registro-asistencia
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const solicitud_permiso_entity_1 = require("../../entities/solicitud-permiso.entity");
+const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity");
+const proyecto_entity_1 = require("../../entities/proyecto.entity");
 let KpiModule = class KpiModule {
 };
 exports.KpiModule = KpiModule;
@@ -28,6 +31,9 @@ exports.KpiModule = KpiModule = __decorate([
                 empleado_entity_1.Empleado,
                 parametro_sistema_entity_1.ParametroSistema,
                 audit_log_entity_1.AuditLog,
+                solicitud_permiso_entity_1.SolicitudPermiso,
+                registro_tiempo_entity_1.RegistroTiempo,
+                proyecto_entity_1.Proyecto,
             ]),
         ],
         controllers: [kpi_controller_1.KpiController],

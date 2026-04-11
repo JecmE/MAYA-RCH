@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { AttendanceService, TeamAttendance } from '../../../services/attendance.service';
 
 interface AsistenciaEquipoItem {
   id: number;
@@ -19,69 +20,79 @@ interface AsistenciaEquipoItem {
   templateUrl: './asistencia-equipo.html',
   styleUrl: './asistencia-equipo.css',
 })
-export class AsistenciaEquipo {
-  equipoData: AsistenciaEquipoItem[] = [
-    {
-      id: 1,
-      empleado: 'Carlos Mérida',
-      puesto: 'Analista',
-      entrada: '7:58 AM',
-      salida: '--:--',
-      horas: '7.5 h',
-      estado: 'Presente',
-      observacion: 'Sin novedades'
-    },
-    {
-      id: 2,
-      empleado: 'Lucía Torres',
-      puesto: 'Diseñadora',
-      entrada: '8:12 AM',
-      salida: '--:--',
-      horas: '7.0 h',
-      estado: 'Tarde',
-      observacion: '12 min de retraso'
-    },
-    {
-      id: 3,
-      empleado: 'Mario Paz',
-      puesto: 'Desarrollador',
-      entrada: '--:--',
-      salida: '--:--',
-      horas: '0 h',
-      estado: 'Ausente',
-      observacion: 'No registró marcaje'
-    },
-    {
-      id: 4,
-      empleado: 'Ana López',
-      puesto: 'QA',
-      entrada: '8:00 AM',
-      salida: '5:00 PM',
-      horas: '8 h',
-      estado: 'Completa',
-      observacion: 'Jornada finalizada'
-    }
-  ];
+export class AsistenciaEquipo implements OnInit {
+  equipoData: AsistenciaEquipoItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private attendanceService: AttendanceService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadTeamAttendance();
+  }
+
+  private loadTeamAttendance(): void {
+    const supervisorId = this.getSupervisorId();
+    if (!supervisorId) {
+      this.equipoData = [];
+      return;
+    }
+
+    const hoy = new Date().toISOString().split('T')[0];
+
+    this.attendanceService.getTeamAttendance(supervisorId, hoy).subscribe({
+      next: (data: TeamAttendance[]) => {
+        this.equipoData = data.map((member) => this.mapTeamAttendanceToItem(member));
+      },
+      error: () => {
+        this.equipoData = [];
+      },
+    });
+  }
+
+  private getSupervisorId(): number | null {
+    const empleadoIdStr = localStorage.getItem('empleadoId');
+    return empleadoIdStr ? parseInt(empleadoIdStr, 10) : null;
+  }
+
+  private mapTeamAttendanceToItem(member: TeamAttendance): AsistenciaEquipoItem {
+    const attendance = member.asistencia;
+    return {
+      id: member.empleadoId,
+      empleado: member.nombreCompleto || `Empleado ${member.empleadoId}`,
+      puesto: member.departamento || 'Empleado',
+      entrada: attendance?.horaEntradaReal || '--:--',
+      salida: attendance?.horaSalidaReal || '--:--',
+      horas: attendance?.horasTrabajadas ? `${attendance.horasTrabajadas} h` : '0 h',
+      estado: this.getEstadoFromAttendance(attendance),
+      observacion: attendance?.observacion || 'Sin novedades',
+    };
+  }
+
+  private getEstadoFromAttendance(attendance: any): string {
+    if (!attendance?.horaEntradaReal) return 'Ausente';
+    if (attendance.minutosTardia && attendance.minutosTardia > 0) return 'Tarde';
+    if (attendance.horaSalidaReal) return 'Completa';
+    return 'Presente';
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
   }
 
-getStatusClass(estado: string): string {
-  switch (estado) {
-    case 'Presente':
-      return 'status-present';
-    case 'Tarde':
-      return 'status-late';
-    case 'Ausente':
-      return 'status-absent';
-    case 'Completa':
-      return 'status-complete';
-    default:
-      return 'status-default';
+  getStatusClass(estado: string): string {
+    switch (estado) {
+      case 'Presente':
+        return 'status-present';
+      case 'Tarde':
+        return 'status-late';
+      case 'Ausente':
+        return 'status-absent';
+      case 'Completa':
+        return 'status-complete';
+      default:
+        return 'status-default';
+    }
   }
-}
-  
 }

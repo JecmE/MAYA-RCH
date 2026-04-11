@@ -3,12 +3,18 @@ import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { DataSource } from 'typeorm';
+import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
+import { Proyecto } from '../../entities/proyecto.entity';
 export declare class KpiService {
     private kpiRepository;
     private asistenciaRepository;
     private empleadoRepository;
+    private solicitudPermisoRepository;
+    private registroTiempoRepository;
+    private proyectoRepository;
     private dataSource;
-    constructor(kpiRepository: Repository<KpiMensual>, asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, dataSource: DataSource);
+    constructor(kpiRepository: Repository<KpiMensual>, asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroTiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, dataSource: DataSource);
     getEmployeeDashboard(empleadoId: number, mes?: number, anio?: number): Promise<{
         mes: number;
         anio: number;
@@ -24,11 +30,23 @@ export declare class KpiService {
     getSupervisorDashboard(supervisorEmpleadoId: number, mes?: number, anio?: number): Promise<{
         mes: number;
         anio: number;
+        cantidadEmpleados: number;
+        resumen: {
+            totalDiasTrabajados: number;
+            totalTardias: number;
+            promedioCumplimiento: number;
+            comparacionMesAnterior?: undefined;
+        };
+        empleados: any[];
+    } | {
+        mes: number;
+        anio: number;
         cantidadEmpleados: any;
         resumen: {
             totalDiasTrabajados: number;
             totalTardias: number;
             promedioCumplimiento: number;
+            comparacionMesAnterior: number;
         };
         empleados: any;
     }>;
@@ -47,10 +65,43 @@ export declare class KpiService {
         };
     }>;
     getEmployeeClassification(empleadoId: number, mes?: number, anio?: number): Promise<{
+        empleadoId: number;
+        nombreCompleto: string;
         clasificacion: string;
         cumplimientoPct: number;
         tardias: number;
         faltas: number;
-    }>;
+    }[]>;
     private calculateKpi;
+    getEmployeeProfile(empleadoId: number): Promise<{
+        empleado: {
+            nombreCompleto: string;
+            puesto: string;
+            departamento: string;
+            email: string;
+        };
+        historialAsistencia: {
+            fecha: Date;
+            entrada: Date;
+            salida: Date;
+            estado: string;
+        }[];
+        horasPorProyecto: {
+            nombre: string;
+            horas: number;
+        }[];
+        solicitudesRecientes: {
+            tipo: string;
+            fechaInicio: Date;
+            fechaFin: Date;
+            estado: string;
+        }[];
+        kpiActual: {
+            cumplimientoPct: number;
+            clasificacion: string;
+            tardias: number;
+            faltas: number;
+        };
+        comparacionMesAnterior: number;
+    }>;
 }

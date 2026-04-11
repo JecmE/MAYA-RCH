@@ -1,13 +1,7 @@
 <div class="payroll-page">
   <main class="payroll-main">
-
     <div class="page-header">
-      <button
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
+      <button (click)="goBack()" class="back-button">←</button>
       <div>
         <h2 class="page-title">Boleta de Pago</h2>
       </div>
@@ -15,35 +9,23 @@
 
     <div class="toolbar-card">
       <div class="period-section">
-        <label class="form-label">
-          Período de Planilla
-        </label>
+        <label class="form-label"> Período de Planilla </label>
 
         <div class="period-controls">
-          <select
-            [(ngModel)]="periodo"
-            class="form-control"
-          >
-            <option value="03-2026">Marzo 2026</option>
-            <option value="02-2026">Febrero 2026</option>
-            <option value="01-2026">Enero 2026</option>
-            <option value="12-2025">Diciembre 2025</option>
+          <select [(ngModel)]="periodoId" class="form-control">
+            @for (p of periodosDisponibles; track p.periodoId) {
+              <option [value]="p.periodoId">{{ p.nombre }}</option>
+            }
           </select>
 
-          <button
-            (click)="consultar()"
-            class="action-button action-button--amber"
-          >
+          <button (click)="consultar()" class="action-button action-button--amber">
             Consultar
           </button>
         </div>
       </div>
 
       <div class="download-actions">
-        <button
-          (click)="exportarPDF()"
-          class="action-button action-button--primary"
-        >
+        <button (click)="exportarPDF()" class="action-button action-button--primary">
           Exportar PDF
         </button>
       </div>
@@ -93,9 +75,7 @@
     <div class="details-card">
       <div class="details-card__header">
         <h3 class="details-title">Detalle de Conceptos</h3>
-        <p class="details-subtitle">
-          Desglose de ingresos y descuentos aplicados en el período.
-        </p>
+        <p class="details-subtitle">Desglose de ingresos y descuentos aplicados en el período.</p>
       </div>
 
       <div class="table-wrapper">
@@ -137,9 +117,6 @@
 
       <div class="details-card__footer">
         <span class="footer-text">Total de registros: {{ conceptosFiltrados.length }}</span>
-        <div class="footer-highlight">
-          Total depositado en cuenta bancaria terminada en ****1234
-        </div>
       </div>
     </div>
 
@@ -150,15 +127,11 @@
           <p class="modal-text">
             La boleta de pago del período seleccionado se descargó correctamente en PDF.
           </p>
-          <button
-            class="action-button action-button--primary modal-button"
-            (click)="cerrarModal()"
-          >
+          <button class="action-button action-button--primary modal-button" (click)="cerrarModal()">
             Aceptar
           </button>
         </div>
       </div>
     }
-
   </main>
 </div>

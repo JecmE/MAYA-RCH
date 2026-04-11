@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { UsersService, Empleado } from '../../../services/users.service';
 
 interface UsuarioItem {
   id: number;
@@ -18,17 +19,42 @@ interface UsuarioItem {
   templateUrl: './usuarios.html',
   styleUrl: './usuarios.css',
 })
-export class Usuarios {
+export class Usuarios implements OnInit {
   modalNuevoUsuario = false;
 
-  usuariosData: UsuarioItem[] = [
-    { id: 1, nombre: 'Carlos Mérida', usuario: 'cmerida', correo: 'carlos.m@empresa.com', rol: 'RRHH', estado: 'Activo', empleado: 'EMP-001' },
-    { id: 2, nombre: 'Lucía Torres', usuario: 'ltorres', correo: 'ltorres@empresa.com', rol: 'Supervisor', estado: 'Activo', empleado: 'EMP-002' },
-    { id: 3, nombre: 'Ana López', usuario: 'alopez', correo: 'ana.lopez@empresa.com', rol: 'Empleado', estado: 'Bloqueado', empleado: 'EMP-003' },
-    { id: 4, nombre: 'Admin Sistema', usuario: 'admin', correo: 'admin@empresa.com', rol: 'Administrador', estado: 'Activo', empleado: 'N/A' },
-  ];
+  usuariosData: UsuarioItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private usersService: UsersService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadUsers();
+  }
+
+  private loadUsers(): void {
+    this.usersService.getAll().subscribe({
+      next: (data: Empleado[]) => {
+        this.usuariosData = data.map((emp) => this.mapEmpleadoToUsuario(emp));
+      },
+      error: () => {
+        this.usuariosData = [];
+      },
+    });
+  }
+
+  private mapEmpleadoToUsuario(emp: Empleado): UsuarioItem {
+    return {
+      id: emp.empleadoId ?? 0,
+      nombre: emp.nombreCompleto || `${emp.nombres} ${emp.apellidos}`.trim(),
+      usuario: emp.email?.split('@')[0] || `user${emp.empleadoId}`,
+      correo: emp.email || '',
+      rol: emp.puesto || 'Empleado',
+      estado: emp.activo ? 'Activo' : 'Inactivo',
+      empleado: emp.codigoEmpleado || `EMP-${emp.empleadoId}`,
+    };
+  }
 
   goBack(): void {
     this.router.navigate(['/']);

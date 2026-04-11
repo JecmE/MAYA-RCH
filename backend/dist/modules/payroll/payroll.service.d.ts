@@ -72,6 +72,14 @@ export declare class PayrollService {
         }[];
         message?: undefined;
     }>;
+    getMyPeriods(empleadoId: number): Promise<{
+        periodoId: number;
+        nombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        tipo: string;
+        estado: string;
+    }[]>;
     getConcepts(): Promise<{
         conceptoId: number;
         codigo: string;

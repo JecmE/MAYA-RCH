@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { PayrollService, PayrollResult } from '../../../services/payroll.service';
 
 interface PlanillaEmpleadoItem {
   id: number;
@@ -20,7 +21,7 @@ interface PlanillaEmpleadoItem {
   templateUrl: './planilla.html',
   styleUrl: './planilla.css',
 })
-export class Planilla {
+export class Planilla implements OnInit {
   periodo = '03-2026';
   tipoPlanilla = 'mensual';
 
@@ -33,48 +34,54 @@ export class Planilla {
   modalBoleta = false;
   empleadoSeleccionado: PlanillaEmpleadoItem | null = null;
 
-  planillaData: PlanillaEmpleadoItem[] = [
-    {
-      id: 1,
-      empleado: 'Carlos Mérida',
-      puesto: 'Analista RRHH',
-      salarioBase: 'Q 8,500.00',
-      bonificacion: 'Q 1,250.00',
-      deducciones: 'Q 623.00',
-      neto: 'Q 9,127.00',
-      estado: 'Calculado'
-    },
-    {
-      id: 2,
-      empleado: 'Lucía Torres',
-      puesto: 'Supervisor Operativo',
-      salarioBase: 'Q 9,200.00',
-      bonificacion: 'Q 1,500.00',
-      deducciones: 'Q 710.00',
-      neto: 'Q 9,990.00',
-      estado: 'Calculado'
-    },
-    {
-      id: 3,
-      empleado: 'Ana López',
-      puesto: 'Desarrolladora Frontend',
-      salarioBase: 'Q 11,000.00',
-      bonificacion: 'Q 1,800.00',
-      deducciones: 'Q 920.00',
-      neto: 'Q 11,880.00',
-      estado: 'Pendiente'
-    }
-  ];
+  planillaData: PlanillaEmpleadoItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private payrollService: PayrollService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadPayrollData();
+  }
+
+  private loadPayrollData(): void {
+    const [month, year] = this.periodo.split('-');
+    const periodoId = parseInt(this.periodo.replace('-', ''), 10);
+
+    this.payrollService.calculatePayroll(periodoId).subscribe({
+      next: (data: any) => {
+        if (data && data.results) {
+          this.planillaData = data.results.map((p: PayrollResult) => this.mapPayrollToItem(p));
+        }
+      },
+      error: () => {
+        this.planillaData = [];
+      },
+    });
+  }
+
+  private mapPayrollToItem(p: PayrollResult): PlanillaEmpleadoItem {
+    return {
+      id: p.empleadoId,
+      empleado: p.nombreCompleto || `Empleado ${p.empleadoId}`,
+      puesto: 'Empleado',
+      salarioBase: `Q ${p.horasTrabajadas * 50 || 0}`,
+      bonificacion: `Q ${p.totalBonificaciones || 0}`,
+      deducciones: `Q ${p.totalDeducciones || 0}`,
+      neto: `Q ${p.montoNeto || 0}`,
+      estado: 'Calculado',
+    };
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
   }
 
   generarPlanilla(): void {
+    this.loadPayrollData();
     this.mostrarNotificacion(
-      `Planilla ${this.tipoPlanilla} generada para el período ${this.obtenerNombrePeriodo()}.`
+      `Planilla ${this.tipoPlanilla} generada para el período ${this.obtenerNombrePeriodo()}.`,
     );
   }
 
@@ -98,9 +105,9 @@ export class Planilla {
       item.id === empleado.id
         ? {
             ...item,
-            estado: 'Calculado'
+            estado: 'Calculado',
           }
-        : item
+        : item,
     );
 
     this.mostrarNotificacion(`Planilla recalculada para ${empleado.empleado}.`);
@@ -124,8 +131,7 @@ export class Planilla {
         empleado.puesto.toLowerCase().includes(texto);
 
       const coincideEstado =
-        this.filtroEstado === 'Todos los estados' ||
-        empleado.estado === this.filtroEstado;
+        this.filtroEstado === 'Todos los estados' || empleado.estado === this.filtroEstado;
 
       return coincideBusqueda && coincideEstado;
     });
@@ -184,21 +190,20 @@ export class Planilla {
   private formatearMoneda(valor: number): string {
     return `Q ${valor.toLocaleString('en-US', {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     })}`;
   }
 
-obtenerNombrePeriodo(): string {
-  switch (this.periodo) {
-    case '03-2026':
-      return 'Marzo 2026';
-    case '02-2026':
-      return 'Febrero 2026';
-    case '01-2026':
-      return 'Enero 2026';
-    default:
-      return this.periodo;
+  obtenerNombrePeriodo(): string {
+    switch (this.periodo) {
+      case '03-2026':
+        return 'Marzo 2026';
+      case '02-2026':
+        return 'Febrero 2026';
+      case '01-2026':
+        return 'Enero 2026';
+      default:
+        return this.periodo;
+    }
   }
-}
-
 }

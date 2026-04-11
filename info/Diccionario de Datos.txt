@@ -1,0 +1,1276 @@
+EMPLEADO: Almacena la información personal y laboral de cada empleado
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+empleado_id INT - No PK Identificador
+único del
+empleado
+1001
+supervisor_id INT - Sí FK ID del
+empleado
+que es su
+supervisor
+(autoreferenc
+ia)
+1005
+codigo_emplea
+do
+VARCHA
+R
+20 No - Código único
+de empleado
+(legajo)
+EMP-2024-001
+nombres VARCHA
+R
+100 No - Nombres del
+empleado
+Juan Carlos
+apellidos VARCHA
+R
+100 No - Apellidos del
+empleado
+Pérez López
+email VARCHA
+R
+150 No - Correo
+electrónico
+corporativo
+jperez@empresa.c
+om
+telefono VARCHA
+R
+20 Sí - Número de
+teléfono de
+contacto
+5555-1234
+fecha_ingreso DATE - No - Fecha en que
+ingresó a la
+empresa
+2020-03-15
+activo BIT - No - Indica si el
+empleado
+está activo
+1
+(1) o inactivo
+(0)
+departamento VARCHA
+R
+100 Sí - Departament
+o al que
+pertenece
+Ventas
+puesto VARCHA
+R
+100 Sí - Puesto que
+ocupa
+Ejecutivo de
+Ventas
+tarifa_hora DECIMA
+L
+Sí Tarifa por
+hora para
+cálculo de
+planilla
+45.50
+
+USUARIO: Almacena las credenciales de acceso al sistema (1:1 con EMPLEADO)
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+usuario_id INT - No PK Identificador
+único del
+usuario
+5001
+empleado_id INT - No FK ID del empleado
+asociado (único)
+1001
+username VARCHA
+R
+50 No - Nombre de
+usuario para
+login (único)
+jperez
+password_has
+h
+VARCHA
+R
+255 No - Hash de la
+contraseña
+(encriptado)
+$2a$10$X9..
+.
+estado VARCHA
+R
+20 No - Estado de la
+cuenta:
+activo/bloquead
+o
+activo
+ultimo_login DATETIM
+E
+- Sí - Fecha y hora del
+último inicio de
+sesión
+2026-02-13
+08:30:00
+ROL: Catálogo de roles disponibles en el sistema
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+rol_id INT - No PK Identificador
+único del rol
+1
+nombre VARCHAR 50 No - Nombre del rol
+(único)
+Empleado
+descripcion VARCHAR 255 Sí - Descripción del
+rol
+Usuario básico
+que marca
+asistencia
+USUARIO_ROL: Tabla para asignar múltiples roles a un usuario (relación N:M)
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+usuario_id INT - No PK, FK ID del usuario 5001
+rol_id INT - No PK, FK ID del rol asignado 2
+TURNO: Catálogo de horarios de trabajo
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripció
+n
+Ejempl
+o
+turno_id INT - No PK Identificado
+r único del
+turno
+101
+nombre VARCHAR 50 No - Nombre
+descriptivo
+del turno
+Matutin
+o
+hora_entrada TIME - No - Hora
+esperada
+de entrada
+08:00:0
+0
+hora_salida TIME - No - Hora
+esperada
+de salida
+17:00:0
+0
+tolerancia_minutos INT - No - Minutos de
+tolerancia
+permitidos
+15
+horas_esperadas_di
+a
+DECIMAL(4,2
+)
+- No - Horas que
+debe
+trabajar al
+día
+8.00
+EMPLEADO_TURNO: Historial de asignación de turnos a empleados
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+empleado_turno_id INT - No PK Identificador único
+de la asignación
+10001
+empleado_id INT - No FK ID del empleado 1001
+turno_id INT - No FK ID del turno
+asignado
+101
+fecha_inicio DATE - No - Fecha desde que
+aplica el turno
+2025-01-
+01
+fecha_fin DATE - Sí - Fecha hasta que
+aplica (NULL si es
+actual)
+NULL
+activo BIT - No - Indica si la
+asignación está
+activa
+1
+REGISTRO_ASISTENCIA: Registro diario de marcajes de entrada y salida
+Campo Tipo Longit
+ud
+Nul
+o
+PK/F
+K
+Descripción Ejempl
+o
+asistencia_id INT - No PK Identificador único del
+registro
+50001
+empleado_id INT - No FK ID del empleado 1001
+empleado_tur
+no_id
+INT - Sí FK ID del turno asignado al
+momento del marcaje
+10001
+fecha DATE - No - Fecha del registro 2026-
+02-13
+hora_entrada_r
+eal
+DATETIME - Sí - Hora real de entrada 2026-
+02-13
+08:05:
+00
+hora_salida_re
+al
+DATETIME - Sí - Hora real de salida 2026-
+02-13
+17:10:
+00
+minutos_tardi
+a
+INT - Sí - Minutos de tardanza (0 si
+no aplica)
+5
+horas_trabajad
+as
+DECIMAL(
+4,2)
+- Sí - Horas trabajadas en el
+día
+8.25
+estado_jornad
+a
+VARCHAR 20 No - Estado:
+completa/incompleta/pe
+ndiente
+compl
+eta
+observacion VARCHAR 255 Sí - Observaciones
+adicionales
+Entrad
+a tarde
+por
+tráfico
+AJUSTE_ASISTENCIA: Registro de ajustes manuales realizados a asistencias (auditoría)
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripció
+n
+Ejemplo
+ajuste_id INT - No PK Identificad
+or único del
+ajuste
+2001
+asistencia_id INT - No FK ID del
+registro de
+asistencia
+ajustado
+50001
+usuario_id INT - No FK ID del
+usuario
+que realizó
+el ajuste
+5001
+campo_modifica
+do
+VARCHA
+R
+50 No - Nombre del
+campo
+modificado
+hora_entrada_re
+al
+valor_anterior VARCHA
+R
+255 No - Valor antes
+del cambio
+08:05:00
+valor_nuevo VARCHA
+R
+255 No - Valor
+después
+del cambio
+08:00:00
+motivo VARCHA
+R
+255 No - Razón del
+ajuste
+Corrección por
+falla sistema
+fecha_hora DATETIM
+E
+- No - Fecha y
+hora del
+ajuste
+2026-02-13
+10:30:00
+TIPO_PERMISO: Catálogo de tipos de permisos/ausencias
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripció
+n
+Ejempl
+o
+tipo_permiso_id INT - No PK Identificado
+r único del
+tipo
+10
+nombre VARCHA
+R
+50 No - Nombre del
+tipo de
+permiso
+Licencia
+Médica
+requiere_documento BIT - No - Indica si
+requiere
+adjuntar
+documento
+1
+descuenta_vacacione
+s
+BIT - No - Indica si
+descuenta
+del saldo de
+vacaciones
+0
+activo BIT - No - Indica si el
+tipo está
+activo
+1
+SOLICITUD_PERMISO: Solicitudes de permiso realizadas por empleados
+Campo Tipo Longit
+ud
+Nul
+o
+PK/
+FK
+Descripción Ejempl
+o
+solicitud_id INT - No PK Identificador único de la
+solicitud
+3001
+empleado_i
+d
+INT - No FK ID del empleado solicitante 1001
+tipo_permis
+o_id
+INT - No FK ID del tipo de permiso 10
+fecha_inici
+o
+DATE - No - Fecha de inicio del permiso 2026-
+02-20
+fecha_fin DATE - No - Fecha de fin del permiso 2026-
+02-22
+horas_inici
+o
+TIME - Sí - Hora de inicio (si es permiso por
+horas)
+NULL
+horas_fin TIME - Sí - Hora de fin (si es permiso por
+horas)
+NULL
+motivo VARCH
+AR
+500 No - Motivo de la solicitud Consul
+ta
+médica
+estado VARCH
+AR
+20 No - Estado:
+pendiente/aprobado/rechazado
+/cancelado
+pendie
+nte
+fecha_solici
+tud
+DATETI
+ME
+- No - Fecha y hora de la solicitud 2026-
+02-13
+09:15:0
+0
+DECISION_PERMISO: Registro de la decisión tomada sobre una solicitud
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+decision_id INT - No PK Identificador único
+de la decisión
+4001
+solicitud_id INT - No FK ID de la solicitud 3001
+usuario_id INT - No FK ID del usuario que
+aprobó/rechazó
+5002
+decision VARCHAR 20 No - aprobado/rechazado aprobado
+comentario VARCHAR 255 No - Comentario
+obligatorio de la
+decisión
+Procede,
+entregar
+constancia
+fecha_hora DATETIME - No - Fecha y hora de la
+decisión
+2026-02-13
+14:30:00
+ADJUNTO_SOLICITUD: Archivos adjuntos a las solicitudes de permiso
+Campo Tipo Longit
+ud
+Nul
+o
+PK/F
+K
+Descripci
+ón
+Ejemplo
+adjunto_id INT - No PK Identifica
+dor único
+del
+adjunto
+6001
+solicitud_id INT - No FK ID de la
+solicitud
+asociada
+3001
+nombre_arch
+ivo
+VARCH
+AR
+255 No - Nombre
+original
+del
+archivo
+constancia_medica.pdf
+ruta_url VARCH
+AR
+500 No - Ruta
+donde se
+almacena
+el archivo
+/adjuntos/3001/constanc
+ia.pdf
+tipo_mime VARCH
+AR
+100 No - Tipo MIME
+del
+archivo
+application/pdf
+fecha_subid
+a
+DATETI
+ME
+- No - Fecha y
+hora de
+subida
+2026-02-13 09:16:00
+VACACION_SALDO: Saldo actual de vacaciones por empleado
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+saldo_id INT - No PK Identificador único
+del saldo
+7001
+empleado_id INT - No FK ID del empleado
+(único)
+1001
+dias_disponibles INT - No - Días de vacaciones
+disponibles
+actualmente
+15
+dias_usados INT - No - Días de vacaciones ya
+usados
+5
+fecha_corte DATE - No - Fecha del último
+cálculo de saldo
+2026-01-
+01
+VACACION_MOVIMIENTO: Movimientos que afectan el saldo de vacaciones
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+movimiento
+_id
+INT - No PK Identificador único del
+movimiento
+8001
+empleado_i
+d
+INT - No FK ID del empleado 1001
+solicitud_id INT - Sí FK ID de solicitud (si aplica) 3005
+tipo VARCHA
+R
+20 No - acumulacion/consumo/aj
+uste
+consumo
+dias INT - No - Cantidad de días del
+movimiento
+5
+fecha DATE - No - Fecha del movimiento 2026-02-
+01
+comentario VARCHA
+R
+255 Sí - Comentario adicional Vacacion
+es de
+febrero
+PROYECTO: Catálogo de proyectos
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+proyecto_id INT - No PK Identificador
+único del
+proyecto
+200
+codigo VARCHAR 50 No - Código único
+del proyecto
+PROY-2026-001
+nombre VARCHAR 100 No - Nombre del
+proyecto
+Implementación
+CRM
+descripcion VARCHAR 500 Sí - Descripción
+del proyecto
+Migración a
+Salesforce
+activo BIT - No - Indica si el
+proyecto está
+activo
+1
+EMPLEADO_PROYECTO: Asignación de empleados a proyectos
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+emp_proy_id INT - No PK Identificador único de la
+asignación
+9001
+empleado_id INT - No FK ID del empleado 1001
+proyecto_id INT - No FK ID del proyecto 200
+fecha_inicio DATE - No - Fecha de inicio en el
+proyecto
+2026-01-
+15
+fecha_fin DATE - Sí - Fecha de fin (NULL si
+activa)
+NULL
+activo BIT - No - Indica si la asignación
+está activa
+1
+REGISTRO_TIEMPO (TIMESHEET): Registro de horas trabajadas por proyecto
+Campo Tipo Longit
+ud
+Nul
+o
+PK/
+FK
+Descripción Ejemplo
+tiempo_id INT - No PK Identificador único del
+registro
+10001
+empleado_id INT - No FK ID del empleado 1001
+proyecto_id INT - No FK ID del proyecto 200
+fecha DATE - No - Fecha del trabajo
+realizado
+2026-02-
+13
+horas DECIMAL(
+4,2)
+- No - Horas trabajadas 4.50
+actividad_descr
+ipcion
+VARCHAR 255 Sí - Descripción de la
+actividad realizada
+Reunión
+de
+planifica
+ción
+estado VARCHAR 20 No - pendiente/aprobado/re
+chazado
+pendient
+e
+fecha_registro DATETIME - No - Fecha y hora del
+registro
+2026-02-
+13
+16:45:00
+horas_validadas DECIMAL(
+4,2)
+- Sí - Horas validadas (si
+difieren de registradas)
+4.00
+APROBACION_TIEMPO: Aprobación de registros de tiempo por supervisor
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+aprobacion_i
+d
+INT - No PK Identificador único
+de la aprobación
+11001
+tiempo_id INT - No FK ID del registro de
+tiempo
+10001
+usuario_id INT - No FK ID del usuario que
+aprobó/rechazó
+5002
+decision VARCHA
+R
+20 No - aprobado/rechazad
+o
+aprobad
+o
+comentario VARCHA
+R
+255 No - Comentario
+obligatorio
+Horas
+correctas
+fecha_hora DATETIM
+E
+- No - Fecha y hora de la
+decisión
+2026-02-
+13
+17:30:00
+KPI_MENSUAL: Métricas de desempeño calculadas por empleado y mes
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejempl
+o
+kpi_id INT - No PK Identificador
+único del KPI
+12001
+empleado_id INT - No FK ID del empleado 1001
+anio INT - No - Año del período 2026
+mes INT - No - Mes del período
+(1-12)
+2
+dias_esperados INT - No - Días que debía
+trabajar
+20
+dias_trabajados INT - No - Días que
+realmente trabajó
+19
+tardias INT - No - Número de
+tardanzas en el
+mes
+2
+faltas INT - No - Número de faltas
+en el mes
+1
+horas_esperada
+s
+DECIMAL(6,
+2)
+- No - Horas que debía
+trabajar
+160.00
+horas_trabajada
+s
+DECIMAL(6,
+2)
+- No - Horas que
+realmente trabajó
+158.50
+cumplimiento_p
+ct
+DECIMAL(5,
+2)
+- No - Porcentaje de
+cumplimiento
+95.5
+clasificacion VARCHAR 20 - - Excelente/Bueno/
+En
+observación/En
+riesgo
+Bueno
+fecha_calculo DATETIME - No - Fecha del cálculo 2026-
+03-01
+00:00:0
+0
+REGLA_BONO: Reglas configurables para elegibilidad de bonos
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripció
+n
+Ejemplo
+regla_bono_id INT - No PK Identificad
+or único de
+la regla
+1
+nombre VARCHAR 100 No - Nombre de
+la regla
+Bono de
+puntualida
+d
+activo BIT - No - Indica si la
+regla está
+activa
+1
+min_dias_trabajad
+os
+INT - Sí - Mínimo de
+días
+trabajados
+requerido
+20
+max_tardias INT - Sí - Máximo de
+tardanzas
+permitidas
+3
+max_faltas INT - Sí - Máximo de
+faltas
+permitidas
+0
+min_horas DECIMAL(6,
+2)
+- Sí - Mínimo de
+horas
+trabajadas
+requerido
+160.00
+vigencia_inicio DATE - No - Fecha de
+inicio de
+vigencia
+2026-01-
+01
+vigencia_fin DATE - Sí - Fecha de
+fin de
+vigencia
+NULL
+BONO_RESULTADO: Resultados de la validación de bonos por empleado
+Campo Tipo Longitud Nulo PK/FK Descripción Ejemplo
+bono_res_id INT - No PK Identificador
+único del
+resultado
+13001
+empleado_id INT - No FK ID del
+empleado
+1001
+regla_bono_id INT - No FK ID de la regla
+aplicada
+1
+anio INT - No - Año del
+período
+2026
+mes INT - No - Mes del
+período
+2
+elegible BIT - No - Indica si es
+elegible (1) o
+no (0)
+1
+motivo_no_elegible VARCHAR 255 Sí - Motivo si no
+es elegible
+NULL
+fecha_calculo DATETIME - No - Fecha del
+cálculo
+2026-03-
+01
+00:00:00
+AUDIT_LOG: Bitácora de auditoría de acciones críticas
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripció
+n
+Ejemplo
+audit_id INT - No PK Identificado
+r único del
+registro
+14001
+usuario_id INT - Sí FK ID del
+usuario que
+realizó la
+acción
+5001
+fecha_hor
+a
+DATETIM
+E
+- No - Fecha y
+hora de la
+acción
+2026-02-13 09:15:00
+modulo VARCHA
+R
+50 No - Módulo del
+sistema
+PERMISOS
+accion VARCHA
+R
+50 No - Acción
+realizada
+APROBAR
+entidad VARCHA
+R
+50 No - Entidad
+afectada
+SOLICITUD_PERMIS
+O
+entidad_id INT - Sí - ID de la
+entidad
+afectada
+3001
+detalle VARCHA
+R
+500 Sí - Detalles
+adicionales
+Solicitud aprobada
+por supervisor
+PARAMETRO_SISTEMA: Parámetros configurables del sistema
+Campo Tipo Longit
+ud
+Nu
+lo
+PK/F
+K
+Descripción
+parametro_id INT - No PK Identificador
+único del
+parámetro
+usuario_id_actualiza INT - No FK ID del usuario
+que actualizó
+(conecta
+USUARIO.usua
+rio_id)
+clave VARCHAR 100 No UNIQ
+UE
+Clave única del
+parámetro
+valor VARCHAR 255 No - Valor del
+parámetro
+descripcion VARCHAR 255 Sí - Descripción
+del parámetro
+activo BIT - No - Indica si el
+parámetro está
+activo (1) o
+inactivo (0)
+fecha_actualizacion DATETIME - No - Fecha de
+última
+actualización
+modo_validacion_horas VARCHAR 20 Sí - Modo:
+por_marcaje /
+por_limite
+permitir_exceso_justificacion BIT - Sí - Permite exceso
+con
+justificación
+(true/false)
+dias_laborales VARCHAR 20 Sí - Días laborales
+(L-V, L-S, etc.)
+limite_horas_semana DECIMAL(
+6,2)
+- Sí - Límite de horas
+por semana
+limite_horas_dia DECIMAL(
+6,2)
+- Sí - Límite de horas
+por día
+KPI_EXCELENTE_MIN_CUMPLIMIE
+NTO_PCT
+DECIMAL(
+5,2)
+- Sí - % mínimo para
+clasificación
+Excelente
+KPI_BUENO_MIN_CUMPLIMIENTO
+_PCT
+DECIMAL(
+5,2)
+- Sí - % mínimo para
+clasificación
+Bueno
+KPI_OBSERVACION_MIN_CUMPLI
+MIENTO_PCT
+DECIMAL(
+5,2)
+- Sí - % mínimo para
+clasificación
+En observación
+KPI_MAX_TARDIAS_EXCELENTE INT - Sí - Máx. tardanzas
+para Excelente
+KPI_MAX_TARDIAS_BUENO INT - Sí - Máx. tardanzas
+para Bueno
+KPI_MAX_FALTAS_BUENO INT - Sí - Máx. faltas
+para Bueno
+ACUMULACION: Tabla Ligada a parametros
+Campo Tipo Longit
+ud
+Nul
+o
+PK/
+FK
+Descripción
+acumulacion_id INT - No PK Identificador
+único
+parametro_id INT - No FK Relación con
+PARAMETRO_SIS
+TEMA
+VAC_DIAS_POR_ANIO INT - Sí - Días de
+vacaciones por
+año (ej. 15)
+VAC_DIAS_POR_MES DECIMAL(
+4,2)
+- Sí - Días de
+vacaciones por
+mes (ej. 1.25)
+VAC_ACUMULA_DESDE_FECHA
+_INGRESO
+BIT - Sí - Acumula desde
+fecha de ingreso
+(true/false)
+VAC_MESES_MINIMOS_PARA_S
+OLICITAR
+INT - Sí - Meses mínimos
+trabajados para
+solicitar (ej. 6)
+VAC_TOPE_ACUMULADO_DIAS INT - Sí - Máximo de días
+acumulables (ej.
+30)
+SOLICITUD_VALIDACIONES: Tabla Ligada a parametros
+Campo Tip
+o
+Longit
+ud
+Nul
+o
+PK/F
+K
+Descripción
+solicitud_validaciones_id INT - No PK Identificador
+único
+parametro_id INT - No FK Relación con
+PARAMETRO_SIST
+EMA
+VAC_MIN_DIAS_POR_SOLICITUD INT - Sí - Mínimo días por
+solicitud (ej. 1)
+VAC_MAX_DIAS_POR_SOLICITUD INT - Sí - Máximo días por
+solicitud (ej. 10)
+VAC_ANTICIPACION_MIN_DIAS INT - Sí - Días mínimos de
+anticipación (ej. 7)
+VAC_PERMITE_MEDIO_DIA BIT - Sí - Permite medio día
+(true/false)
+VAC_PERMITE_POR_HORAS BIT - Sí - Permite por horas
+(true/false)
+VAC_REQUIERE_APROBACION_SUP
+ERVISOR
+BIT - Sí - Requiere
+aprobación del
+supervisor
+(true/false)
+CALENDARIO_LABORAL: Tabla Ligada a parametros
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción
+calendario_laboral_id INT - No PK Identificador único
+parametro_id INT - No FK Relación con
+PARAMETRO_SISTEM
+A
+VAC_CUENTA_SABADOS BIT - Sí - Cuenta sábados
+(true/false)
+VAC_CUENTA_DOMINGO
+S
+BIT - Sí - Cuenta domingos
+(true/false)
+VAC_CUENTA_FERIADOS BIT - Sí - Cuenta feriados
+(true/false)
+VAC_FERIADOS_LISTA VARCHA
+R
+500 Sí - Lista de feriados (ej.
+"2026-01-01,2026-
+03-xx,…")
+SALDO_CORTES: Tabla Ligada a parametros
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción
+saldo_cortes_id INT - No PK Identificador único
+parametro_id INT - No FK Relación con
+PARAMETRO_SISTE
+MA
+VAC_CORTE_ANUAL_FECHA VARCHA
+R
+10 Sí - Fecha de corte
+anual (ej. "12-31" o
+"01-01")
+VAC_PERMITE_ARREO_DIAS BIT - Sí - Permite arrastre de
+días (carryover)
+(true/false)
+VAC_MAX_ARREO_DIAS INT - Sí - Máximo de días a
+arrastrar (ej. 5)
+VAC_VENCE_ARREO_EN_ME
+SES
+INT - Sí - Meses para
+vencimiento del
+arrastre (ej. 6)
+RESET_PASSWORD_TOKEN: Gestión de tokens para recuperación de contraseña
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+reset_id INT - No PK Identificador único
+del token
+15001
+usuario_id INT - No FK ID del usuario 5001
+token_hash VARCHA
+R
+255 No - Hash del token de
+recuperación
+$2a$10$Y8..
+.
+fecha_creaci
+on
+DATETIM
+E
+- No - Fecha de creación
+del token
+2026-02-13
+08:00:00
+fecha_expira DATETIM
+E
+- No - Fecha de expiración
+del token
+2026-02-13
+12:00:00
+usado BIT - No - Indica si el token ya
+fue usado
+0
+fecha_uso DATETIM
+E
+- Sí - Fecha en que se
+usó el token
+NULL
+ip_solicitud VARCHA
+R
+45 Sí - IP desde donde se
+solicitó
+192.168.1.1
+00
+user_agent VARCHA
+R
+255 Sí - Navegador/dispositi
+vo usado
+Mozilla/5.0...
+PERIODO_PLANILLA: Períodos de cálculo de nómina
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejempl
+o
+periodo_id INT - No PK Identificador único del
+período
+1
+nombre VARCHA
+R
+100 No - Nombre descriptivo del
+período
+Marzo
+2026
+fecha_inici
+o
+DATE - No - Fecha de inicio del período 2026-
+03-01
+fecha_fin DATE - No - Fecha de fin del período 2026-
+03-31
+tipo VARCHA
+R
+20 No - semanal/quincenal/mens
+ual
+mensua
+l
+estado VARCHA
+R
+20 No - abierto/cerrado/procesad
+o
+abierto
+PLANILLA_EMPLEADO: Cálculo individual de planilla por período
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejempl
+o
+planilla_emp_id INT - No PK Identificador único 10001
+periodo_id INT - No FK ID del período
+(PERIODO_PLANILL
+A)
+1
+empleado_id INT - No FK ID del empleado 1001
+fecha_calculo DATETIM
+E
+- No - Fecha del cálculo 2026-
+03-31
+18:00:0
+0
+tarifa_hora_usada DECIMA
+L
+- No - Tarifa aplicada 45.50
+horas_pagables DECIMA
+L
+- No - Total horas a pagar 160.00
+monto_bruto DECIMA
+L
+- No - Salario bruto 7280.0
+0
+total_bonificacion
+es
+DECIMA
+L
+- No - Suma de bonos 500.00
+total_deducciones DECIMA
+L
+- No - Suma de
+deducciones
+800.00
+monto_neto DECIMA
+L
+- No - Salario neto final 6980.0
+0
+CONCEPTO_PLANILLA: Catálogo de conceptos de pago/deducción
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+concepto_id INT - No PK Identificador único 101
+codigo VARCHA
+R
+20 No - Código único del
+concepto
+BONOPUNT
+nombre VARCHA
+R
+100 No - Nombre del
+concepto
+Bono de
+puntualida
+d
+tipo VARCHA
+R
+20 No - ingreso/deducción ingreso
+modo_calcul
+o
+VARCHA
+R
+30 No - fijo/porcentaje/hora
+s
+porcentaje
+base_calculo DECIMAL - Sí - Valor base para
+cálculo
+10.00
+activo BIT - No - Concepto activo (1)
+o inactivo (0)
+1
+MOVIMIENTO_PLANILLA: Movimientos individuales que componen la planilla
+Campo Tipo Longitu
+d
+Nul
+o
+PK/F
+K
+Descripción Ejemplo
+movimiento_id INT - No PK Identificador
+único
+5001
+planilla_emp_id INT - No FK ID de planilla
+empleado
+10001
+concepto_id INT - No FK ID del concepto 101
+tipo VARCHAR 20 No - ingreso/deducci
+ón
+ingreso
+usuario_id_regis
+tra
+INT - No FK Usuario que
+registra
+5001
+fecha_hora DATETIME - No - Fecha del
+movimiento
+2026-03-
+31
+18:00:00
+monto DECIMAL(12,
+2)
+- No - Monto del
+movimiento
+500.00
+es_manual BIT - No - TRUE si fue
+manual, FALSE
+si automático
+0
+comentario VARCHAR 255 Sí - Comentario
+adicional
+Bono por
+asistenci
+a
+perfecta
+TABLA_ISR: Tabla de impuesto sobre la renta
+Campo Tipo Longitud Nulo PK/FK Descripción Ejem
+plo
+isr_id INT - No PK Identificador
+único
+1
+anio INT - No - Año de
+vigencia
+2026
+rango_des
+de
+DECIMAL(12,2) - No - Límite
+inferior del
+rango
+0.01
+rango_has
+ta
+DECIMAL(12,2) - No - Límite
+superior del
+rango
+5000.
+00
+porcentaje DECIMAL(5,2) - No - Porcentaje a
+aplicar
+5.00
+cuota_fijo DECIMAL(12,2) - No - Cuota fija del
+tramo
+0.00

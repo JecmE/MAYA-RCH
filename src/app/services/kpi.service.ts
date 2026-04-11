@@ -30,6 +30,12 @@ export interface HrKpi {
   promedioCumplimiento: number;
   totalTardias: number;
   totalFaltas: number;
+  clasificaciones?: {
+    Excelente: number;
+    Bueno: number;
+    'En observacion': number;
+    'En riesgo': number;
+  };
 }
 
 export interface EmployeeClassification {
@@ -37,6 +43,40 @@ export interface EmployeeClassification {
   nombreCompleto: string;
   clasificacion: string;
   cumplimientoPct: number;
+  tardias?: number;
+  faltas?: number;
+}
+
+export interface EmployeeProfile {
+  empleado: {
+    nombreCompleto: string;
+    puesto: string;
+    departamento: string;
+    email: string;
+  };
+  historialAsistencia: {
+    fecha: string;
+    entrada: string;
+    salida: string;
+    estado: string;
+  }[];
+  horasPorProyecto: {
+    nombre: string;
+    horas: number;
+  }[];
+  solicitudesRecientes: {
+    tipo: string;
+    fechaInicio: string;
+    fechaFin: string;
+    estado: string;
+  }[];
+  kpiActual: {
+    cumplimientoPct: number;
+    clasificacion: string;
+    tardias: number;
+    faltas: number;
+  } | null;
+  comparacionMesAnterior: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,8 +89,8 @@ export class KpiService {
     return this.http.get<KpiDashboard>(`${this.apiUrl}/dashboard/employee`);
   }
 
-  getSupervisorDashboard(supervisorId: number): Observable<SupervisorKpi[]> {
-    return this.http.get<SupervisorKpi[]>(`${this.apiUrl}/dashboard/supervisor`);
+  getSupervisorDashboard(supervisorId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/dashboard/supervisor`);
   }
 
   getHrDashboard(): Observable<HrKpi> {
@@ -59,5 +99,9 @@ export class KpiService {
 
   getEmployeeClassifications(): Observable<EmployeeClassification[]> {
     return this.http.get<EmployeeClassification[]>(`${this.apiUrl}/employee-classification`);
+  }
+
+  getEmployeeProfile(empleadoId: number): Observable<EmployeeProfile> {
+    return this.http.get<EmployeeProfile>(`${this.apiUrl}/employee/${empleadoId}/profile`);
   }
 }

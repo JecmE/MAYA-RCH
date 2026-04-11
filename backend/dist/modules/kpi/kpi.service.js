@@ -20,11 +20,17 @@ const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const typeorm_3 = require("typeorm");
+const solicitud_permiso_entity_1 = require("../../entities/solicitud-permiso.entity");
+const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity");
+const proyecto_entity_1 = require("../../entities/proyecto.entity");
 let KpiService = class KpiService {
-    constructor(kpiRepository, asistenciaRepository, empleadoRepository, dataSource) {
+    constructor(kpiRepository, asistenciaRepository, empleadoRepository, solicitudPermisoRepository, registroTiempoRepository, proyectoRepository, dataSource) {
         this.kpiRepository = kpiRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.empleadoRepository = empleadoRepository;
+        this.solicitudPermisoRepository = solicitudPermisoRepository;
+        this.registroTiempoRepository = registroTiempoRepository;
+        this.proyectoRepository = proyectoRepository;
         this.dataSource = dataSource;
     }
     async getEmployeeDashboard(empleadoId, mes, anio) {
@@ -77,6 +83,23 @@ let KpiService = class KpiService {
             },
         });
         const kpiMap = new Map(kpis.map((k) => [k.empleadoId, k]));
+        const previousMonth = month === 1 ? 12 : month - 1;
+        const previousYear = month === 1 ? year - 1 : year;
+        const previousKpis = await this.kpiRepository.find({
+            where: {
+                empleadoId: (0, typeorm_2.In)(empleadoIds),
+                mes: previousMonth,
+                anio: previousYear,
+            },
+        });
+        const previousKpiMap = new Map(previousKpis.map((k) => [k.empleadoId, k]));
+        const currentAvg = kpis.length > 0
+            ? kpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / kpis.length
+            : 0;
+        const previousAvg = previousKpis.length > 0
+            ? previousKpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / previousKpis.length
+            : 0;
+        const comparacionMesAnterior = previousAvg > 0 ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0;
         return {
             mes,
             anio: year,
@@ -84,9 +107,8 @@ let KpiService = class KpiService {
             resumen: {
                 totalDiasTrabajados: kpis.reduce((sum, k) => sum + k.diasTrabajados, 0),
                 totalTardias: kpis.reduce((sum, k) => sum + k.tardias, 0),
-                promedioCumplimiento: kpis.length > 0
-                    ? kpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / kpis.length
-                    : 0,
+                promedioCumplimiento: currentAvg,
+                comparacionMesAnterior: Math.round(comparacionMesAnterior * 10) / 10,
             },
             empleados: equipoRaw.map((e) => {
                 const kpi = kpiMap.get(e.empleado_id);
@@ -139,12 +161,19 @@ let KpiService = class KpiService {
         if (!kpi) {
             kpi = await this.calculateKpi(empleadoId, month, year);
         }
-        return {
-            clasificacion: kpi.clasificacion,
-            cumplimientoPct: kpi.cumplimientoPct,
-            tardias: kpi.tardias,
-            faltas: kpi.faltas,
-        };
+        const empleado = await this.empleadoRepository.findOne({
+            where: { empleadoId },
+        });
+        return [
+            {
+                empleadoId,
+                nombreCompleto: empleado ? `${empleado.nombres} ${empleado.apellidos}` : '',
+                clasificacion: kpi.clasificacion,
+                cumplimientoPct: kpi.cumplimientoPct,
+                tardias: kpi.tardias,
+                faltas: kpi.faltas,
+            },
+        ];
     }
     async calculateKpi(empleadoId, mes, anio) {
         const fechaInicio = new Date(anio, mes - 1, 1);
@@ -186,6 +215,100 @@ let KpiService = class KpiService {
         });
         return this.kpiRepository.save(kpi);
     }
+    async getEmployeeProfile(empleadoId) {
+        const empleado = await this.empleadoRepository.findOne({
+            where: { empleadoId },
+        });
+        if (!empleado) {
+            return null;
+        }
+        const now = new Date();
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const attendance = await this.asistenciaRepository.find({
+            where: {
+                empleadoId,
+                fecha: (0, typeorm_2.Raw)((alias) => `${alias} >= :sevenDaysAgo`, { sevenDaysAgo }),
+            },
+            order: { fecha: 'DESC' },
+        });
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const timesheets = await this.registroTiempoRepository.find({
+            where: {
+                empleadoId,
+                fecha: (0, typeorm_2.Raw)((alias) => `${alias} >= :firstDayOfMonth`, { firstDayOfMonth }),
+            },
+            relations: ['proyecto'],
+        });
+        const projectHoursMap = new Map();
+        for (const ts of timesheets) {
+            const horas = Number(ts.horas) || 0;
+            if (projectHoursMap.has(ts.proyectoId)) {
+                const existing = projectHoursMap.get(ts.proyectoId);
+                existing.horas += horas;
+            }
+            else {
+                projectHoursMap.set(ts.proyectoId, {
+                    nombre: ts.proyecto?.nombre || `Proyecto ${ts.proyectoId}`,
+                    horas,
+                });
+            }
+        }
+        const recentRequests = await this.solicitudPermisoRepository.find({
+            where: { empleadoId },
+            relations: ['tipoPermiso'],
+            order: { fechaSolicitud: 'DESC' },
+            take: 5,
+        });
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+        const currentKpi = await this.kpiRepository.findOne({
+            where: { empleadoId, mes: currentMonth, anio: currentYear },
+        });
+        const previousKpi = await this.kpiRepository.findOne({
+            where: { empleadoId, mes: previousMonth, anio: previousYear },
+        });
+        const comparisonPct = previousKpi && previousKpi.cumplimientoPct > 0
+            ? (((currentKpi?.cumplimientoPct || 0) - previousKpi.cumplimientoPct) /
+                previousKpi.cumplimientoPct) *
+                100
+            : 0;
+        return {
+            empleado: {
+                nombreCompleto: `${empleado.nombres} ${empleado.apellidos}`,
+                puesto: empleado.puesto,
+                departamento: empleado.departamento,
+                email: empleado.email,
+            },
+            historialAsistencia: attendance.slice(0, 7).map((a) => ({
+                fecha: a.fecha,
+                entrada: a.horaEntradaReal,
+                salida: a.horaSalidaReal,
+                estado: a.minutosTardia > 0 ? 'tarde' : 'a_tiempo',
+            })),
+            horasPorProyecto: Array.from(projectHoursMap.values()).map((p) => ({
+                nombre: p.nombre,
+                horas: p.horas,
+            })),
+            solicitudesRecientes: recentRequests.map((s) => ({
+                tipo: s.tipoPermiso?.nombre || 'Permiso',
+                fechaInicio: s.fechaInicio,
+                fechaFin: s.fechaFin,
+                estado: s.estado,
+            })),
+            kpiActual: currentKpi
+                ? {
+                    cumplimientoPct: currentKpi.cumplimientoPct,
+                    clasificacion: currentKpi.clasificacion,
+                    tardias: currentKpi.tardias,
+                    faltas: currentKpi.faltas,
+                }
+                : null,
+            comparacionMesAnterior: Math.round(comparisonPct * 10) / 10,
+        };
+    }
 };
 exports.KpiService = KpiService;
 exports.KpiService = KpiService = __decorate([
@@ -193,7 +316,13 @@ exports.KpiService = KpiService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(kpi_mensual_entity_1.KpiMensual)),
     __param(1, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
     __param(2, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
+    __param(3, (0, typeorm_1.InjectRepository)(solicitud_permiso_entity_1.SolicitudPermiso)),
+    __param(4, (0, typeorm_1.InjectRepository)(registro_tiempo_entity_1.RegistroTiempo)),
+    __param(5, (0, typeorm_1.InjectRepository)(proyecto_entity_1.Proyecto)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_3.DataSource])

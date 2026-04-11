@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { ProjectsService, Proyecto } from '../../../services/projects.service';
 
 interface AsignacionProyecto {
   id: number;
@@ -45,7 +46,7 @@ interface NuevaAsignacionForm {
   templateUrl: './proyectos.html',
   styleUrl: './proyectos.css',
 })
-export class Proyectos {
+export class Proyectos implements OnInit {
   filtroBusqueda = '';
   filtroEstado = 'Todos los estados';
 
@@ -80,62 +81,41 @@ export class Proyectos {
   nuevaAsignacion: NuevaAsignacionForm = this.getAsignacionVacia();
   asignacionesTemporales: AsignacionProyecto[] = [];
 
-  proyectos: ProyectoItem[] = [
-    {
-      id: 1,
-      codigo: 'CRH-001',
-      nombre: 'Control de RRHH',
-      descripcion: 'Proyecto para control de asistencia, permisos y gestión de personal.',
-      responsable: 'Carlos Mérida',
-      estado: 'Activo',
-      empleados: 4,
-      horasAsignadas: 160,
-      asignaciones: [
-        { id: 1, empleado: 'Ana Gómez', fechaInicio: '2026-03-01', fechaFin: '2026-04-30' },
-        { id: 2, empleado: 'Lucía Torres', fechaInicio: '2026-03-05', fechaFin: '2026-04-30' },
-      ],
-    },
-    {
-      id: 2,
-      codigo: 'MKT-002',
-      nombre: 'Portal de Marketing',
-      descripcion: 'Desarrollo de dashboard interno para seguimiento comercial.',
-      responsable: 'Lucía Torres',
-      estado: 'Pausado',
-      empleados: 3,
-      horasAsignadas: 90,
-      asignaciones: [
-        { id: 3, empleado: 'Mario Paz', fechaInicio: '2026-02-10', fechaFin: '2026-05-10' },
-      ],
-    },
-    {
-      id: 3,
-      codigo: 'ADM-003',
-      nombre: 'Automatización Administrativa',
-      descripcion: 'Automatización de procesos operativos y carga de información.',
-      responsable: 'Ana Gómez',
-      estado: 'Activo',
-      empleados: 5,
-      horasAsignadas: 210,
-      asignaciones: [
-        { id: 4, empleado: 'José Luis', fechaInicio: '2026-03-15', fechaFin: '2026-06-15' },
-        { id: 5, empleado: 'Daniela Cruz', fechaInicio: '2026-03-20', fechaFin: '2026-06-20' },
-      ],
-    },
-    {
-      id: 4,
-      codigo: 'LEG-004',
-      nombre: 'Cierre Legal',
-      descripcion: 'Proyecto de documentación y cierre de procesos legales.',
-      responsable: 'Mario Paz',
-      estado: 'Cerrado',
-      empleados: 2,
-      horasAsignadas: 60,
-      asignaciones: [],
-    },
-  ];
+  proyectos: ProyectoItem[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private projectsService: ProjectsService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadProyectos();
+  }
+
+  private loadProyectos(): void {
+    this.projectsService.getAll().subscribe({
+      next: (data: Proyecto[]) => {
+        this.proyectos = data.map((p) => this.mapProyectoToItem(p));
+      },
+      error: () => {
+        this.proyectos = [];
+      },
+    });
+  }
+
+  private mapProyectoToItem(p: Proyecto): ProyectoItem {
+    return {
+      id: p.proyectoId ?? 0,
+      codigo: p.codigo,
+      nombre: p.nombre,
+      descripcion: p.descripcion || '',
+      responsable: '',
+      estado: p.activo ? 'Activo' : 'Cerrado',
+      empleados: 0,
+      horasAsignadas: 0,
+      asignaciones: [],
+    };
+  }
 
   goBack(): void {
     this.router.navigate(['/']);
@@ -168,8 +148,7 @@ export class Proyectos {
         proyecto.responsable.toLowerCase().includes(texto);
 
       const coincideEstado =
-        this.filtroEstado === 'Todos los estados' ||
-        proyecto.estado === this.filtroEstado;
+        this.filtroEstado === 'Todos los estados' || proyecto.estado === this.filtroEstado;
 
       return coincideBusqueda && coincideEstado;
     });
@@ -237,7 +216,7 @@ export class Proyectos {
     }
 
     const yaExiste = this.asignacionesTemporales.some(
-      (item) => item.empleado === this.nuevaAsignacion.empleado
+      (item) => item.empleado === this.nuevaAsignacion.empleado,
     );
 
     if (yaExiste) {
@@ -359,12 +338,16 @@ export class Proyectos {
 
   exportarProyecto(): void {
     if (!this.proyectoSeleccionado) return;
-    this.mostrarExito(`El proyecto ${this.proyectoSeleccionado.nombre} fue exportado correctamente.`);
+    this.mostrarExito(
+      `El proyecto ${this.proyectoSeleccionado.nombre} fue exportado correctamente.`,
+    );
   }
 
   regenerarProyecto(): void {
     if (!this.proyectoSeleccionado) return;
-    this.mostrarExito(`El resumen del proyecto ${this.proyectoSeleccionado.nombre} fue regenerado.`);
+    this.mostrarExito(
+      `El resumen del proyecto ${this.proyectoSeleccionado.nombre} fue regenerado.`,
+    );
   }
 
   private getProyectoVacio(): ProyectoForm {
