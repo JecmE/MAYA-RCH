@@ -5,6 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { AttendanceService } from '../../services/attendance.service';
 import { KpiService, KpiDashboard } from '../../services/kpi.service';
 import { LeavesService } from '../../services/leaves.service';
+import { AdminService } from '../../services/admin.service';
 
 type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
 
@@ -30,11 +31,23 @@ export class Dashboard implements OnInit {
   horaEntradaTurno = '';
   horaSalidaTurno = '';
 
+  marcaError = '';
+  marcaSuccess = '';
+
+  canCheckIn = false;
+  canCheckOut = false;
+  checkInDisabledReason = '';
+  checkOutDisabledReason = '';
+
   tardiasMes = 0;
   horasTrabajadas = 0;
   permisosPendientes = 0;
   cumplimiento = 0;
   clasificacion = '';
+
+  adminStats: any = {};
+  rrhhStats: any = {};
+  supervisorStats: any = {};
 
   private isCheckingIn = false;
   private isCheckingOut = false;
@@ -45,6 +58,7 @@ export class Dashboard implements OnInit {
     private attendanceService: AttendanceService,
     private kpiService: KpiService,
     private leavesService: LeavesService,
+    private adminService: AdminService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object,
   ) {
@@ -58,7 +72,36 @@ export class Dashboard implements OnInit {
     this.loadUserProfile();
     this.loadTodayStatus();
     this.loadKpiData();
+    this.loadDashboardStats();
     setInterval(() => this.updateDateTime(), 60000);
+  }
+
+  private loadDashboardStats(): void {
+    if (this.role === 'admin') {
+      this.adminService.getAdminDashboardStats().subscribe({
+        next: (stats) => {
+          this.adminStats = stats;
+          this.cdr.detectChanges();
+        },
+        error: () => {},
+      });
+    } else if (this.role === 'rrhh') {
+      this.adminService.getRrhhDashboardStats().subscribe({
+        next: (stats) => {
+          this.rrhhStats = stats;
+          this.cdr.detectChanges();
+        },
+        error: () => {},
+      });
+    } else if (this.role === 'supervisor') {
+      this.adminService.getSupervisorDashboardStats().subscribe({
+        next: (stats) => {
+          this.supervisorStats = stats;
+          this.cdr.detectChanges();
+        },
+        error: () => {},
+      });
+    }
   }
 
   private updateDateTime(): void {
@@ -104,6 +147,25 @@ export class Dashboard implements OnInit {
         this.toleranciaMinutos = status.toleranciaMinutos || 0;
         this.horaEntradaTurno = status.horaEntradaTurno || '';
         this.horaSalidaTurno = status.horaSalidaTurno || '';
+
+        if (!status.tieneEntrada && !status.tieneSalida) {
+          this.calculateCheckInAvailability();
+          if (!this.canCheckIn) {
+            this.canCheckOut = false;
+            this.checkOutDisabledReason = 'Primero debes marcar entrada. Contacta a tu supervisor.';
+          } else {
+            this.canCheckOut = false;
+            this.checkOutDisabledReason = '';
+          }
+        } else if (status.tieneEntrada && !status.tieneSalida) {
+          this.canCheckIn = false;
+          this.checkInDisabledReason = '';
+          this.calculateCheckOutAvailability();
+        } else {
+          this.canCheckIn = false;
+          this.canCheckOut = false;
+        }
+
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -112,9 +174,67 @@ export class Dashboard implements OnInit {
         this.toleranciaMinutos = 0;
         this.horaEntradaReal = '--:--';
         this.horaSalidaReal = '--:--';
+        this.canCheckIn = false;
+        this.canCheckOut = false;
         this.cdr.detectChanges();
       },
     });
+  }
+
+  private calculateCheckInAvailability(): void {
+    const now = new Date();
+    this.canCheckIn = true;
+    this.canCheckOut = false;
+    this.checkInDisabledReason = '';
+    this.checkOutDisabledReason = '';
+
+    if (!this.horaEntradaTurno) {
+      this.canCheckIn = false;
+      this.checkInDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';
+      return;
+    }
+
+    const [h, m, s] = this.horaEntradaTurno.split(':').map(Number);
+    const horaEntradaEsperada = new Date(now);
+    horaEntradaEsperada.setHours(h, m, s || 0, 0);
+
+    const horaEntradaMin = new Date(horaEntradaEsperada);
+    horaEntradaMin.setMinutes(horaEntradaMin.getMinutes() - 30);
+
+    const horaEntradaMax = new Date(horaEntradaEsperada);
+    horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + this.toleranciaMinutos);
+
+    if (now < horaEntradaMin) {
+      this.canCheckIn = false;
+      this.checkInDisabledReason = `Podrás marcar entrada a partir de las ${this.formatShiftTime(this.horaEntradaTurno)}. Contacta a tu supervisor si necesitas例外.`;
+    } else if (now > horaEntradaMax) {
+      this.canCheckIn = false;
+      this.checkInDisabledReason = `Ya no puedes marcar entrada (límite: ${this.formatShiftTime(horaEntradaMax.toTimeString().substring(0, 8))}). Contacta a tu supervisor.`;
+    }
+  }
+
+  private calculateCheckOutAvailability(): void {
+    const now = new Date();
+    this.canCheckOut = false;
+    this.checkOutDisabledReason = '';
+
+    if (!this.horaSalidaTurno) {
+      this.canCheckOut = false;
+      this.checkOutDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';
+      return;
+    }
+
+    const [h, m, s] = this.horaSalidaTurno.split(':').map(Number);
+    const horaSalidaEsperada = new Date(now);
+    horaSalidaEsperada.setHours(h, m, s || 0, 0);
+
+    if (now < horaSalidaEsperada) {
+      this.canCheckOut = false;
+      this.checkOutDisabledReason = `Podrás marcar salida a partir de las ${this.formatShiftTime(this.horaSalidaTurno)}.`;
+    } else {
+      this.canCheckOut = true;
+      this.checkOutDisabledReason = '';
+    }
   }
 
   private loadKpiData(): void {
@@ -165,6 +285,8 @@ export class Dashboard implements OnInit {
   marcarEntrada(): void {
     if (this.isCheckingIn) return;
     this.isCheckingIn = true;
+    this.marcaError = '';
+    this.marcaSuccess = '';
 
     this.attendanceService.checkIn().subscribe({
       next: (response: any) => {
@@ -172,10 +294,17 @@ export class Dashboard implements OnInit {
         if (response.asistencia?.horaEntradaReal) {
           this.horaEntradaReal = this.formatTime(response.asistencia.horaEntradaReal);
         }
+        this.marcaSuccess = 'Entrada registrada correctamente';
+        this.canCheckIn = false;
+        this.canCheckOut = true;
+        this.checkInDisabledReason = '';
+        this.checkOutDisabledReason = '';
         this.isCheckingIn = false;
+        this.loadKpiData();
         this.cdr.detectChanges();
       },
       error: (err) => {
+        this.marcaError = err.error?.message || 'Error al marcar entrada';
         this.isCheckingIn = false;
         this.cdr.detectChanges();
       },
@@ -185,6 +314,8 @@ export class Dashboard implements OnInit {
   marcarSalida(): void {
     if (this.isCheckingOut) return;
     this.isCheckingOut = true;
+    this.marcaError = '';
+    this.marcaSuccess = '';
 
     this.attendanceService.checkOut().subscribe({
       next: (response: any) => {
@@ -192,10 +323,15 @@ export class Dashboard implements OnInit {
         if (response.asistencia?.horaSalidaReal) {
           this.horaSalidaReal = this.formatTime(response.asistencia.horaSalidaReal);
         }
+        this.marcaSuccess = 'Salida registrada correctamente';
+        this.canCheckIn = false;
+        this.canCheckOut = false;
         this.isCheckingOut = false;
+        this.loadKpiData();
         this.cdr.detectChanges();
       },
       error: (err) => {
+        this.marcaError = err.error?.message || 'Error al marcar salida';
         this.isCheckingOut = false;
         this.cdr.detectChanges();
       },

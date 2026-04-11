@@ -81,30 +81,54 @@
                   <div class="action-area">
                     <div class="action-grid">
                       <button
-                        [disabled]="marcaEstado !== 'Pendiente'"
+                        [disabled]="!canCheckIn"
                         (click)="marcarEntrada()"
                         class="primary-button"
+                        [title]="checkInDisabledReason"
                       >
                         Marcar entrada
                       </button>
 
                       <button
-                        [disabled]="marcaEstado !== 'Entrada'"
+                        [disabled]="!canCheckOut"
                         (click)="marcarSalida()"
                         class="primary-button"
+                        [title]="checkOutDisabledReason"
                       >
                         Marcar salida
                       </button>
                     </div>
 
-                    @if (marcaEstado !== 'Pendiente') {
+                    @if (checkInDisabledReason && !canCheckIn) {
+                      <div class="info-box">
+                        <span>ℹ️</span>
+                        <span>{{ checkInDisabledReason }}</span>
+                      </div>
+                    }
+
+                    @if (checkOutDisabledReason && !canCheckOut) {
+                      <div class="info-box">
+                        <span>ℹ️</span>
+                        <span>{{ checkOutDisabledReason }}</span>
+                      </div>
+                    }
+
+                    @if (marcaError) {
+                      <div class="error-box">
+                        <span>⚠️</span>
+                        <span>{{ marcaError }}</span>
+                      </div>
+                    }
+
+                    @if (marcaSuccess || marcaEstado !== 'Pendiente') {
                       <div class="success-box">
                         <span>✅</span>
                         <span>
                           {{
-                            marcaEstado === 'Entrada'
-                              ? 'Entrada registrada exitosamente a las ' + horaEntradaReal
-                              : 'Tu jornada de hoy ha sido completada'
+                            marcaSuccess ||
+                              (marcaEstado === 'Entrada'
+                                ? 'Entrada registrada exitosamente a las ' + horaEntradaReal
+                                : 'Tu jornada de hoy ha sido completada')
                           }}
                         </span>
                       </div>
@@ -161,22 +185,24 @@
               <div class="team-kpi-grid">
                 <div class="team-kpi-box">
                   <p class="team-kpi-label">Empleados a cargo</p>
-                  <p class="team-kpi-value">12</p>
+                  <p class="team-kpi-value">{{ supervisorStats.empleadosACargo || 0 }}</p>
                 </div>
 
                 <div class="team-kpi-box">
                   <p class="team-kpi-label">Permisos pendientes</p>
-                  <p class="team-kpi-value warning">4</p>
+                  <p class="team-kpi-value warning">
+                    {{ supervisorStats.permisosPendientes || 0 }}
+                  </p>
                 </div>
 
                 <div class="team-kpi-box">
                   <p class="team-kpi-label">Horas pendientes</p>
-                  <p class="team-kpi-value">18</p>
+                  <p class="team-kpi-value">{{ supervisorStats.horasPendientes || 0 }}</p>
                 </div>
 
                 <div class="team-kpi-box">
                   <p class="team-kpi-label">KPI Promedio</p>
-                  <p class="team-kpi-value success">88%</p>
+                  <p class="team-kpi-value success">{{ supervisorStats.kpiPromedio || 0 }}%</p>
                 </div>
               </div>
             </div>
@@ -193,32 +219,32 @@
               <div class="status-grid">
                 <div class="status-box status-blue">
                   <p class="status-label">Usuarios Activos</p>
-                  <p class="status-value">148</p>
+                  <p class="status-value">{{ adminStats.usuariosActivos || 0 }}</p>
                 </div>
 
                 <div class="status-box status-amber">
                   <p class="status-label">Sesiones Activas</p>
-                  <p class="status-value">42</p>
+                  <p class="status-value">0</p>
                 </div>
 
                 <div class="status-box status-red">
                   <p class="status-label">Usuarios Bloqueados</p>
-                  <p class="status-value">3</p>
+                  <p class="status-value">{{ adminStats.usuariosBloqueados || 0 }}</p>
                 </div>
 
                 <div class="status-box status-orange">
                   <p class="status-label">Intentos Fallidos</p>
-                  <p class="status-value">12</p>
+                  <p class="status-value">0</p>
                 </div>
 
                 <div class="status-box status-purple">
                   <p class="status-label">Eventos Auditoría</p>
-                  <p class="status-value">1,204</p>
+                  <p class="status-value">{{ adminStats.eventosAuditoria || 0 }}</p>
                 </div>
 
                 <div class="status-box status-green">
                   <p class="status-label">Estado Sistema</p>
-                  <p class="status-value-text">Óptimo</p>
+                  <p class="status-value-text">{{ adminStats.estadoSistema || 'Óptimo' }}</p>
                 </div>
               </div>
             </div>
@@ -235,32 +261,32 @@
               <div class="status-grid">
                 <div class="status-box status-blue">
                   <p class="status-label">Empleados Activos</p>
-                  <p class="status-value">145</p>
+                  <p class="status-value">{{ rrhhStats.empleadosActivos || 0 }}</p>
                 </div>
 
                 <div class="status-box status-amber">
                   <p class="status-label">Tardías de hoy</p>
-                  <p class="status-value">8</p>
+                  <p class="status-value">{{ rrhhStats.tardiasHoy || 0 }}</p>
                 </div>
 
                 <div class="status-box status-purple">
                   <p class="status-label">Permisos Pendientes</p>
-                  <p class="status-value">12</p>
+                  <p class="status-value">{{ rrhhStats.permisosPendientes || 0 }}</p>
                 </div>
 
                 <div class="status-box status-emerald">
                   <p class="status-label">Vacaciones Activas</p>
-                  <p class="status-value">5</p>
+                  <p class="status-value">{{ rrhhStats.vacacionesActivas || 0 }}</p>
                 </div>
 
                 <div class="status-box status-red">
                   <p class="status-label">Empleados en Riesgo</p>
-                  <p class="status-value">3</p>
+                  <p class="status-value">{{ rrhhStats.empleadosEnRiesgo || 0 }}</p>
                 </div>
 
                 <div class="status-box status-lime">
                   <p class="status-label">Elegibles a Bono</p>
-                  <p class="status-value">128</p>
+                  <p class="status-value">0</p>
                 </div>
               </div>
             </div>
@@ -276,51 +302,109 @@
 
           @if (role === 'admin') {
             <div class="quick-links-grid">
-              <a routerLink="/admin/usuarios" class="quick-link">Usuarios</a>
-              <a routerLink="/admin/roles" class="quick-link">Roles y permisos</a>
-              <a routerLink="/admin/parametros" class="quick-link">Parámetros</a>
-              <a routerLink="/admin/auditoria" class="quick-link">Auditoría</a>
-              <a routerLink="/admin/seguridad" class="quick-link">Seguridad</a>
-              <a routerLink="/admin/soporte" class="quick-link">Soporte</a>
+              <a routerLink="/admin/usuarios" class="quick-link">
+                <span class="quick-link-icon">[U]</span>
+                <span class="quick-link-text">Usuarios</span>
+              </a>
+              <a routerLink="/admin/roles" class="quick-link">
+                <span class="quick-link-icon">[R]</span>
+                <span class="quick-link-text">Roles</span>
+              </a>
+              <a routerLink="/admin/parametros" class="quick-link">
+                <span class="quick-link-icon">[P]</span>
+                <span class="quick-link-text">Parámetros</span>
+              </a>
+              <a routerLink="/admin/auditoria" class="quick-link">
+                <span class="quick-link-icon">[A]</span>
+                <span class="quick-link-text">Auditoría</span>
+              </a>
+              <a routerLink="/admin/seguridad" class="quick-link">
+                <span class="quick-link-icon">[S]</span>
+                <span class="quick-link-text">Seguridad</span>
+              </a>
+              <a routerLink="/admin/soporte" class="quick-link">
+                <span class="quick-link-icon">[?]</span>
+                <span class="quick-link-text">Soporte</span>
+              </a>
             </div>
           }
 
           @if (role === 'rrhh') {
             <div class="quick-links-grid">
-              <a routerLink="/rrhh/empleados" class="quick-link">Empleados</a>
-              <a routerLink="/rrhh/asistencia" class="quick-link">Asistencia</a>
-              <a routerLink="/rrhh/turnos" class="quick-link">Turnos</a>
-              <a routerLink="/rrhh/permisos" class="quick-link">Permisos</a>
-              <a routerLink="/rrhh/proyectos" class="quick-link">Proyectos</a>
-              <a routerLink="/rrhh/bonos" class="quick-link">Bonos</a>
-              <a routerLink="/rrhh/reportes" class="quick-link">Reportes</a>
-              <a routerLink="/rrhh/auditoria" class="quick-link">Auditoría</a>
+              <a routerLink="/rrhh/empleados" class="quick-link">
+                <span class="quick-link-icon">[E]</span>
+                <span class="quick-link-text">Empleados</span>
+              </a>
+              <a routerLink="/rrhh/asistencia" class="quick-link">
+                <span class="quick-link-icon">[H]</span>
+                <span class="quick-link-text">Asistencia</span>
+              </a>
+              <a routerLink="/rrhh/turnos" class="quick-link">
+                <span class="quick-link-icon">[T]</span>
+                <span class="quick-link-text">Turnos</span>
+              </a>
+              <a routerLink="/rrhh/permisos" class="quick-link">
+                <span class="quick-link-icon">[L]</span>
+                <span class="quick-link-text">Permisos</span>
+              </a>
+              <a routerLink="/rrhh/proyectos" class="quick-link">
+                <span class="quick-link-icon">[J]</span>
+                <span class="quick-link-text">Proyectos</span>
+              </a>
+              <a routerLink="/rrhh/bonos" class="quick-link">
+                <span class="quick-link-icon">[B]</span>
+                <span class="quick-link-text">Bonos</span>
+              </a>
+              <a routerLink="/rrhh/reportes" class="quick-link">
+                <span class="quick-link-icon">[X]</span>
+                <span class="quick-link-text">Reportes</span>
+              </a>
+              <a routerLink="/rrhh/auditoria" class="quick-link">
+                <span class="quick-link-icon">[A]</span>
+                <span class="quick-link-text">Auditoría</span>
+              </a>
             </div>
           }
 
           @if (role !== 'admin' && role !== 'rrhh') {
             <div class="quick-links-grid">
               <a routerLink="/asistencia" class="quick-link">
-                {{ role === 'supervisor' ? 'Mi asistencia' : 'Asistencia' }}
+                <span class="quick-link-icon">📅</span>
+                <span class="quick-link-text">{{
+                  role === 'supervisor' ? 'Mi asistencia' : 'Asistencia'
+                }}</span>
               </a>
 
               <a routerLink="/solicitudes" class="quick-link">
-                {{ role === 'supervisor' ? 'Mis solicitudes' : 'Solicitudes' }}
+                <span class="quick-link-icon">📄</span>
+                <span class="quick-link-text">{{
+                  role === 'supervisor' ? 'Mis solicitudes' : 'Solicitudes'
+                }}</span>
               </a>
 
               <a routerLink="/timesheet" class="quick-link">
-                {{ role === 'supervisor' ? 'Mi timesheet' : 'Timesheet' }}
+                <span class="quick-link-icon">🕐</span>
+                <span class="quick-link-text">{{
+                  role === 'supervisor' ? 'Mi timesheet' : 'Timesheet'
+                }}</span>
               </a>
 
               <a routerLink="/kpi" class="quick-link">
-                {{ role === 'supervisor' ? 'Mis KPIs' : 'KPIs' }}
+                <span class="quick-link-icon">📊</span>
+                <span class="quick-link-text">{{
+                  role === 'supervisor' ? 'Mis KPIs' : 'KPIs'
+                }}</span>
               </a>
 
-              <a routerLink="/boleta" class="quick-link"> Mi boleta </a>
+              <a routerLink="/boleta" class="quick-link">
+                <span class="quick-link-icon">📄</span>
+                <span class="quick-link-text">Mi boleta</span>
+              </a>
 
               @if (role === 'supervisor') {
-                <a routerLink="/supervisor/pendientes" class="quick-link quick-link-warning">
-                  Pendientes
+                <a routerLink="/supervisor/pendientes" class="quick-link">
+                  <span class="quick-link-icon">📋</span>
+                  <span class="quick-link-text">Pendientes</span>
                 </a>
               }
             </div>

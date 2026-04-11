@@ -20,13 +20,13 @@ import { PayrollModule } from './modules/payroll/payroll.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: () => ({
+      useFactory: (configService: ConfigService) => ({
         type: 'mssql',
-        host: 'mayacrhsql.database.windows.net',
-        port: 1433,
-        database: 'MAYACRHDB',
-        username: 'testuser',
-        password: 'Te5t!User_Abc123',
+        host: configService.get('DB_HOST', 'mayacrhsql.database.windows.net'),
+        port: parseInt(configService.get('DB_PORT', '1433'), 10),
+        database: configService.get('DB_NAME', 'MAYACRHDB'),
+        username: configService.get('DB_USERNAME', 'testuser'),
+        password: configService.get('DB_PASSWORD', 'Te5t!User_Abc123'),
         options: {
           encrypt: true,
           trustServerCertificate: false,

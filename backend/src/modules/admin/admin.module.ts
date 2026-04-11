@@ -9,6 +9,12 @@ import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { Rol } from '../../entities/rol.entity';
 import { ReglaBono } from '../../entities/regla-bono.entity';
+import { Usuario } from '../../entities/usuario.entity';
+import { Empleado } from '../../entities/empleado.entity';
+import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
+import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
+import { KpiMensual } from '../../entities/kpi-mensual.entity';
+import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 
 @Module({
   imports: [
@@ -20,6 +26,12 @@ import { ReglaBono } from '../../entities/regla-bono.entity';
       AuditLog,
       Rol,
       ReglaBono,
+      Usuario,
+      Empleado,
+      SolicitudPermiso,
+      RegistroAsistencia,
+      KpiMensual,
+      VacacionMovimiento,
     ]),
   ],
   controllers: [AdminController],

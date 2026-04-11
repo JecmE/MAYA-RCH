@@ -84,4 +84,22 @@ export class AdminController {
   getRoles() {
     return this.adminService.getRoles();
   }
+
+  @Get('dashboard/admin')
+  @Roles('Administrador')
+  getAdminDashboard() {
+    return this.adminService.getAdminDashboardStats();
+  }
+
+  @Get('dashboard/rrhh')
+  @Roles('RRHH', 'Administrador')
+  getRrhhDashboard() {
+    return this.adminService.getRrhhDashboardStats();
+  }
+
+  @Get('dashboard/supervisor')
+  @Roles('Supervisor')
+  getSupervisorDashboard(@Req() req: any) {
+    return this.adminService.getSupervisorDashboardStats(req.user.empleadoId);
+  }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface Turno {
   turnoId?: number;
@@ -47,7 +48,7 @@ export interface Rol {
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/admin';
+  private apiUrl = environment.apiUrl + '/admin';
 
   constructor(private http: HttpClient) {}
 
@@ -104,5 +105,18 @@ export class AdminService {
   // Roles
   getRoles(): Observable<Rol[]> {
     return this.http.get<Rol[]>(`${this.apiUrl}/roles`);
+  }
+
+  // Dashboard Stats
+  getAdminDashboardStats(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/dashboard/admin`);
+  }
+
+  getRrhhDashboardStats(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/dashboard/rrhh`);
+  }
+
+  getSupervisorDashboardStats(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/dashboard/supervisor`);
   }
 }

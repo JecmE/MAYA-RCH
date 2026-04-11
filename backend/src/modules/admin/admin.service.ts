@@ -1,12 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull, Not, MoreThanOrEqual, LessThanOrEqual, Between } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { TipoPermiso } from '../../entities/tipo-permiso.entity';
 import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { Rol } from '../../entities/rol.entity';
 import { ReglaBono } from '../../entities/regla-bono.entity';
+import { Usuario } from '../../entities/usuario.entity';
+import { Empleado } from '../../entities/empleado.entity';
+import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
+import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
+import { KpiMensual } from '../../entities/kpi-mensual.entity';
+import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 
 @Injectable()
 export class AdminService {
@@ -23,6 +29,18 @@ export class AdminService {
     private rolRepository: Repository<Rol>,
     @InjectRepository(ReglaBono)
     private reglaBonoRepository: Repository<ReglaBono>,
+    @InjectRepository(Usuario)
+    private usuarioRepository: Repository<Usuario>,
+    @InjectRepository(Empleado)
+    private empleadoRepository: Repository<Empleado>,
+    @InjectRepository(SolicitudPermiso)
+    private solicitudPermisoRepository: Repository<SolicitudPermiso>,
+    @InjectRepository(RegistroAsistencia)
+    private registroAsistenciaRepository: Repository<RegistroAsistencia>,
+    @InjectRepository(KpiMensual)
+    private kpiMensualRepository: Repository<KpiMensual>,
+    @InjectRepository(VacacionMovimiento)
+    private vacacionMovimientoRepository: Repository<VacacionMovimiento>,
   ) {}
 
   async getShifts() {
@@ -228,5 +246,115 @@ export class AdminService {
       nombre: r.nombre,
       descripcion: r.descripcion,
     }));
+  }
+
+  async getAdminDashboardStats() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const [activeUsers, blockedUsers, auditEventsToday] = await Promise.all([
+      this.usuarioRepository.count({ where: { estado: 'activo' } }),
+      this.usuarioRepository.count({ where: { estado: Not('activo') } }),
+      this.auditRepository.count({
+        where: { fechaHora: MoreThanOrEqual(today) },
+      }),
+    ]);
+
+    return {
+      usuariosActivos: activeUsers,
+      usuariosBloqueados: blockedUsers,
+      eventosAuditoria: auditEventsToday,
+      estadoSistema: 'Óptimo',
+    };
+  }
+
+  async getRrhhDashboardStats() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+
+    const [activeEmployees, pendingPermissions, tardiasToday, employeesAtRisk, activeVacations] =
+      await Promise.all([
+        this.empleadoRepository.count({ where: { activo: true } }),
+        this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
+        this.registroAsistenciaRepository.count({
+          where: {
+            fecha: Between(today, tomorrow),
+            esTardanza: true,
+          },
+        }),
+        this.kpiMensualRepository
+          .createQueryBuilder('kpi')
+          .where('kpi.anio = :anio', { anio: currentYear })
+          .andWhere('kpi.mes = :mes', { mes: currentMonth })
+          .andWhere('kpi.clasificacion IN (:...clasificaciones)', {
+            clasificaciones: ['En riesgo', 'En observacion'],
+          })
+          .getCount(),
+        this.vacacionMovimientoRepository
+          .createQueryBuilder('vm')
+          .innerJoin('vm.solicitud', 's')
+          .where('s.estado = :estado', { estado: 'aprobado' })
+          .andWhere('vm.fechaInicio <= :today', { today })
+          .andWhere('vm.fechaFin >= :today', { today })
+          .getCount(),
+      ]);
+
+    return {
+      empleadosActivos: activeEmployees,
+      tardiasHoy: tardiasToday,
+      permisosPendientes: pendingPermissions,
+      vacacionesActivas: activeVacations,
+      empleadosEnRiesgo: employeesAtRisk,
+    };
+  }
+
+  async getSupervisorDashboardStats(supervisorId: number) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+
+    const [teamSize, pendingPermissions, teamTardias, teamKpis] = await Promise.all([
+      this.empleadoRepository.count({ where: { supervisorId } }),
+      this.solicitudPermisoRepository
+        .createQueryBuilder('sp')
+        .innerJoin('sp.empleado', 'emp')
+        .where('emp.supervisorId = :supervisorId', { supervisorId })
+        .andWhere('sp.estado = :estado', { estado: 'pendiente' })
+        .getCount(),
+      this.registroAsistenciaRepository
+        .createQueryBuilder('ra')
+        .innerJoin('ra.empleado', 'emp')
+        .where('emp.supervisorId = :supervisorId', { supervisorId })
+        .andWhere('ra.fecha >= :today', { today })
+        .andWhere('ra.fecha < :tomorrow', { tomorrow })
+        .andWhere('ra.esTardanza = :esTardanza', { esTardanza: true })
+        .getCount(),
+      this.kpiMensualRepository
+        .createQueryBuilder('kpi')
+        .innerJoin('kpi.empleado', 'emp')
+        .where('emp.supervisorId = :supervisorId', { supervisorId })
+        .andWhere('kpi.anio = :anio', { anio: currentYear })
+        .andWhere('kpi.mes = :mes', { mes: currentMonth })
+        .select('AVG(kpi.cumplimientoPct)', 'avgCumplimiento')
+        .getRawOne(),
+    ]);
+
+    return {
+      empleadosACargo: teamSize,
+      permisosPendientes: pendingPermissions,
+      horasPendientes: 0,
+      kpiPromedio: teamKpis?.avgCumplimiento ? Math.round(Number(teamKpis.avgCumplimiento)) : 0,
+    };
   }
 }
