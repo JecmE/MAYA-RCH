@@ -33,6 +33,8 @@ export interface TodayStatus {
   tieneSalida: boolean;
   turnoNombre?: string;
   toleranciaMinutos?: number;
+  horaEntradaTurno?: string;
+  horaSalidaTurno?: string;
 }
 
 export interface TeamAttendance {

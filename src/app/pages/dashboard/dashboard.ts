@@ -27,6 +27,8 @@ export class Dashboard implements OnInit {
   horaSalidaReal = '';
   turnoNombre = '';
   toleranciaMinutos = 0;
+  horaEntradaTurno = '';
+  horaSalidaTurno = '';
 
   tardiasMes = 0;
   horasTrabajadas = 0;
@@ -100,6 +102,8 @@ export class Dashboard implements OnInit {
           : '--:--';
         this.turnoNombre = status.turnoNombre || 'Sin turno';
         this.toleranciaMinutos = status.toleranciaMinutos || 0;
+        this.horaEntradaTurno = status.horaEntradaTurno || '';
+        this.horaSalidaTurno = status.horaSalidaTurno || '';
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -140,6 +144,14 @@ export class Dashboard implements OnInit {
       return new Date(time).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
     }
     return time.substring(0, 5);
+  }
+
+  formatShiftTime(time: string): string {
+    if (!time) return '--:--';
+    const [hours, minutes] = time.split(':').map(Number);
+    const period = hours >= 12 ? 'p. m.' : 'a. m.';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
   }
 
   getWelcomeName(): string {

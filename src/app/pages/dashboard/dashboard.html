@@ -39,6 +39,16 @@
                       <span class="info-value">{{ toleranciaMinutos }} minutos</span>
                     </div>
 
+                    @if (horaEntradaTurno && horaSalidaTurno) {
+                      <div class="info-row">
+                        <span class="info-label">Horario:</span>
+                        <span class="info-value"
+                          >{{ formatShiftTime(horaEntradaTurno) }} -
+                          {{ formatShiftTime(horaSalidaTurno) }}</span
+                        >
+                      </div>
+                    }
+
                     <div class="info-row">
                       <span class="info-label">Estado del día:</span>
                       <span

@@ -174,6 +174,8 @@ export class AttendanceService {
 
     const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
     const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+    const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
+    const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
 
     if (!asistencia) {
       return {
@@ -183,6 +185,8 @@ export class AttendanceService {
         tieneSalida: false,
         turnoNombre,
         toleranciaMinutos,
+        horaEntradaTurno,
+        horaSalidaTurno,
       };
     }
 
@@ -199,6 +203,8 @@ export class AttendanceService {
       tieneSalida: !!asistencia.horaSalidaReal,
       turnoNombre,
       toleranciaMinutos,
+      horaEntradaTurno,
+      horaSalidaTurno,
     };
   }
 
