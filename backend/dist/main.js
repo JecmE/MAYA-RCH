@@ -7,7 +7,7 @@ const express = require("express");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableCors({
-        origin: ['http://localhost:4200', 'https://witty-hill-000d46310.2.azurestaticapps.net'],
+        origin: ['http://localhost:4200', 'https://jolly-field-0ba3cdc10.2.azurestaticapps.net'],
         credentials: true,
     });
     app.useGlobalPipes(new common_1.ValidationPipe({
