@@ -81,7 +81,7 @@ export interface EmployeeProfile {
 
 @Injectable({ providedIn: 'root' })
 export class KpiService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/kpi';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/kpi';
 
   constructor(private http: HttpClient) {}
 

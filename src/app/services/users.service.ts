@@ -51,7 +51,7 @@ export interface CreateUsuarioDto {
 
 @Injectable({ providedIn: 'root' })
 export class UsersService {
-  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/users';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.centralus-01.azurewebsites.net/api/users';
 
   constructor(private http: HttpClient) {}
 
