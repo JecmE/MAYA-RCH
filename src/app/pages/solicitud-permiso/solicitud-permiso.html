@@ -78,7 +78,7 @@
               Usados: {{ vacationBalance.diasUsados }} de {{ vacationBalance.diasTotales }}
             </p>
 
-            @if (daysRequestedPreview > 0) {
+            @if (daysRequestedPreview > 0 && selectedTipo?.descuentaVacaciones) {
               <p
                 class="days-preview"
                 [class.days-preview--warning]="
@@ -86,10 +86,7 @@
                 "
               >
                 Días solicitados: {{ daysRequestedPreview }}
-                @if (
-                  selectedTipo?.descuentaVacaciones &&
-                  daysRequestedPreview > vacationBalance.diasDisponibles
-                ) {
+                @if (daysRequestedPreview > vacationBalance.diasDisponibles) {
                   <span class="days-warning">
                     ⚠️ Excede disponibles ({{ vacationBalance.diasDisponibles }} días)</span
                   >
@@ -101,11 +98,6 @@
               <p class="days-preview days-preview--warning">
                 ⚠️ Este tipo requiere documento adjunto
               </p>
-            }
-
-            @if (getValidationMessage()) {
-              <h3 class="sidebar-title sidebar-title-spacing">Mensaje de regla</h3>
-              <p class="rule-box">{{ getValidationMessage() }}</p>
             }
           </div>
 
