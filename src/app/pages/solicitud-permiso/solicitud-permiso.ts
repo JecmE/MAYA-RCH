@@ -246,15 +246,48 @@ export class SolicitudPermiso implements OnInit {
 
   guardarSolicitud(): void {
     if (!this.tipoPermiso || !this.fechaInicio || !this.fechaFin) {
+      this.warningMessage =
+        'Por favor completa todos los campos obligatorios: tipo, fecha inicio y fecha fin';
+      this.warningModalOpen = true;
+      this.cdr.detectChanges();
       return;
     }
 
     const tipo = this.tiposPermiso.find((t) => t.nombre === this.tipoPermiso);
-    if (!tipo) return;
+    if (!tipo) {
+      this.warningMessage = 'Tipo de permiso no válido';
+      this.warningModalOpen = true;
+      this.cdr.detectChanges();
+      return;
+    }
 
-    const validation = this.validateDays();
-    if (!validation.valid) {
-      this.warningMessage = validation.message;
+    if (tipo.requiereDocumento && !this.selectedFile) {
+      this.warningMessage = `El tipo "${tipo.nombre}" requiere adjuntar un documento. Por favor adjunta el archivo correspondiente.`;
+      this.warningModalOpen = true;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const daysRequested = this.calculateDaysRequested();
+    if (daysRequested <= 0) {
+      this.warningMessage = 'El rango de fechas no es válido';
+      this.warningModalOpen = true;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (tipo.descuentaVacaciones) {
+      const daysAvailable = this.vacationBalance.diasDisponibles;
+      if (daysRequested > daysAvailable) {
+        this.warningMessage = `La solicitud pide ${daysRequested} días pero solo tienes ${daysAvailable} días disponibles. Por favor selecciona un rango de fechas menor.`;
+        this.warningModalOpen = true;
+        this.cdr.detectChanges();
+        return;
+      }
+    }
+
+    if (!this.motivo || this.motivo.trim().length < 10) {
+      this.warningMessage = 'Por favor ingresa un motivo con al menos 10 caracteres';
       this.warningModalOpen = true;
       this.cdr.detectChanges();
       return;

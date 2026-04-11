@@ -78,7 +78,7 @@
               Usados: {{ vacationBalance.diasUsados }} de {{ vacationBalance.diasTotales }}
             </p>
 
-            @if (daysRequestedPreview > 0 && selectedTipo?.descuentaVacaciones) {
+            @if (daysRequestedPreview > 0) {
               <p
                 class="days-preview"
                 [class.days-preview--warning]="
@@ -86,9 +86,20 @@
                 "
               >
                 Días solicitados: {{ daysRequestedPreview }}
-                @if (daysRequestedPreview > vacationBalance.diasDisponibles) {
-                  <span class="days-warning"> (excede disponible)</span>
+                @if (
+                  selectedTipo?.descuentaVacaciones &&
+                  daysRequestedPreview > vacationBalance.diasDisponibles
+                ) {
+                  <span class="days-warning">
+                    ⚠️ Excede disponibles ({{ vacationBalance.diasDisponibles }} días)</span
+                  >
                 }
+              </p>
+            }
+
+            @if (selectedTipo?.requiereDocumento && !selectedFileName) {
+              <p class="days-preview days-preview--warning">
+                ⚠️ Este tipo requiere documento adjunto
               </p>
             }
 

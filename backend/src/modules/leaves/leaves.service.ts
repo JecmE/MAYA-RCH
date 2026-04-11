@@ -63,7 +63,20 @@ export class LeavesService {
 
     const fechaInicio = new Date(createDto.fechaInicio);
     const fechaFin = new Date(createDto.fechaFin);
+
+    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+      throw new BadRequestException('Las fechas proporcionadas no son válidas');
+    }
+
+    if (fechaFin < fechaInicio) {
+      throw new BadRequestException('La fecha fin no puede ser anterior a la fecha de inicio');
+    }
+
     const diasSolicitados = this.calculateDays(fechaInicio, fechaFin);
+
+    if (diasSolicitados <= 0) {
+      throw new BadRequestException('El rango de fechas no es válido');
+    }
 
     if (tipoPermiso.descuentaVacaciones) {
       const saldo = await this.vacacionSaldoRepository.findOne({
