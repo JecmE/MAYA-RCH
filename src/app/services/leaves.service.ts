@@ -50,6 +50,7 @@ export interface VacationBalance {
   empleadoId: number;
   diasDisponibles: number;
   diasUsados: number;
+  diasLibres: number;
   diasTotales: number;
   fechaCorte: string;
 }

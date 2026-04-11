@@ -206,19 +206,33 @@ export class PermisosVacaciones implements OnInit {
   }
 
   aprobarSolicitud(solicitud: SolicitudItem): void {
-    this.solicitudes = this.solicitudes.map((item) =>
-      item.id === solicitud.id ? { ...item, estado: 'Aprobado' } : item,
-    );
-
-    this.mostrarNotificacion(`Solicitud ${solicitud.id} aprobada correctamente.`);
+    const id = parseInt(solicitud.id, 10);
+    this.leavesService.approveRequest(id, 'Aprobado').subscribe({
+      next: () => {
+        this.solicitudes = this.solicitudes.map((item) =>
+          item.id === solicitud.id ? { ...item, estado: 'Aprobado' } : item,
+        );
+        this.mostrarNotificacion(`Solicitud ${solicitud.id} aprobada correctamente.`);
+      },
+      error: (err) => {
+        this.mostrarNotificacion(`Error al aprobar: ${err.error?.message || err.message}`);
+      },
+    });
   }
 
   rechazarSolicitud(solicitud: SolicitudItem): void {
-    this.solicitudes = this.solicitudes.map((item) =>
-      item.id === solicitud.id ? { ...item, estado: 'Rechazado' } : item,
-    );
-
-    this.mostrarNotificacion(`Solicitud ${solicitud.id} rechazada correctamente.`);
+    const id = parseInt(solicitud.id, 10);
+    this.leavesService.rejectRequest(id, 'Rechazado').subscribe({
+      next: () => {
+        this.solicitudes = this.solicitudes.map((item) =>
+          item.id === solicitud.id ? { ...item, estado: 'Rechazado' } : item,
+        );
+        this.mostrarNotificacion(`Solicitud ${solicitud.id} rechazada correctamente.`);
+      },
+      error: (err) => {
+        this.mostrarNotificacion(`Error al rechazar: ${err.error?.message || err.message}`);
+      },
+    });
   }
 
   get solicitudesFiltradas(): SolicitudItem[] {

@@ -230,6 +230,7 @@ export class LeavesService {
   async approveRequest(solicitudId: number, comentario: string, usuarioId: number) {
     const solicitud = await this.solicitudRepository.findOne({
       where: { solicitudId },
+      relations: ['tipoPermiso'],
     });
 
     if (!solicitud) {
@@ -238,6 +239,29 @@ export class LeavesService {
 
     if (solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) {
       throw new BadRequestException('La solicitud ya no está pendiente');
+    }
+
+    const diasSolicitados = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
+
+    if (solicitud.tipoPermiso?.descuentaVacaciones) {
+      const saldo = await this.vacacionSaldoRepository.findOne({
+        where: { empleadoId: solicitud.empleadoId },
+      });
+
+      if (saldo) {
+        saldo.diasDisponibles = saldo.diasDisponibles - diasSolicitados;
+        saldo.diasUsados = saldo.diasUsados + diasSolicitados;
+        await this.vacacionSaldoRepository.save(saldo);
+
+        await this.vacacionMovimientoRepository.save({
+          empleadoId: solicitud.empleadoId,
+          solicitudId: solicitudId,
+          tipo: VacacionMovimiento.TIPO_CONSUMO,
+          dias: diasSolicitados,
+          fecha: new Date(),
+          comentario: `Uso por solicitud #${solicitudId}`,
+        });
+      }
     }
 
     solicitud.estado = SolicitudPermiso.ESTADO_APROBADO;
@@ -257,7 +281,7 @@ export class LeavesService {
       accion: 'APPROVE',
       entidad: 'SOLICITUD_PERMISO',
       entidadId: solicitudId,
-      detalle: `Solicitud aprobada: ${comentario}`,
+      detalle: `Solicitud aprobada: ${diasSolicitados} días`,
     });
 
     return { message: 'Solicitud aprobada correctamente' };
@@ -344,6 +368,7 @@ export class LeavesService {
       empleadoId: saldo.empleadoId,
       diasDisponibles: saldo.diasDisponibles,
       diasUsados: saldo.diasUsados,
+      diasLibres: saldo.diasDisponibles,
       diasTotales: saldo.diasDisponibles + saldo.diasUsados,
       fechaCorte: saldo.fechaCorte,
     };
