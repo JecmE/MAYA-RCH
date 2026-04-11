@@ -1,0 +1,36 @@
+name: Deploy Backend to Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: npm install
+        run: |
+          cd backend
+          npm install
+
+      - name: npm build
+        run: |
+          cd backend
+          npm run build
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'mayarch'
+          slot-name: 'Production'
+          package: backend/dist
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
