@@ -245,6 +245,12 @@ export class SolicitudPermiso implements OnInit {
   }
 
   guardarSolicitud(): void {
+    console.log('=== guardarSolicitud called ===');
+    console.log('tipoPermiso:', this.tipoPermiso);
+    console.log('fechaInicio:', this.fechaInicio);
+    console.log('fechaFin:', this.fechaFin);
+    console.log('vacationBalance:', this.vacationBalance);
+
     if (!this.tipoPermiso || !this.fechaInicio || !this.fechaFin) {
       this.warningMessage =
         'Por favor completa todos los campos obligatorios: tipo, fecha inicio y fecha fin';
@@ -254,6 +260,8 @@ export class SolicitudPermiso implements OnInit {
     }
 
     const tipo = this.tiposPermiso.find((t) => t.nombre === this.tipoPermiso);
+    console.log('tipo found:', tipo);
+
     if (!tipo) {
       this.warningMessage = 'Tipo de permiso no válido';
       this.warningModalOpen = true;
@@ -269,6 +277,8 @@ export class SolicitudPermiso implements OnInit {
     }
 
     const daysRequested = this.calculateDaysRequested();
+    console.log('daysRequested:', daysRequested);
+
     if (daysRequested <= 0) {
       this.warningMessage = 'El rango de fechas no es válido';
       this.warningModalOpen = true;
@@ -278,6 +288,13 @@ export class SolicitudPermiso implements OnInit {
 
     if (tipo.descuentaVacaciones) {
       const daysAvailable = this.vacationBalance?.diasDisponibles ?? 0;
+      console.log(
+        'daysAvailable:',
+        daysAvailable,
+        'tipo.descuentaVacaciones:',
+        tipo.descuentaVacaciones,
+      );
+
       if (daysAvailable <= 0) {
         this.warningMessage = 'No tienes días de vacaciones disponibles';
         this.warningModalOpen = true;
@@ -298,6 +315,8 @@ export class SolicitudPermiso implements OnInit {
       this.cdr.detectChanges();
       return;
     }
+
+    console.log('=== VALIDATION PASSED, SENDING REQUEST ===');
 
     const requestData: any = {
       tipoPermisoId: tipo.tipoPermisoId,
