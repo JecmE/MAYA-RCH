@@ -67,7 +67,7 @@
           </div>
         </div>
 
-<div class="sidebar-section">
+        <div class="sidebar-section">
           <div>
             <h3 class="sidebar-title">Saldo de vacaciones</h3>
 
@@ -79,33 +79,18 @@
             </p>
 
             @if (daysRequestedPreview > 0) {
-              <p class="days-preview" [class.days-preview--warning]="selectedTipo?.descuentaVacaciones && daysRequestedPreview > vacationBalance.diasDisponibles">
-                Días solicitados: {{ daysRequestedPreview }}
-                @if (selectedTipo?.descuentaVacaciones && daysRequestedPreview > vacationBalance.diasDisponibles) {
-                  <span class="days-warning"> ⚠️ Excede disponibles ({{ vacationBalance.diasDisponibles }} días)</span>
-                }
-              </p>
-            }
-
-            @if (selectedTipo?.requiereDocumento && !selectedFileName) {
-              <p class="days-preview days-preview--warning">
-                ⚠️ Este tipo requiere documento adjunto
-              </p>
-            }
-          </div>
-            <p class="vacation-detail">
-              Usados: {{ vacationBalance.diasUsados }} de {{ vacationBalance.diasTotales }}
-            </p>
-
-            @if (daysRequestedPreview > 0 && selectedTipo?.descuentaVacaciones) {
               <p
                 class="days-preview"
                 [class.days-preview--warning]="
+                  selectedTipo?.descuentaVacaciones &&
                   daysRequestedPreview > vacationBalance.diasDisponibles
                 "
               >
                 Días solicitados: {{ daysRequestedPreview }}
-                @if (daysRequestedPreview > vacationBalance.diasDisponibles) {
+                @if (
+                  selectedTipo?.descuentaVacaciones &&
+                  daysRequestedPreview > vacationBalance.diasDisponibles
+                ) {
                   <span class="days-warning">
                     ⚠️ Excede disponibles ({{ vacationBalance.diasDisponibles }} días)</span
                   >
