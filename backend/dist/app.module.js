@@ -37,8 +37,8 @@ exports.AppModule = AppModule = __decorate([
                     host: 'mayacrhsql.database.windows.net',
                     port: 1433,
                     database: 'MAYACRHDB',
-                    username: 'sqladmin',
-                    password: 'Mayacrhdba1!',
+                    username: 'testuser',
+                    password: 'Te5t!User_Abc123',
                     options: {
                         encrypt: true,
                         trustServerCertificate: false,
