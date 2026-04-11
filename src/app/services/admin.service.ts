@@ -47,7 +47,7 @@ export interface Rol {
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
-  private apiUrl = 'http://localhost:3000/api/admin';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/admin';
 
   constructor(private http: HttpClient) {}
 

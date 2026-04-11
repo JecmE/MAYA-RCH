@@ -45,7 +45,7 @@ export interface TeamAttendance {
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceService {
-  private apiUrl = 'http://localhost:3000/api/attendance';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/attendance';
 
   constructor(private http: HttpClient) {}
 

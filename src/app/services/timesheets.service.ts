@@ -27,7 +27,7 @@ export interface TeamTimesheetEntry {
 
 @Injectable({ providedIn: 'root' })
 export class TimesheetsService {
-  private apiUrl = 'http://localhost:3000/api/timesheets';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/timesheets';
 
   constructor(private http: HttpClient) {}
 

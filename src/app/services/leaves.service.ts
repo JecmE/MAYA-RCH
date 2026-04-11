@@ -55,7 +55,7 @@ export interface VacationBalance {
 
 @Injectable({ providedIn: 'root' })
 export class LeavesService {
-  private apiUrl = 'http://localhost:3000/api/leaves';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/leaves';
 
   constructor(private http: HttpClient) {}
 

@@ -13,7 +13,7 @@ export interface Proyecto {
 
 @Injectable({ providedIn: 'root' })
 export class ProjectsService {
-  private apiUrl = 'http://localhost:3000/api/projects';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/projects';
 
   constructor(private http: HttpClient) {}
 

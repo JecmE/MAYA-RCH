@@ -33,7 +33,7 @@ export interface ProjectHoursReport {
 
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
-  private apiUrl = 'http://localhost:3000/api/reports';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/reports';
 
   constructor(private http: HttpClient) {}
 

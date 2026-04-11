@@ -41,7 +41,7 @@ export interface ResetPasswordRequest {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl = 'http://localhost:3000/api/auth';
+  private apiUrl = 'https://mayarch-fpc5dvefa9cycne9.eastus-01.azurewebsites.net/api/auth';
 
   constructor(private http: HttpClient) {}
 
