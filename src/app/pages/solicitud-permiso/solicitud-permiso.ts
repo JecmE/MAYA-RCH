@@ -278,6 +278,12 @@ export class SolicitudPermiso implements OnInit {
 
     if (tipo.descuentaVacaciones) {
       const daysAvailable = this.vacationBalance?.diasDisponibles ?? 0;
+      if (daysAvailable <= 0) {
+        this.warningMessage = 'No tienes días de vacaciones disponibles';
+        this.warningModalOpen = true;
+        this.cdr.detectChanges();
+        return;
+      }
       if (daysRequested > daysAvailable) {
         this.warningMessage = `La solicitud pide ${daysRequested} días pero solo tienes ${daysAvailable} días disponibles. Por favor selecciona un rango de fechas menor.`;
         this.warningModalOpen = true;
