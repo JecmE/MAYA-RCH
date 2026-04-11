@@ -78,30 +78,27 @@
               Usados: {{ vacationBalance.diasUsados }} de {{ vacationBalance.diasTotales }}
             </p>
 
-            @if (daysRequestedPreview > 0) {
-              <p
-                class="days-preview"
-                [class.days-preview--warning]="
-                  selectedTipo?.descuentaVacaciones &&
-                  daysRequestedPreview > vacationBalance.diasDisponibles
-                "
-              >
-                Días solicitados: {{ daysRequestedPreview }}
-                @if (
-                  selectedTipo?.descuentaVacaciones &&
-                  daysRequestedPreview > vacationBalance.diasDisponibles
-                ) {
-                  <span class="days-warning">
-                    ⚠️ Excede disponibles ({{ vacationBalance.diasDisponibles }} días)</span
-                  >
-                }
+            @if (selectedTipo && daysRequestedPreview > 0) {
+              <p class="days-info">
+                Días solicitados: <strong>{{ daysRequestedPreview }}</strong>
               </p>
             }
 
-            @if (selectedTipo?.requiereDocumento && !selectedFileName) {
-              <p class="days-preview days-preview--warning">
-                ⚠️ Este tipo requiere documento adjunto
+            @if (
+              selectedTipo?.descuentaVacaciones &&
+              daysRequestedPreview > vacationBalance.diasDisponibles
+            ) {
+              <p class="days-warning-text">
+                ⚠️ Excede disponibles ({{ vacationBalance.diasDisponibles }} días)
               </p>
+            }
+
+            @if (selectedTipo && !selectedTipo?.descuentaVacaciones && daysRequestedPreview > 0) {
+              <p class="days-info-small">⚠️ Este permiso no descuenta días de vacaciones</p>
+            }
+
+            @if (selectedTipo?.requiereDocumento && !selectedFileName) {
+              <p class="days-warning-text">⚠️ Requiere documento adjunto</p>
             }
           </div>
 
