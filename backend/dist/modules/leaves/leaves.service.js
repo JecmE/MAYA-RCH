@@ -63,7 +63,16 @@ let LeavesService = class LeavesService {
         }
         const fechaInicio = new Date(createDto.fechaInicio);
         const fechaFin = new Date(createDto.fechaFin);
+        if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+            throw new common_1.BadRequestException('Las fechas proporcionadas no son válidas');
+        }
+        if (fechaFin < fechaInicio) {
+            throw new common_1.BadRequestException('La fecha fin no puede ser anterior a la fecha de inicio');
+        }
         const diasSolicitados = this.calculateDays(fechaInicio, fechaFin);
+        if (diasSolicitados <= 0) {
+            throw new common_1.BadRequestException('El rango de fechas no es válido');
+        }
         if (tipoPermiso.descuentaVacaciones) {
             const saldo = await this.vacacionSaldoRepository.findOne({
                 where: { empleadoId },
@@ -190,12 +199,32 @@ let LeavesService = class LeavesService {
     async approveRequest(solicitudId, comentario, usuarioId) {
         const solicitud = await this.solicitudRepository.findOne({
             where: { solicitudId },
+            relations: ['tipoPermiso'],
         });
         if (!solicitud) {
             throw new common_1.NotFoundException('Solicitud no encontrada');
         }
         if (solicitud.estado !== solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE) {
             throw new common_1.BadRequestException('La solicitud ya no está pendiente');
+        }
+        const diasSolicitados = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
+        if (solicitud.tipoPermiso?.descuentaVacaciones) {
+            const saldo = await this.vacacionSaldoRepository.findOne({
+                where: { empleadoId: solicitud.empleadoId },
+            });
+            if (saldo) {
+                saldo.diasDisponibles = saldo.diasDisponibles - diasSolicitados;
+                saldo.diasUsados = saldo.diasUsados + diasSolicitados;
+                await this.vacacionSaldoRepository.save(saldo);
+                await this.vacacionMovimientoRepository.save({
+                    empleadoId: solicitud.empleadoId,
+                    solicitudId: solicitudId,
+                    tipo: vacacion_movimiento_entity_1.VacacionMovimiento.TIPO_CONSUMO,
+                    dias: diasSolicitados,
+                    fecha: new Date(),
+                    comentario: `Uso por solicitud #${solicitudId}`,
+                });
+            }
         }
         solicitud.estado = solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_APROBADO;
         await this.solicitudRepository.save(solicitud);
@@ -212,7 +241,7 @@ let LeavesService = class LeavesService {
             accion: 'APPROVE',
             entidad: 'SOLICITUD_PERMISO',
             entidadId: solicitudId,
-            detalle: `Solicitud aprobada: ${comentario}`,
+            detalle: `Solicitud aprobada: ${diasSolicitados} días`,
         });
         return { message: 'Solicitud aprobada correctamente' };
     }
@@ -277,6 +306,7 @@ let LeavesService = class LeavesService {
             empleadoId: saldo.empleadoId,
             diasDisponibles: saldo.diasDisponibles,
             diasUsados: saldo.diasUsados,
+            diasLibres: saldo.diasDisponibles,
             diasTotales: saldo.diasDisponibles + saldo.diasUsados,
             fechaCorte: saldo.fechaCorte,
         };

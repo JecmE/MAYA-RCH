@@ -33,8 +33,8 @@ __decorate([
     __metadata("design:type", Number)
 ], RegistroTiempo.prototype, "proyectoId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'date' }),
-    __metadata("design:type", Date)
+    (0, typeorm_1.Column)({ type: 'varchar', length: 10 }),
+    __metadata("design:type", String)
 ], RegistroTiempo.prototype, "fecha", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 4, scale: 2 }),

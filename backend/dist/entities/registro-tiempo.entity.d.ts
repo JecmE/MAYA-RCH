@@ -5,7 +5,7 @@ export declare class RegistroTiempo {
     tiempoId: number;
     empleadoId: number;
     proyectoId: number;
-    fecha: Date;
+    fecha: string;
     horas: number;
     actividadDescripcion: string;
     estado: string;

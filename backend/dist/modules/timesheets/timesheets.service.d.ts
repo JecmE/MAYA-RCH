@@ -14,13 +14,17 @@ export declare class TimesheetsService {
     getMyTimesheets(empleadoId: number, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
         tiempoId: number;
         empleadoId: number;
-        fecha: Date;
+        fecha: string;
         proyectoId: number;
+        proyectoNombre: string;
+        proyectoCodigo: string;
         horas: number;
         horasValidadas: number;
         actividadDescripcion: string;
         estado: string;
         fechaRegistro: Date;
+        comentario: string;
+        decision: string;
     }[]>;
     createEntry(createDto: any, empleadoId: number): Promise<{
         tiempoId: number;
@@ -38,7 +42,7 @@ export declare class TimesheetsService {
             proyectoId: number;
             nombre: string;
         };
-        fecha: Date;
+        fecha: string;
         horas: number;
         horasValidadas: number;
         actividadDescripcion: string;

@@ -65,6 +65,7 @@ export declare class LeavesService {
         empleadoId: number;
         diasDisponibles: number;
         diasUsados: number;
+        diasLibres: number;
         diasTotales: number;
         fechaCorte: Date;
     }>;

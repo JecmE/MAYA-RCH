@@ -5,13 +5,17 @@ export declare class TimesheetsController {
     getMyTimesheets(req: any, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
         tiempoId: number;
         empleadoId: number;
-        fecha: Date;
+        fecha: string;
         proyectoId: number;
+        proyectoNombre: string;
+        proyectoCodigo: string;
         horas: number;
         horasValidadas: number;
         actividadDescripcion: string;
         estado: string;
         fechaRegistro: Date;
+        comentario: string;
+        decision: string;
     }[]>;
     createEntry(createDto: any, req: any): Promise<{
         tiempoId: number;
@@ -29,7 +33,7 @@ export declare class TimesheetsController {
             proyectoId: number;
             nombre: string;
         };
-        fecha: Date;
+        fecha: string;
         horas: number;
         horasValidadas: number;
         actividadDescripcion: string;

@@ -32,48 +32,87 @@ let TimesheetsService = class TimesheetsService {
     async getMyTimesheets(empleadoId, fechaInicio, fechaFin, proyectoId) {
         const where = { empleadoId };
         if (fechaInicio && fechaFin) {
-            where.fecha = (0, typeorm_2.Between)(new Date(fechaInicio), new Date(fechaFin));
+            where.fecha = (0, typeorm_2.Between)(fechaInicio, fechaFin);
         }
         else if (fechaInicio) {
-            where.fecha = (0, typeorm_2.MoreThanOrEqual)(new Date(fechaInicio));
+            where.fecha = (0, typeorm_2.MoreThanOrEqual)(fechaInicio);
         }
         else if (fechaFin) {
-            where.fecha = (0, typeorm_2.LessThanOrEqual)(new Date(fechaFin));
+            where.fecha = (0, typeorm_2.LessThanOrEqual)(fechaFin);
         }
         if (proyectoId) {
             where.proyectoId = proyectoId;
         }
         const registros = await this.tiempoRepository.find({
             where,
-            relations: ['proyecto'],
+            relations: ['proyecto', 'aprobaciones'],
             order: { fecha: 'DESC', fechaRegistro: 'DESC' },
         });
-        return registros.map((r) => ({
-            tiempoId: r.tiempoId,
-            empleadoId: r.empleadoId,
-            fecha: r.fecha,
-            proyectoId: r.proyectoId,
-            horas: r.horas,
-            horasValidadas: r.horasValidadas,
-            actividadDescripcion: r.actividadDescripcion,
-            estado: r.estado,
-            fechaRegistro: r.fechaRegistro,
-        }));
+        return registros.map((r) => {
+            const aprobacion = r.aprobaciones && r.aprobaciones.length > 0 ? r.aprobaciones[0] : null;
+            return {
+                tiempoId: r.tiempoId,
+                empleadoId: r.empleadoId,
+                fecha: r.fecha,
+                proyectoId: r.proyectoId,
+                proyectoNombre: r.proyecto?.nombre || '',
+                proyectoCodigo: r.proyecto?.codigo || '',
+                horas: r.horas,
+                horasValidadas: r.horasValidadas,
+                actividadDescripcion: r.actividadDescripcion,
+                estado: r.estado,
+                fechaRegistro: r.fechaRegistro,
+                comentario: aprobacion?.comentario || null,
+                decision: aprobacion?.decision || null,
+            };
+        });
     }
     async createEntry(createDto, empleadoId) {
+        if (!createDto.proyectoId) {
+            throw new common_1.BadRequestException('Debe seleccionar un proyecto');
+        }
+        if (!createDto.fecha) {
+            throw new common_1.BadRequestException('Debe ingresar una fecha');
+        }
+        if (!createDto.horas || createDto.horas <= 0) {
+            throw new common_1.BadRequestException('Debe ingresar horas válidas (mayor a 0)');
+        }
+        if (createDto.horas > 8) {
+            throw new common_1.BadRequestException('No puede registrar más de 8 horas en un día');
+        }
+        if (!createDto.actividadDescripcion && !createDto.actividad) {
+            throw new common_1.BadRequestException('Debe describir la actividad realizada');
+        }
+        if ((createDto.actividadDescripcion || createDto.actividad).length < 10) {
+            throw new common_1.BadRequestException('La descripción de la actividad debe tener al menos 10 caracteres');
+        }
+        const fechaStr = createDto.fecha;
+        const [y, m, d] = fechaStr.split('-').map(Number);
+        const fechaCheck = new Date(y, m - 1, d, 0, 0, 0, 0);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        if (fechaCheck > hoy) {
+            throw new common_1.BadRequestException('No puede registrar tiempos para fechas futuras');
+        }
         const proyecto = await this.proyectoRepository.findOne({
             where: { proyectoId: createDto.proyectoId, activo: true },
         });
         if (!proyecto) {
             throw new common_1.NotFoundException('Proyecto no encontrado o inactivo');
         }
-        if (createDto.horas > 12) {
-            throw new common_1.BadRequestException('No puede registrar más de 12 horas en un día');
+        const existsQuery = await this.tiempoRepository
+            .createQueryBuilder('rt')
+            .where('rt.empleado_id = :empleadoId', { empleadoId })
+            .andWhere('rt.proyecto_id = :proyectoId', { proyectoId: createDto.proyectoId })
+            .andWhere('CAST(rt.fecha AS DATE) = :fecha', { fecha: fechaStr })
+            .getOne();
+        if (existsQuery) {
+            throw new common_1.BadRequestException(`Ya existe un registro para este proyecto en la fecha ${fechaStr}. No puede duplicar registros.`);
         }
         const registro = this.tiempoRepository.create({
             empleadoId,
             proyectoId: createDto.proyectoId,
-            fecha: new Date(createDto.fecha),
+            fecha: fechaStr,
             horas: createDto.horas,
             actividadDescripcion: createDto.actividadDescripcion || createDto.actividad || '',
             estado: registro_tiempo_entity_1.RegistroTiempo.ESTADO_PENDIENTE,

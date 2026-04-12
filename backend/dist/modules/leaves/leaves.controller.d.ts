@@ -45,6 +45,7 @@ export declare class LeavesController {
         empleadoId: number;
         diasDisponibles: number;
         diasUsados: number;
+        diasLibres: number;
         diasTotales: number;
         fechaCorte: Date;
     }>;
@@ -52,6 +53,7 @@ export declare class LeavesController {
         empleadoId: number;
         diasDisponibles: number;
         diasUsados: number;
+        diasLibres: number;
         diasTotales: number;
         fechaCorte: Date;
     }>;
