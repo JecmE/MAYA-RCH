@@ -45,6 +45,7 @@
                   [(ngModel)]="horas"
                   name="horas"
                   placeholder="0"
+                  min="0"
                   class="form-control form-control-hours"
                   [class.input-error]="showHoursWarning"
                 />
@@ -77,9 +78,13 @@
                 type="button"
                 (click)="handleValidar()"
                 class="btn btn-primary"
-                [disabled]="!canSubmit"
+                [disabled]="!canSubmit || isSubmitting"
               >
-                Validar y Guardar
+                @if (isSubmitting) {
+                  Guardando...
+                } @else {
+                  Validar y Guardar
+                }
               </button>
             </div>
           </div>

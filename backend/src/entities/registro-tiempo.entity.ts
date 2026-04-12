@@ -22,8 +22,8 @@ export class RegistroTiempo {
   @Column({ name: 'proyecto_id' })
   proyectoId: number;
 
-  @Column({ type: 'date' })
-  fecha: Date;
+  @Column({ type: 'varchar', length: 10 })
+  fecha: string;
 
   @Column({ type: 'decimal', precision: 4, scale: 2 })
   horas: number;

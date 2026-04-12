@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TimesheetsService, RegistroTiempo } from '../../services/timesheets.service';
@@ -37,6 +37,7 @@ export class Timesheet implements OnInit {
   errorModal = false;
   errorMessage = '';
   successModal = false;
+  isSubmitting = false;
 
   historyData: TimesheetRow[] = [];
   proyectos: Proyecto[] = [];
@@ -45,6 +46,7 @@ export class Timesheet implements OnInit {
     private router: Router,
     private timesheetsService: TimesheetsService,
     private projectsService: ProjectsService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -76,31 +78,54 @@ export class Timesheet implements OnInit {
   private mapToRow(e: RegistroTiempo): TimesheetRow {
     return {
       id: e.tiempoId || 0,
-      project: (e as any).proyectoNombre || `Proyecto ${e.proyectoId}`,
+      project: e.proyectoNombre || `Proyecto ${e.proyectoId}`,
       projectId: e.proyectoId,
-      projectCode: (e as any).proyectoCodigo || '',
-      date: e.fecha ? new Date(e.fecha).toLocaleDateString('en-US') : '',
+      projectCode: e.proyectoCodigo || '',
+      date: e.fecha ? this.formatDateForDisplay(e.fecha) : '',
       activity: e.actividadDescripcion || '',
       hours: e.horas ? `${e.horas} h` : '0 h',
       hoursNum: e.horas || 0,
       status:
         e.estado === 'aprobado' ? 'Aprobado' : e.estado === 'rechazado' ? 'Rechazado' : 'Pendiente',
-      comments: (e as any).comentario || '',
-      decision: (e as any).decision || '',
+      comments: e.comentario || '',
+      decision: e.decision || '',
     };
   }
 
   get historyDataFiltrada(): TimesheetRow[] {
     return this.historyData.filter((row) => {
-      const proyectoFila = row.project.trim().toLowerCase();
-      const proyectoFiltro = this.filtroProyecto.trim().toLowerCase();
-
-      const coincideProyecto = !proyectoFiltro || proyectoFila.includes(proyectoFiltro);
-
-      const coincideFecha = !this.filtroFecha || this.convertirFecha(row.date) === this.filtroFecha;
-
-      return coincideProyecto && coincideFecha;
+      const filtroFechaISO = this.filtroFecha;
+      const filtroFechaDMY = filtroFechaISO ? this.convertToDMY(filtroFechaISO) : '';
+      const coincideFecha = !filtroFechaISO || row.date === filtroFechaDMY;
+      const filtroTrim = (this.filtroProyecto || '').trim();
+      const rowCodeTrim = (row.projectCode || '').trim();
+      const coincideProyecto = !filtroTrim || rowCodeTrim === filtroTrim;
+      return coincideFecha && coincideProyecto;
     });
+  }
+
+  private formatDateForDisplay(dateValue: string | Date): string {
+    if (!dateValue) return '';
+    let d: Date;
+    if (typeof dateValue === 'string') {
+      const parts = dateValue.split('T')[0].split('-');
+      if (parts.length === 3) {
+        d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      } else {
+        d = new Date(dateValue);
+      }
+    } else {
+      d = dateValue;
+    }
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${month}/${day}/${d.getFullYear()}`;
+  }
+
+  private convertToDMY(isoDate: string): string {
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-');
+    return `${month}/${day}/${year}`;
   }
 
   get horasNum(): number {
@@ -172,6 +197,8 @@ export class Timesheet implements OnInit {
   }
 
   private guardarEntrada(): void {
+    this.isSubmitting = true;
+
     const proyectoId = this.proyectos.find(
       (p) => p.codigo === this.proyecto || p.nombre === this.proyecto,
     )?.proyectoId;
@@ -179,8 +206,13 @@ export class Timesheet implements OnInit {
     if (!proyectoId) {
       this.errorMessage = 'Proyecto no válido';
       this.errorModal = true;
+      this.isSubmitting = false;
       return;
     }
+
+    const saveTimeout = setTimeout(() => {
+      console.warn('Save request is taking longer than expected...');
+    }, 5000);
 
     this.timesheetsService
       .createEntry({
@@ -191,14 +223,20 @@ export class Timesheet implements OnInit {
       })
       .subscribe({
         next: () => {
+          clearTimeout(saveTimeout);
           this.successModal = true;
           this.limpiar();
           this.loadEntries();
+          this.isSubmitting = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
+          clearTimeout(saveTimeout);
           console.error('Error guardando entrada:', err);
           this.errorMessage = err.error?.message || 'Error al guardar el registro';
           this.errorModal = true;
+          this.isSubmitting = false;
+          this.cdr.detectChanges();
         },
       });
   }
@@ -222,15 +260,6 @@ export class Timesheet implements OnInit {
   limpiarFiltros(): void {
     this.filtroFecha = '';
     this.filtroProyecto = '';
-  }
-
-  private convertirFecha(fecha: string): string {
-    const partes = fecha.split('/');
-    if (partes.length !== 3) return '';
-    const mes = partes[0].padStart(2, '0');
-    const dia = partes[1].padStart(2, '0');
-    const anio = partes[2];
-    return `${anio}-${mes}-${dia}`;
   }
 
   getStatusClass(status: string): string {

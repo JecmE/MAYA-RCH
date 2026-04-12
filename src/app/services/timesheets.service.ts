@@ -12,6 +12,10 @@ export interface RegistroTiempo {
   actividadDescripcion?: string;
   estado: string;
   horasValidadas?: number;
+  proyectoCodigo?: string;
+  proyectoNombre?: string;
+  comentario?: string;
+  decision?: string;
 }
 
 export interface TeamTimesheetEntry {

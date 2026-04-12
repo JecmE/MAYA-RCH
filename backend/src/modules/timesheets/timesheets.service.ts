@@ -31,11 +31,11 @@ export class TimesheetsService {
     const where: any = { empleadoId };
 
     if (fechaInicio && fechaFin) {
-      where.fecha = Between(new Date(fechaInicio), new Date(fechaFin));
+      where.fecha = Between(fechaInicio, fechaFin);
     } else if (fechaInicio) {
-      where.fecha = MoreThanOrEqual(new Date(fechaInicio));
+      where.fecha = MoreThanOrEqual(fechaInicio);
     } else if (fechaFin) {
-      where.fecha = LessThanOrEqual(new Date(fechaFin));
+      where.fecha = LessThanOrEqual(fechaFin);
     }
 
     if (proyectoId) {
@@ -69,7 +69,6 @@ export class TimesheetsService {
   }
 
   async createEntry(createDto: any, empleadoId: number) {
-    // Validaciones básicas
     if (!createDto.proyectoId) {
       throw new BadRequestException('Debe seleccionar un proyecto');
     }
@@ -96,11 +95,14 @@ export class TimesheetsService {
       );
     }
 
-    const fechaRegistro = new Date(createDto.fecha);
+    const fechaStr = createDto.fecha;
+
+    const [y, m, d] = fechaStr.split('-').map(Number);
+    const fechaCheck = new Date(y, m - 1, d, 0, 0, 0, 0);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    if (fechaRegistro > hoy) {
+    if (fechaCheck > hoy) {
       throw new BadRequestException('No puede registrar tiempos para fechas futuras');
     }
 
@@ -112,25 +114,23 @@ export class TimesheetsService {
       throw new NotFoundException('Proyecto no encontrado o inactivo');
     }
 
-    // Verificar duplicado (mismo proyecto + misma fecha + mismo empleado)
-    const existeDuplicado = await this.tiempoRepository.findOne({
-      where: {
-        empleadoId,
-        proyectoId: createDto.proyectoId,
-        fecha: fechaRegistro,
-      },
-    });
+    const existsQuery = await this.tiempoRepository
+      .createQueryBuilder('rt')
+      .where('rt.empleado_id = :empleadoId', { empleadoId })
+      .andWhere('rt.proyecto_id = :proyectoId', { proyectoId: createDto.proyectoId })
+      .andWhere('CAST(rt.fecha AS DATE) = :fecha', { fecha: fechaStr })
+      .getOne();
 
-    if (existeDuplicado) {
+    if (existsQuery) {
       throw new BadRequestException(
-        `Ya existe un registro para este proyecto en la fecha ${createDto.fecha}. No puede duplicar registros.`,
+        `Ya existe un registro para este proyecto en la fecha ${fechaStr}. No puede duplicar registros.`,
       );
     }
 
     const registro = this.tiempoRepository.create({
       empleadoId,
       proyectoId: createDto.proyectoId,
-      fecha: fechaRegistro,
+      fecha: fechaStr,
       horas: createDto.horas,
       actividadDescripcion: createDto.actividadDescripcion || createDto.actividad || '',
       estado: RegistroTiempo.ESTADO_PENDIENTE,
