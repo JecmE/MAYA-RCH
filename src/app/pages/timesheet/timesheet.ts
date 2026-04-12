@@ -113,8 +113,8 @@ export class Timesheet implements OnInit {
 
   get canSubmit(): boolean {
     return (
-      this.proyecto &&
-      this.fecha &&
+      Boolean(this.proyecto) &&
+      Boolean(this.fecha) &&
       this.horasNum > 0 &&
       this.horasNum <= 8 &&
       this.actividad.length >= 10
