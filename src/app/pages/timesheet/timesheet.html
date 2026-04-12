@@ -46,9 +46,13 @@
                   name="horas"
                   placeholder="0"
                   class="form-control form-control-hours"
+                  [class.input-error]="showHoursWarning"
                 />
                 <span class="input-suffix">Horas</span>
               </div>
+              @if (showHoursWarning) {
+                <span class="field-error">Máximo 8 horas por día</span>
+              }
             </div>
           </div>
 
@@ -60,20 +64,22 @@
               [(ngModel)]="actividad"
               name="actividad"
               class="form-control textarea-control"
-              placeholder="Describe la actividad realizada..."
+              placeholder="Describe la actividad realizada (mínimo 10 caracteres)..."
             ></textarea>
+            <span class="field-hint">Mínimo 10 caracteres</span>
           </div>
 
           <div class="actions-row">
-            @if (+horas > 8) {
-              <span class="inline-error"> ✕ Error: este registro excede las horas permitidas </span>
-            }
-
             <div class="button-group">
               <button type="button" (click)="limpiar()" class="btn btn-secondary">Limpiar</button>
 
-              <button type="button" (click)="handleValidar()" class="btn btn-primary">
-                Validar
+              <button
+                type="button"
+                (click)="handleValidar()"
+                class="btn btn-primary"
+                [disabled]="!canSubmit"
+              >
+                Validar y Guardar
               </button>
             </div>
           </div>
@@ -120,7 +126,7 @@
               <th>Actividad</th>
               <th>Horas</th>
               <th>Estado</th>
-              <th>Comentario de Aprobador</th>
+              <th>Comentario</th>
             </tr>
           </thead>
 
@@ -132,8 +138,12 @@
                   <td>{{ row.date }}</td>
                   <td>{{ row.activity }}</td>
                   <td>{{ row.hours }}</td>
-                  <td>{{ row.status }}</td>
-                  <td class="table-muted">{{ row.comments }}</td>
+                  <td>
+                    <span class="status-badge" [class]="getStatusClass(row.status)">
+                      {{ row.status }}
+                    </span>
+                  </td>
+                  <td class="table-muted">{{ row.comments || '-' }}</td>
                 </tr>
               }
             } @else {
@@ -158,7 +168,7 @@
 
         <div class="modal-content centered-content">
           <div class="modal-icon modal-icon-error">✕</div>
-          <h3 class="modal-title-text">Error: este registro excede las horas permitidas</h3>
+          <h3 class="modal-title-error">{{ errorMessage }}</h3>
         </div>
       </div>
     </div>
@@ -173,7 +183,7 @@
 
         <div class="modal-content centered-content">
           <div class="modal-icon modal-icon-success">✓</div>
-          <h3 class="modal-title-success">Proyecto actualizado con éxito</h3>
+          <h3 class="modal-title-success">Registro guardado con éxito</h3>
         </div>
       </div>
     </div>

@@ -8,11 +8,14 @@ interface TimesheetRow {
   id: number;
   project: string;
   projectId?: number;
+  projectCode?: string;
   date: string;
   activity: string;
   hours: string;
+  hoursNum: number;
   status: string;
   comments: string;
+  decision?: string;
 }
 
 @Component({
@@ -32,6 +35,7 @@ export class Timesheet implements OnInit {
   filtroProyecto = '';
 
   errorModal = false;
+  errorMessage = '';
   successModal = false;
 
   historyData: TimesheetRow[] = [];
@@ -70,17 +74,19 @@ export class Timesheet implements OnInit {
   }
 
   private mapToRow(e: RegistroTiempo): TimesheetRow {
-    const proj = this.proyectos.find((p) => p.proyectoId === e.proyectoId);
     return {
       id: e.tiempoId || 0,
-      project: proj?.codigo || `Proyecto ${e.proyectoId}`,
+      project: (e as any).proyectoNombre || `Proyecto ${e.proyectoId}`,
       projectId: e.proyectoId,
+      projectCode: (e as any).proyectoCodigo || '',
       date: e.fecha ? new Date(e.fecha).toLocaleDateString('en-US') : '',
       activity: e.actividadDescripcion || '',
       hours: e.horas ? `${e.horas} h` : '0 h',
+      hoursNum: e.horas || 0,
       status:
         e.estado === 'aprobado' ? 'Aprobado' : e.estado === 'rechazado' ? 'Rechazado' : 'Pendiente',
-      comments: '',
+      comments: (e as any).comentario || '',
+      decision: (e as any).decision || '',
     };
   }
 
@@ -97,26 +103,81 @@ export class Timesheet implements OnInit {
     });
   }
 
+  get horasNum(): number {
+    return parseFloat(this.horas) || 0;
+  }
+
+  get showHoursWarning(): boolean {
+    return this.horasNum > 8;
+  }
+
+  get canSubmit(): boolean {
+    return (
+      this.proyecto &&
+      this.fecha &&
+      this.horasNum > 0 &&
+      this.horasNum <= 8 &&
+      this.actividad.length >= 10
+    );
+  }
+
   goBack(): void {
     this.router.navigate(['/']);
   }
 
   handleValidar(): void {
-    const horasNum = parseFloat(this.horas);
-
-    if (!isNaN(horasNum) && horasNum > 8) {
+    // Validaciones en frontend
+    if (!this.proyecto) {
+      this.errorMessage = 'Debe seleccionar un proyecto';
       this.errorModal = true;
-    } else if (!isNaN(horasNum) && horasNum > 0 && this.proyecto && this.fecha) {
-      this.guardarEntrada();
+      return;
     }
+
+    if (!this.fecha) {
+      this.errorMessage = 'Debe seleccionar una fecha';
+      this.errorModal = true;
+      return;
+    }
+
+    const horasVal = this.horasNum;
+    if (horasVal <= 0) {
+      this.errorMessage = 'Debe ingresar horas válidas (mayor a 0)';
+      this.errorModal = true;
+      return;
+    }
+
+    if (horasVal > 8) {
+      this.errorMessage = 'No puede registrar más de 8 horas en un día';
+      this.errorModal = true;
+      return;
+    }
+
+    if (!this.actividad || this.actividad.length < 10) {
+      this.errorMessage = 'La descripción de la actividad debe tener al menos 10 caracteres';
+      this.errorModal = true;
+      return;
+    }
+
+    // Validar fecha no sea futura
+    const fechaSeleccionada = new Date(this.fecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (fechaSeleccionada > hoy) {
+      this.errorMessage = 'No puede registrar tiempos para fechas futuras';
+      this.errorModal = true;
+      return;
+    }
+
+    this.guardarEntrada();
   }
 
   private guardarEntrada(): void {
-    const horasNum = parseFloat(this.horas);
     const proyectoId = this.proyectos.find(
       (p) => p.codigo === this.proyecto || p.nombre === this.proyecto,
     )?.proyectoId;
+
     if (!proyectoId) {
+      this.errorMessage = 'Proyecto no válido';
       this.errorModal = true;
       return;
     }
@@ -124,8 +185,8 @@ export class Timesheet implements OnInit {
     this.timesheetsService
       .createEntry({
         proyectoId,
-        fecha: this.convertirFechaParaBackend(this.fecha),
-        horas: horasNum,
+        fecha: this.fecha,
+        horas: this.horasNum,
         actividadDescripcion: this.actividad,
       })
       .subscribe({
@@ -136,6 +197,7 @@ export class Timesheet implements OnInit {
         },
         error: (err) => {
           console.error('Error guardando entrada:', err);
+          this.errorMessage = err.error?.message || 'Error al guardar el registro';
           this.errorModal = true;
         },
       });
@@ -143,6 +205,7 @@ export class Timesheet implements OnInit {
 
   closeErrorModal(): void {
     this.errorModal = false;
+    this.errorMessage = '';
   }
 
   closeSuccessModal(): void {
@@ -170,12 +233,16 @@ export class Timesheet implements OnInit {
     return `${anio}-${mes}-${dia}`;
   }
 
-  private convertirFechaParaBackend(fecha: string): string {
-    const partes = fecha.split('/');
-    if (partes.length !== 3) return fecha;
-    const mes = partes[0].padStart(2, '0');
-    const dia = partes[1].padStart(2, '0');
-    const anio = partes[2];
-    return `${anio}-${mes}-${dia}`;
+  getStatusClass(status: string): string {
+    switch (status) {
+      case 'Aprobado':
+        return 'status-approved';
+      case 'Pendiente':
+        return 'status-pending';
+      case 'Rechazado':
+        return 'status-rejected';
+      default:
+        return '';
+    }
   }
 }

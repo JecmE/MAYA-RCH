@@ -44,24 +44,66 @@ export class TimesheetsService {
 
     const registros = await this.tiempoRepository.find({
       where,
-      relations: ['proyecto'],
+      relations: ['proyecto', 'aprobaciones'],
       order: { fecha: 'DESC', fechaRegistro: 'DESC' },
     });
 
-    return registros.map((r) => ({
-      tiempoId: r.tiempoId,
-      empleadoId: r.empleadoId,
-      fecha: r.fecha,
-      proyectoId: r.proyectoId,
-      horas: r.horas,
-      horasValidadas: r.horasValidadas,
-      actividadDescripcion: r.actividadDescripcion,
-      estado: r.estado,
-      fechaRegistro: r.fechaRegistro,
-    }));
+    return registros.map((r) => {
+      const aprobacion = r.aprobaciones && r.aprobaciones.length > 0 ? r.aprobaciones[0] : null;
+      return {
+        tiempoId: r.tiempoId,
+        empleadoId: r.empleadoId,
+        fecha: r.fecha,
+        proyectoId: r.proyectoId,
+        proyectoNombre: r.proyecto?.nombre || '',
+        proyectoCodigo: r.proyecto?.codigo || '',
+        horas: r.horas,
+        horasValidadas: r.horasValidadas,
+        actividadDescripcion: r.actividadDescripcion,
+        estado: r.estado,
+        fechaRegistro: r.fechaRegistro,
+        comentario: aprobacion?.comentario || null,
+        decision: aprobacion?.decision || null,
+      };
+    });
   }
 
   async createEntry(createDto: any, empleadoId: number) {
+    // Validaciones básicas
+    if (!createDto.proyectoId) {
+      throw new BadRequestException('Debe seleccionar un proyecto');
+    }
+
+    if (!createDto.fecha) {
+      throw new BadRequestException('Debe ingresar una fecha');
+    }
+
+    if (!createDto.horas || createDto.horas <= 0) {
+      throw new BadRequestException('Debe ingresar horas válidas (mayor a 0)');
+    }
+
+    if (createDto.horas > 8) {
+      throw new BadRequestException('No puede registrar más de 8 horas en un día');
+    }
+
+    if (!createDto.actividadDescripcion && !createDto.actividad) {
+      throw new BadRequestException('Debe describir la actividad realizada');
+    }
+
+    if ((createDto.actividadDescripcion || createDto.actividad).length < 10) {
+      throw new BadRequestException(
+        'La descripción de la actividad debe tener al menos 10 caracteres',
+      );
+    }
+
+    const fechaRegistro = new Date(createDto.fecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    if (fechaRegistro > hoy) {
+      throw new BadRequestException('No puede registrar tiempos para fechas futuras');
+    }
+
     const proyecto = await this.proyectoRepository.findOne({
       where: { proyectoId: createDto.proyectoId, activo: true },
     });
@@ -70,14 +112,25 @@ export class TimesheetsService {
       throw new NotFoundException('Proyecto no encontrado o inactivo');
     }
 
-    if (createDto.horas > 12) {
-      throw new BadRequestException('No puede registrar más de 12 horas en un día');
+    // Verificar duplicado (mismo proyecto + misma fecha + mismo empleado)
+    const existeDuplicado = await this.tiempoRepository.findOne({
+      where: {
+        empleadoId,
+        proyectoId: createDto.proyectoId,
+        fecha: fechaRegistro,
+      },
+    });
+
+    if (existeDuplicado) {
+      throw new BadRequestException(
+        `Ya existe un registro para este proyecto en la fecha ${createDto.fecha}. No puede duplicar registros.`,
+      );
     }
 
     const registro = this.tiempoRepository.create({
       empleadoId,
       proyectoId: createDto.proyectoId,
-      fecha: new Date(createDto.fecha),
+      fecha: fechaRegistro,
       horas: createDto.horas,
       actividadDescripcion: createDto.actividadDescripcion || createDto.actividad || '',
       estado: RegistroTiempo.ESTADO_PENDIENTE,
