@@ -30,6 +30,7 @@ async function bootstrap() {
 
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
+  // Test deploy - TODO: remove after verification
   console.log(`MAY A CRH API running on: http://localhost:${port}/api`);
 }
 bootstrap();
