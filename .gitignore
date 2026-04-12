@@ -49,8 +49,9 @@ backend/dist/
 backend/.env
 backend/.env.*
 
-# Environment files
-src/environments/environment.ts
+# Environment files (both are now tracked in git)
+# src/environments/environment.ts - local dev
+# src/environments/environment.production.ts - production
 
 # System files
 .DS_Store
