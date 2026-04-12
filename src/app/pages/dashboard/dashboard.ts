@@ -152,7 +152,7 @@ export class Dashboard implements OnInit {
           this.calculateCheckInAvailability();
           if (!this.canCheckIn) {
             this.canCheckOut = false;
-            this.checkOutDisabledReason = 'Primero debes marcar entrada. Contacta a tu supervisor.';
+            this.checkOutDisabledReason = 'Primero debes marcar entrada.';
           } else {
             this.canCheckOut = false;
             this.checkOutDisabledReason = '';
@@ -206,10 +206,10 @@ export class Dashboard implements OnInit {
 
     if (now < horaEntradaMin) {
       this.canCheckIn = false;
-      this.checkInDisabledReason = `Podrás marcar entrada a partir de las ${this.formatShiftTime(this.horaEntradaTurno)}. Contacta a tu supervisor si necesitas例外.`;
+      this.checkInDisabledReason = `Aún no es hora de registrar entrada. Podrás hacerlo a partir de las ${this.formatShiftTime(this.horaEntradaTurno)}.`;
     } else if (now > horaEntradaMax) {
       this.canCheckIn = false;
-      this.checkInDisabledReason = `Ya no puedes marcar entrada (límite: ${this.formatShiftTime(horaEntradaMax.toTimeString().substring(0, 8))}). Contacta a tu supervisor.`;
+      this.checkInDisabledReason = `Ya no es posible registrar entrada. El límite era ${this.formatShiftTime(horaEntradaMax.toTimeString().substring(0, 8))}.`;
     }
   }
 
