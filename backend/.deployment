@@ -1,2 +1,2 @@
 [config]
-command = bash -c "node /home/site/wwwroot/backend/dist/main.js"
+command = bash -c "cd /home/site/wwwroot/backend && NODE_PATH=/home/site/wwwroot/node_modules node dist/main.js"
