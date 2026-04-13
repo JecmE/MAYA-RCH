@@ -1,6 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { AttendanceService, AttendanceRecord } from '../../services/attendance.service';
 
 interface HistorialAsistencia {
@@ -20,7 +22,8 @@ interface HistorialAsistencia {
   templateUrl: './asistencia.html',
   styleUrl: './asistencia.css',
 })
-export class Asistencia implements OnInit {
+export class Asistencia implements OnInit, OnDestroy {
+  private routerSubscription?: Subscription;
   fechaInicio = '';
   fechaFin = '';
 
@@ -39,6 +42,18 @@ export class Asistencia implements OnInit {
 
   ngOnInit(): void {
     this.loadHistory();
+    this.routerSubscription = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe((event) => {
+        const url = (event as NavigationEnd).urlAfterRedirects;
+        if (url === '/asistencia' || url === '/asistencia') {
+          this.loadHistory();
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
   }
 
   private loadHistory(): void {

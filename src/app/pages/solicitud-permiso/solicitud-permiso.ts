@@ -1,7 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ChangeDetectorRef, ElementRef, ViewChild } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ChangeDetectorRef,
+  ElementRef,
+  ViewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import {
   LeavesService,
   TipoPermiso,
@@ -34,7 +43,8 @@ interface SolicitudItem {
   templateUrl: './solicitud-permiso.html',
   styleUrls: ['./solicitud-permiso.css'],
 })
-export class SolicitudPermiso implements OnInit {
+export class SolicitudPermiso implements OnInit, OnDestroy {
+  private routerSubscription?: Subscription;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   modalOpen = false;
@@ -67,6 +77,22 @@ export class SolicitudPermiso implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadAllData();
+    this.routerSubscription = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe((event) => {
+        const url = (event as NavigationEnd).urlAfterRedirects;
+        if (url === '/solicitudes') {
+          this.loadAllData();
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
+  }
+
+  private loadAllData(): void {
     this.loadTiposPermiso();
     this.loadSolicitudes();
     this.loadVacationBalance();
