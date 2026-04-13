@@ -1,6 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { TimesheetsService, RegistroTiempo } from '../../services/timesheets.service';
 import { ProjectsService, Proyecto } from '../../services/projects.service';
 
@@ -25,7 +27,8 @@ interface TimesheetRow {
   templateUrl: './timesheet.html',
   styleUrl: './timesheet.css',
 })
-export class Timesheet implements OnInit {
+export class Timesheet implements OnInit, OnDestroy {
+  private routerSubscription?: Subscription;
   proyecto = '';
   fecha = '';
   horas = '';
@@ -50,6 +53,22 @@ export class Timesheet implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadAllData();
+    this.routerSubscription = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe((event) => {
+        const url = (event as NavigationEnd).urlAfterRedirects;
+        if (url === '/timesheet') {
+          this.loadAllData();
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
+  }
+
+  private loadAllData(): void {
     this.loadProjects();
     this.loadEntries();
   }

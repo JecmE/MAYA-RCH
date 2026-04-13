@@ -1,6 +1,15 @@
-import { Component, Inject, PLATFORM_ID, OnInit, ChangeDetectorRef } from '@angular/core';
+import {
+  Component,
+  Inject,
+  PLATFORM_ID,
+  OnInit,
+  OnDestroy,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { AttendanceService } from '../../services/attendance.service';
 import { KpiService, KpiDashboard } from '../../services/kpi.service';
@@ -16,7 +25,8 @@ type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
+  private routerSubscription?: Subscription;
   marcaEstado: MarcaEstado = 'Pendiente';
   role = 'empleado';
   userName = '';
@@ -68,12 +78,30 @@ export class Dashboard implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadAllData();
+    this.routerSubscription = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe((event) => {
+        if (
+          (event as NavigationEnd).urlAfterRedirects === '/' ||
+          (event as NavigationEnd).urlAfterRedirects === ''
+        ) {
+          this.loadAllData();
+        }
+      });
+    setInterval(() => this.updateDateTime(), 60000);
+  }
+
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
+  }
+
+  private loadAllData(): void {
     this.updateDateTime();
     this.loadUserProfile();
     this.loadTodayStatus();
     this.loadKpiData();
     this.loadDashboardStats();
-    setInterval(() => this.updateDateTime(), 60000);
   }
 
   private loadDashboardStats(): void {
