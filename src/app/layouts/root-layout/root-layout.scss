@@ -13,6 +13,10 @@
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.2);
   flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
 }
 
 .sidebar__brand {
@@ -65,7 +69,9 @@
   border-radius: 0.75rem;
   color: #cbd5e1;
   text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .sidebar__link:hover {

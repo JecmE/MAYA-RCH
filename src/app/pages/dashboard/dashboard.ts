@@ -148,9 +148,11 @@ export class Dashboard implements OnInit, OnDestroy {
     this.authService.getCurrentUser().subscribe({
       next: (user: any) => {
         this.userName = user.nombreCompleto || user.username || '';
+        this.cdr.detectChanges();
       },
       error: () => {
         this.userName = '';
+        this.cdr.detectChanges();
       },
     });
   }

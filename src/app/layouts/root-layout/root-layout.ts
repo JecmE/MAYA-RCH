@@ -9,15 +9,14 @@ type UserRole = 'empleado' | 'supervisor' | 'rrhh' | 'admin';
   standalone: true,
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './root-layout.html',
-  styleUrl: './root-layout.scss'
+  styleUrl: './root-layout.scss',
 })
 export class RootLayout {
-  
   role: UserRole = 'empleado';
 
   constructor(
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: object
+    @Inject(PLATFORM_ID) private platformId: object,
   ) {
     if (isPlatformBrowser(this.platformId)) {
       const storedRole = localStorage.getItem('userRole')?.toLowerCase();
@@ -55,7 +54,10 @@ export class RootLayout {
 
   logout(): void {
     if (isPlatformBrowser(this.platformId)) {
+      localStorage.removeItem('access_token');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('usuarioId');
+      localStorage.removeItem('empleadoId');
     }
     this.router.navigate(['/login']);
   }
