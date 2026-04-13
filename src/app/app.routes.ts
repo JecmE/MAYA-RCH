@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { RootLayout } from './layouts/root-layout/root-layout';
+import { authGuard } from './guards/auth.guard';
 
 import { Login } from './pages/login/login';
 import { ForgotPassword } from './pages/forgot-password/forgot-password';
@@ -41,6 +42,7 @@ export const appRoutes: Routes = [
   {
     path: '',
     component: RootLayout,
+    canActivate: [authGuard],
     children: [
       { path: '', component: Dashboard },
       { path: 'kpi', component: KpiDashboard },
