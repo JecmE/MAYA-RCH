@@ -18,7 +18,7 @@
 ```bash
 # Trabajar en desarrollo
 git checkout desarrollo
-git pull origin desarrollo
+git pull origin desarrollo 
 # hacer cambios, testear localmente
 git commit -m "tu mensaje"
 git push origin desarrollo
