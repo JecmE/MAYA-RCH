@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { LeavesService, SolicitudPermiso } from '../../../services/leaves.service';
 import { TimesheetsService, TeamTimesheetEntry } from '../../../services/timesheets.service';
 
@@ -54,11 +55,17 @@ export class BandejaPendientes implements OnInit {
   constructor(
     private leavesService: LeavesService,
     private timesheetsService: TimesheetsService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    this.loadData();
+    this.route.queryParams.subscribe(params => {
+      if (params['tab'] === 'horas' || params['tab'] === 'permisos') {
+        this.tab = params['tab'] as TabType;
+      }
+      this.loadData();
+    });
   }
 
   loadData(): void {
