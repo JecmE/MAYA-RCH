@@ -33,6 +33,28 @@ let KpiService = class KpiService {
         this.proyectoRepository = proyectoRepository;
         this.dataSource = dataSource;
     }
+    sanitizeString(str) {
+        if (!str)
+            return '';
+        return str
+            .replace(/\?/g, (match, offset, original) => {
+            if (original.includes('Tecnolog'))
+                return 'í';
+            if (original.includes('Garc'))
+                return 'í';
+            if (original.includes('Rodr'))
+                return 'í';
+            if (original.includes('Mart'))
+                return 'í';
+            return 'í';
+        })
+            .replace(/Ã­/g, 'í')
+            .replace(/Ã³/g, 'ó')
+            .replace(/Ã¡/g, 'á')
+            .replace(/Ã©/g, 'é')
+            .replace(/Ãº/g, 'ú')
+            .replace(/Ã±/g, 'ñ');
+    }
     async getEmployeeDashboard(empleadoId, mes, anio) {
         const now = new Date();
         const month = mes || now.getMonth() + 1;
@@ -44,7 +66,7 @@ let KpiService = class KpiService {
             kpi = await this.calculateKpi(empleadoId, month, year);
         }
         return {
-            mes,
+            mes: month,
             anio: year,
             diasEsperados: kpi.diasEsperados,
             diasTrabajados: kpi.diasTrabajados,
@@ -54,6 +76,7 @@ let KpiService = class KpiService {
             horasTrabajadas: kpi.horasTrabajadas,
             cumplimientoPct: kpi.cumplimientoPct,
             clasificacion: kpi.clasificacion,
+            observacion: kpi.observacion,
         };
     }
     async getSupervisorDashboard(supervisorEmpleadoId, mes, anio) {
@@ -63,13 +86,14 @@ let KpiService = class KpiService {
         const equipoRaw = await this.dataSource.query(`SELECT empleado_id, nombres, apellidos, codigo_empleado FROM EMPLEADO WHERE supervisor_id = @0 AND activo = 1`, [supervisorEmpleadoId]);
         if (equipoRaw.length === 0) {
             return {
-                mes,
+                mes: month,
                 anio: year,
                 cantidadEmpleados: 0,
                 resumen: {
                     totalDiasTrabajados: 0,
                     totalTardias: 0,
                     promedioCumplimiento: 0,
+                    comparacionMesAnterior: 0
                 },
                 empleados: [],
             };
@@ -92,7 +116,6 @@ let KpiService = class KpiService {
                 anio: previousYear,
             },
         });
-        const previousKpiMap = new Map(previousKpis.map((k) => [k.empleadoId, k]));
         const currentAvg = kpis.length > 0
             ? kpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / kpis.length
             : 0;
@@ -101,7 +124,7 @@ let KpiService = class KpiService {
             : 0;
         const comparacionMesAnterior = previousAvg > 0 ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0;
         return {
-            mes,
+            mes: month,
             anio: year,
             cantidadEmpleados: equipoRaw.length,
             resumen: {
@@ -114,7 +137,7 @@ let KpiService = class KpiService {
                 const kpi = kpiMap.get(e.empleado_id);
                 return {
                     empleadoId: e.empleado_id,
-                    nombreCompleto: `${e.nombres} ${e.apellidos}`,
+                    nombreCompleto: this.sanitizeString(`${e.nombres} ${e.apellidos}`),
                     codigoEmpleado: e.codigo_empleado,
                     diasEsperados: kpi?.diasEsperados || 0,
                     diasTrabajados: kpi?.diasTrabajados || 0,
@@ -140,7 +163,7 @@ let KpiService = class KpiService {
             'En riesgo': kpis.filter((k) => k.clasificacion === 'En riesgo').length,
         };
         return {
-            mes,
+            mes: month,
             anio: year,
             totalEmpleados: kpis.length,
             promedioCumplimiento: kpis.length > 0
@@ -167,7 +190,7 @@ let KpiService = class KpiService {
         return [
             {
                 empleadoId,
-                nombreCompleto: empleado ? `${empleado.nombres} ${empleado.apellidos}` : '',
+                nombreCompleto: empleado ? this.sanitizeString(`${empleado.nombres} ${empleado.apellidos}`) : '',
                 clasificacion: kpi.clasificacion,
                 cumplimientoPct: kpi.cumplimientoPct,
                 tardias: kpi.tardias,
@@ -311,9 +334,9 @@ let KpiService = class KpiService {
             : 0;
         return {
             empleado: {
-                nombreCompleto: `${empleado.nombres} ${empleado.apellidos}`,
-                puesto: empleado.puesto,
-                departamento: empleado.departamento,
+                nombreCompleto: this.sanitizeString(`${empleado.nombres} ${empleado.apellidos}`),
+                puesto: this.sanitizeString(empleado.puesto),
+                departamento: this.sanitizeString(empleado.departamento),
                 email: empleado.email,
             },
             historialAsistencia: attendance.slice(0, 7).map((a) => ({
@@ -342,6 +365,16 @@ let KpiService = class KpiService {
                 : null,
             comparacionMesAnterior: Math.round(comparisonPct * 10) / 10,
         };
+    }
+    async saveObservation(empleadoId, mes, anio, observacion) {
+        const kpi = await this.kpiRepository.findOne({
+            where: { empleadoId, mes, anio },
+        });
+        if (!kpi) {
+            throw new common_1.NotFoundException('No se puede guardar observación para un periodo sin KPI calculado');
+        }
+        kpi.observacion = observacion;
+        return this.kpiRepository.save(kpi);
     }
 };
 exports.KpiService = KpiService;

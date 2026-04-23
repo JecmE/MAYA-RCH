@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { KpiService, SupervisorKpi, EmployeeProfile } from '../../../services/kpi.service';
@@ -13,7 +13,8 @@ interface EquipoItem {
   id: number;
   empleado: string;
   kpi: string;
-  clasificacion: 'Excelente' | 'Bueno' | 'Regular';
+  kpiNum: number;
+  clasificacion: string;
   tendencia: 'up' | 'down';
   alerta?: boolean;
   observacion?: string;
@@ -22,7 +23,14 @@ interface EquipoItem {
 interface PeriodoData {
   chartData: ChartItem[];
   equipoData: EquipoItem[];
-  comparacionMesAnterior?: number;
+  comparacionMesAnterior: number;
+  promedioEquipo: number;
+}
+
+interface PeriodoOption {
+  label: string;
+  mes: number;
+  anio: number;
 }
 
 @Component({
@@ -33,87 +41,108 @@ interface PeriodoData {
   styleUrl: './kpi-equipo.css',
 })
 export class KpiEquipo implements OnInit {
+  isBrowser: boolean;
   modalPerfil = false;
+  isLoadingProfile = false;
+
   empleadoSeleccionado: EquipoItem | null = null;
   empleadoProfileData: EmployeeProfile | null = null;
 
-  periodoSeleccionado = 'Marzo 2026';
+  periodosDisponibles: PeriodoOption[] = [];
+  periodoSeleccionado: PeriodoOption | null = null;
+
   filtroBusqueda = '';
   filtroClasificacion = 'Todas las clasificaciones';
 
   observacionTemporal = '';
   observacionGuardadaMensaje = '';
   observacionError = '';
+  isSavingObservation = false;
 
-  periodos: Record<string, PeriodoData> = {};
-  periodosDisponibles: string[] = [];
+  dataActual: PeriodoData | null = null;
 
   constructor(
     private router: Router,
     private kpiService: KpiService,
-  ) {}
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) platformId: object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+    this.generatePeriodOptions();
+  }
 
   ngOnInit(): void {
+    if (this.isBrowser) {
+      this.loadKpiData();
+    }
+  }
+
+  private generatePeriodOptions(): void {
+    const options: PeriodoOption[] = [];
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      options.push({
+        label: `${this.getMonthName(d.getMonth() + 1)} ${d.getFullYear()}`,
+        mes: d.getMonth() + 1,
+        anio: d.getFullYear()
+      });
+    }
+    this.periodosDisponibles = options;
+    this.periodoSeleccionado = options[0];
+  }
+
+  onPeriodChange(): void {
     this.loadKpiData();
   }
 
-  private loadKpiData(): void {
-    const supervisorId = this.getSupervisorId();
-    if (!supervisorId) {
-      this.periodos = {};
-      return;
-    }
+  loadKpiData(): void {
+    if (!this.periodoSeleccionado) return;
 
-    const currentDate = new Date();
-    this.periodoSeleccionado = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
-    this.periodosDisponibles = [this.periodoSeleccionado];
-
-    this.kpiService.getSupervisorDashboard(supervisorId).subscribe({
+    this.kpiService.getSupervisorDashboard(0, this.periodoSeleccionado.mes, this.periodoSeleccionado.anio).subscribe({
       next: (data: any) => {
         if (data && data.empleados) {
-          this.periodos[this.periodoSeleccionado] = this.mapSupervisorKpiToPeriodoData(
-            data.empleados,
-          );
-          this.periodos[this.periodoSeleccionado].comparacionMesAnterior =
-            data.resumen?.comparacionMesAnterior || 0;
+          this.dataActual = this.mapToPeriodoData(data);
         }
+        this.cdr.detectChanges();
       },
       error: () => {
-        this.periodos = {};
+        this.dataActual = null;
+        this.cdr.detectChanges();
       },
     });
   }
 
-  private getSupervisorId(): number | null {
-    const empleadoIdStr = localStorage.getItem('empleadoId');
-    return empleadoIdStr ? parseInt(empleadoIdStr, 10) : null;
-  }
+  private mapToPeriodoData(data: any): PeriodoData {
+    const employees: SupervisorKpi[] = data.empleados || [];
 
-  private mapSupervisorKpiToPeriodoData(data: SupervisorKpi[]): PeriodoData {
-    const chartData: ChartItem[] = data.map((kpi) => ({
-      name: kpi.nombreCompleto?.split(' ')[0] || `Emp ${kpi.empleadoId}`,
-      kpi: kpi.cumplimientoPct,
+    const chartData: ChartItem[] = employees.map((k) => ({
+      name: k.nombreCompleto?.split(' ')[0] || `ID ${k.empleadoId}`,
+      kpi: k.cumplimientoPct,
     }));
 
-    const equipoData: EquipoItem[] = data.map((kpi) => this.mapKpiToEquipoItem(kpi));
-
-    return { chartData, equipoData };
-  }
-
-  private mapKpiToEquipoItem(kpi: SupervisorKpi): EquipoItem {
-    let clasificacion: 'Excelente' | 'Bueno' | 'Regular' = 'Regular';
-    if (kpi.cumplimientoPct >= 90) clasificacion = 'Excelente';
-    else if (kpi.cumplimientoPct >= 80) clasificacion = 'Bueno';
+    const equipoData: EquipoItem[] = employees.map((k) => ({
+      id: k.empleadoId,
+      empleado: k.nombreCompleto,
+      kpi: `${k.cumplimientoPct}%`,
+      kpiNum: k.cumplimientoPct,
+      clasificacion: k.clasificacion || 'Sin datos',
+      tendencia: k.cumplimientoPct >= 85 ? 'up' : 'down',
+      alerta: k.cumplimientoPct < 70,
+      observacion: '',
+    }));
 
     return {
-      id: kpi.empleadoId,
-      empleado: kpi.nombreCompleto || `Empleado ${kpi.empleadoId}`,
-      kpi: `${kpi.cumplimientoPct}%`,
-      clasificacion,
-      tendencia: kpi.cumplimientoPct >= 90 ? 'up' : 'down',
-      alerta: kpi.cumplimientoPct < 75,
-      observacion: '',
+      chartData,
+      equipoData,
+      comparacionMesAnterior: data.resumen?.comparacionMesAnterior || 0,
+      promedioEquipo: data.resumen?.promedioCumplimiento || 0
     };
+  }
+
+  private getMonthName(month: number): string {
+    const names = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return names[month - 1] || '';
   }
 
   goBack(): void {
@@ -123,17 +152,23 @@ export class KpiEquipo implements OnInit {
   verPerfil(empleado: EquipoItem): void {
     this.empleadoSeleccionado = empleado;
     this.modalPerfil = true;
-    this.observacionTemporal = empleado.observacion ?? '';
+    this.isLoadingProfile = true;
+    this.empleadoProfileData = null;
+    this.observacionTemporal = '';
     this.observacionGuardadaMensaje = '';
     this.observacionError = '';
-    this.empleadoProfileData = null;
 
     this.kpiService.getEmployeeProfile(empleado.id).subscribe({
       next: (profile: EmployeeProfile) => {
         this.empleadoProfileData = profile;
+        // @ts-ignore - Accedemos a la observación del KPI real cargado
+        this.observacionTemporal = profile.kpiActual?.observacion || '';
+        this.isLoadingProfile = false;
+        this.cdr.detectChanges();
       },
       error: () => {
-        this.empleadoProfileData = null;
+        this.isLoadingProfile = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -142,50 +177,44 @@ export class KpiEquipo implements OnInit {
     this.modalPerfil = false;
     this.empleadoSeleccionado = null;
     this.empleadoProfileData = null;
-    this.observacionTemporal = '';
-    this.observacionGuardadaMensaje = '';
-    this.observacionError = '';
   }
 
   guardarObservacion(): void {
+    if (!this.empleadoSeleccionado || !this.periodoSeleccionado || this.isSavingObservation) return;
+
     this.observacionGuardadaMensaje = '';
     this.observacionError = '';
 
     const texto = this.observacionTemporal.trim();
-
     if (!texto) {
       this.observacionError = 'Debes escribir una observación antes de guardarla.';
       return;
     }
 
-    if (this.empleadoSeleccionado) {
-      this.empleadoSeleccionado.observacion = texto;
-      this.observacionGuardadaMensaje = 'La observación se guardó correctamente.';
-    }
-  }
-
-  get chartData(): ChartItem[] {
-    return this.periodos[this.periodoSeleccionado]?.chartData ?? [];
-  }
-
-  get equipoData(): EquipoItem[] {
-    return this.periodos[this.periodoSeleccionado]?.equipoData ?? [];
-  }
-
-  get promedioEquipo(): string {
-    if (!this.chartData.length) return '0.0';
-    const total = this.chartData.reduce((sum, item) => sum + item.kpi, 0);
-    return (total / this.chartData.length).toFixed(1);
-  }
-
-  get comparacionMesAnterior(): string {
-    const val = this.periodos[this.periodoSeleccionado]?.comparacionMesAnterior ?? 0;
-    const sign = val >= 0 ? '+' : '';
-    return `${sign}${val}% vs mes anterior`;
+    this.isSavingObservation = true;
+    this.kpiService.saveObservation(
+      this.empleadoSeleccionado.id,
+      this.periodoSeleccionado.mes,
+      this.periodoSeleccionado.anio,
+      texto
+    ).subscribe({
+      next: () => {
+        this.isSavingObservation = false;
+        this.observacionGuardadaMensaje = 'La observación se guardó correctamente.';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isSavingObservation = false;
+        this.observacionError = err.error?.message || 'Error al guardar la observación.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   get equipoFiltrado(): EquipoItem[] {
-    return this.equipoData.filter((row) => {
+    if (!this.dataActual) return [];
+
+    return this.dataActual.equipoData.filter((row) => {
       const coincideBusqueda =
         !this.filtroBusqueda.trim() ||
         row.empleado.toLowerCase().includes(this.filtroBusqueda.trim().toLowerCase());
@@ -199,27 +228,27 @@ export class KpiEquipo implements OnInit {
   }
 
   getInitials(nombre: string): string {
+    if (!nombre) return '?';
     return nombre
       .split(' ')
+      .filter(n => n.length > 0)
       .map((n) => n[0])
+      .slice(0, 2)
       .join('')
       .toUpperCase();
   }
 
   getClasificacionClass(clasificacion: string): string {
-    switch (clasificacion) {
-      case 'Excelente':
-        return 'badge badge--excellent';
-      case 'Bueno':
-        return 'badge badge--good';
-      default:
-        return 'badge badge--regular';
-    }
+    const c = (clasificacion || '').toLowerCase();
+    if (c.includes('excelente')) return 'badge badge--excellent';
+    if (c.includes('bueno')) return 'badge badge--good';
+    if (c.includes('observacion')) return 'badge badge--regular';
+    return 'badge badge--risk';
   }
 
   getBarClass(kpi: number): string {
-    if (kpi >= 90) return 'bar--green';
-    if (kpi >= 80) return 'bar--blue';
+    if (kpi >= 95) return 'bar--green';
+    if (kpi >= 85) return 'bar--blue';
     if (kpi >= 70) return 'bar--amber';
     return 'bar--red';
   }
@@ -227,16 +256,36 @@ export class KpiEquipo implements OnInit {
   formatDate(dateStr: string): string {
     if (!dateStr) return '';
     const date = new Date(dateStr);
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const correctedDate = new Date(date.getTime() + userTimezoneOffset);
+
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    const day = days[date.getDay()];
-    const dayNum = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = days[correctedDate.getDay()];
+    const dayNum = correctedDate.getDate().toString().padStart(2, '0');
+    const month = (correctedDate.getMonth() + 1).toString().padStart(2, '0');
     return `${day} ${dayNum}/${month}`;
   }
 
   formatTime(timeStr: string): string {
     if (!timeStr) return '--:--';
-    if (timeStr.length >= 5) return timeStr.substring(0, 5);
+    if (timeStr.includes('T') || timeStr.includes(':')) {
+      // Si es formato ISO o tiene dos puntos, intentamos parsear
+      let d: Date;
+      if (timeStr.includes('T')) {
+        d = new Date(timeStr);
+      } else {
+        const [h, m] = timeStr.split(':');
+        d = new Date();
+        d.setHours(parseInt(h), parseInt(m));
+      }
+      return d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
+    }
     return timeStr;
+  }
+
+  capitalize(str: string): string {
+    if (!str) return '';
+    const s = str.toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
   }
 }

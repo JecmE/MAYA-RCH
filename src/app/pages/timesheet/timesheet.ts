@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -29,6 +30,8 @@ interface TimesheetRow {
 })
 export class Timesheet implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
+  isBrowser: boolean;
+
   proyecto = '';
   fecha = '';
   horas = '';
@@ -50,18 +53,22 @@ export class Timesheet implements OnInit, OnDestroy {
     private timesheetsService: TimesheetsService,
     private projectsService: ProjectsService,
     private cdr: ChangeDetectorRef,
-  ) {}
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   ngOnInit(): void {
-    this.loadAllData();
-    this.routerSubscription = this.router.events
-      .pipe(filter((e) => e instanceof NavigationEnd))
-      .subscribe((event) => {
-        const url = (event as NavigationEnd).urlAfterRedirects;
-        if (url.startsWith('/timesheet')) {
-          this.loadAllData();
-        }
-      });
+    if (this.isBrowser) {
+      this.loadAllData();
+      this.routerSubscription = this.router.events
+        .pipe(filter((e) => e instanceof NavigationEnd))
+        .subscribe((event) => {
+          if ((event as NavigationEnd).urlAfterRedirects === '/timesheet') {
+            this.loadAllData();
+          }
+        });
+    }
   }
 
   ngOnDestroy(): void {
@@ -106,47 +113,38 @@ export class Timesheet implements OnInit, OnDestroy {
       activity: e.actividadDescripcion || '',
       hours: e.horas ? `${e.horas} h` : '0 h',
       hoursNum: e.horas || 0,
-      status:
-        e.estado === 'aprobado' ? 'Aprobado' : e.estado === 'rechazado' ? 'Rechazado' : 'Pendiente',
+      status: this.capitalize(e.estado),
       comments: e.comentario || '',
       decision: e.decision || '',
     };
   }
 
+  private capitalize(str: string): string {
+    if (!str) return 'Pendiente';
+    const s = str.toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
   get historyDataFiltrada(): TimesheetRow[] {
     return this.historyData.filter((row) => {
-      const filtroFechaISO = this.filtroFecha;
-      const filtroFechaDMY = filtroFechaISO ? this.convertToDMY(filtroFechaISO) : '';
-      const coincideFecha = !filtroFechaISO || row.date === filtroFechaDMY;
-      const filtroTrim = (this.filtroProyecto || '').trim();
-      const rowCodeTrim = (row.projectCode || '').trim();
-      const coincideProyecto = !filtroTrim || rowCodeTrim === filtroTrim;
-      return coincideFecha && coincideProyecto;
+      const coincideBusqueda = !this.filtroFecha || row.date === this.convertToDMY(this.filtroFecha);
+      const coincideProyecto = !this.filtroProyecto || row.projectCode === this.filtroProyecto;
+      return coincideBusqueda && coincideProyecto;
     });
   }
 
   private formatDateForDisplay(dateValue: string | Date): string {
     if (!dateValue) return '';
-    let d: Date;
-    if (typeof dateValue === 'string') {
-      const parts = dateValue.split('T')[0].split('-');
-      if (parts.length === 3) {
-        d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      } else {
-        d = new Date(dateValue);
-      }
-    } else {
-      d = dateValue;
-    }
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${month}/${day}/${d.getFullYear()}`;
+    const d = new Date(dateValue);
+    const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() + userTimezoneOffset).toLocaleDateString('es-GT');
   }
 
   private convertToDMY(isoDate: string): string {
     if (!isoDate) return '';
-    const [year, month, day] = isoDate.split('-');
-    return `${month}/${day}/${year}`;
+    const d = new Date(isoDate);
+    const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() + userTimezoneOffset).toLocaleDateString('es-GT');
   }
 
   get horasNum(): number {
@@ -172,44 +170,17 @@ export class Timesheet implements OnInit, OnDestroy {
   }
 
   handleValidar(): void {
-    // Validaciones en frontend
-    if (!this.proyecto) {
-      this.errorMessage = 'Debe seleccionar un proyecto';
+    if (!this.proyecto || !this.fecha || this.horasNum <= 0 || this.horasNum > 8 || this.actividad.length < 10) {
+      this.errorMessage = 'Por favor revisa los campos obligatorios y el límite de horas.';
       this.errorModal = true;
       return;
     }
 
-    if (!this.fecha) {
-      this.errorMessage = 'Debe seleccionar una fecha';
-      this.errorModal = true;
-      return;
-    }
-
-    const horasVal = this.horasNum;
-    if (horasVal <= 0) {
-      this.errorMessage = 'Debe ingresar horas válidas (mayor a 0)';
-      this.errorModal = true;
-      return;
-    }
-
-    if (horasVal > 8) {
-      this.errorMessage = 'No puede registrar más de 8 horas en un día';
-      this.errorModal = true;
-      return;
-    }
-
-    if (!this.actividad || this.actividad.length < 10) {
-      this.errorMessage = 'La descripción de la actividad debe tener al menos 10 caracteres';
-      this.errorModal = true;
-      return;
-    }
-
-    // Validar fecha no sea futura
     const fechaSeleccionada = new Date(this.fecha);
     const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+    hoy.setHours(23, 59, 59, 999);
     if (fechaSeleccionada > hoy) {
-      this.errorMessage = 'No puede registrar tiempos para fechas futuras';
+      this.errorMessage = 'No puedes registrar tiempos para fechas futuras.';
       this.errorModal = true;
       return;
     }
@@ -219,10 +190,7 @@ export class Timesheet implements OnInit, OnDestroy {
 
   private guardarEntrada(): void {
     this.isSubmitting = true;
-
-    const proyectoId = this.proyectos.find(
-      (p) => p.codigo === this.proyecto || p.nombre === this.proyecto,
-    )?.proyectoId;
+    const proyectoId = this.proyectos.find(p => p.codigo === this.proyecto)?.proyectoId;
 
     if (!proyectoId) {
       this.errorMessage = 'Proyecto no válido';
@@ -231,35 +199,25 @@ export class Timesheet implements OnInit, OnDestroy {
       return;
     }
 
-    const saveTimeout = setTimeout(() => {
-      console.warn('Save request is taking longer than expected...');
-    }, 5000);
-
-    this.timesheetsService
-      .createEntry({
-        proyectoId,
-        fecha: this.fecha,
-        horas: this.horasNum,
-        actividadDescripcion: this.actividad,
-      })
-      .subscribe({
-        next: () => {
-          clearTimeout(saveTimeout);
-          this.successModal = true;
-          this.limpiar();
-          this.loadEntries();
-          this.isSubmitting = false;
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          clearTimeout(saveTimeout);
-          console.error('Error guardando entrada:', err);
-          this.errorMessage = err.error?.message || 'Error al guardar el registro';
-          this.errorModal = true;
-          this.isSubmitting = false;
-          this.cdr.detectChanges();
-        },
-      });
+    this.timesheetsService.createEntry({
+      proyectoId,
+      fecha: this.fecha,
+      horas: this.horasNum,
+      actividadDescripcion: this.actividad,
+    }).subscribe({
+      next: () => {
+        this.successModal = true;
+        this.limpiar();
+        this.loadEntries();
+        this.isSubmitting = false;
+      },
+      error: (err) => {
+        this.errorMessage = err.error?.message || 'Error al guardar el registro';
+        this.errorModal = true;
+        this.isSubmitting = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   closeErrorModal(): void {
@@ -285,14 +243,10 @@ export class Timesheet implements OnInit, OnDestroy {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'Aprobado':
-        return 'status-approved';
-      case 'Pendiente':
-        return 'status-pending';
-      case 'Rechazado':
-        return 'status-rejected';
-      default:
-        return '';
+      case 'Aprobado': return 'status-approved';
+      case 'Pendiente': return 'status-pending';
+      case 'Rechazado': return 'status-rejected';
+      default: return '';
     }
   }
 }

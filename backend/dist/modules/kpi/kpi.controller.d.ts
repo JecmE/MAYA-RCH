@@ -13,19 +13,9 @@ export declare class KpiController {
         horasTrabajadas: number;
         cumplimientoPct: number;
         clasificacion: string;
+        observacion: string;
     }>;
     getSupervisorDashboard(req: any, mes?: number, anio?: number): Promise<{
-        mes: number;
-        anio: number;
-        cantidadEmpleados: number;
-        resumen: {
-            totalDiasTrabajados: number;
-            totalTardias: number;
-            promedioCumplimiento: number;
-            comparacionMesAnterior?: undefined;
-        };
-        empleados: any[];
-    } | {
         mes: number;
         anio: number;
         cantidadEmpleados: any;
@@ -90,4 +80,5 @@ export declare class KpiController {
         };
         comparacionMesAnterior: number;
     }>;
+    saveObservation(empleadoId: number, mes: number, anio: number, observacion: string): Promise<import("../../entities").KpiMensual>;
 }

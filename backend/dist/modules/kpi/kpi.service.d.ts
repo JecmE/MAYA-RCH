@@ -15,6 +15,7 @@ export declare class KpiService {
     private proyectoRepository;
     private dataSource;
     constructor(kpiRepository: Repository<KpiMensual>, asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroTiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, dataSource: DataSource);
+    private sanitizeString;
     getEmployeeDashboard(empleadoId: number, mes?: number, anio?: number): Promise<{
         mes: number;
         anio: number;
@@ -26,19 +27,9 @@ export declare class KpiService {
         horasTrabajadas: number;
         cumplimientoPct: number;
         clasificacion: string;
+        observacion: string;
     }>;
     getSupervisorDashboard(supervisorEmpleadoId: number, mes?: number, anio?: number): Promise<{
-        mes: number;
-        anio: number;
-        cantidadEmpleados: number;
-        resumen: {
-            totalDiasTrabajados: number;
-            totalTardias: number;
-            promedioCumplimiento: number;
-            comparacionMesAnterior?: undefined;
-        };
-        empleados: any[];
-    } | {
         mes: number;
         anio: number;
         cantidadEmpleados: any;
@@ -105,4 +96,5 @@ export declare class KpiService {
         };
         comparacionMesAnterior: number;
     }>;
+    saveObservation(empleadoId: number, mes: number, anio: number, observacion: string): Promise<KpiMensual>;
 }

@@ -19,6 +19,19 @@
 
     <app-top-cards></app-top-cards>
 
+    @if (currentKpi?.observacion) {
+      <div class="observation-card">
+        <div class="observation-header">
+          <h3 class="section-title">Nota del Supervisor</h3>
+          <span class="date-badge">Abril 2026</span>
+        </div>
+        <div class="observation-content">
+          <div class="quote-icon">"</div>
+          <p class="observation-text">{{ currentKpi?.observacion }}</p>
+        </div>
+      </div>
+    }
+
     <div class="charts-full-width">
       <app-charts-section></app-charts-section>
     </div>

@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -24,6 +25,8 @@ interface HistorialAsistencia {
 })
 export class Asistencia implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
+  isBrowser: boolean;
+
   fechaInicio = '';
   fechaFin = '';
 
@@ -38,18 +41,23 @@ export class Asistencia implements OnInit, OnDestroy {
     private router: Router,
     private attendanceService: AttendanceService,
     private cdr: ChangeDetectorRef,
-  ) {}
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   ngOnInit(): void {
-    this.loadHistory();
-    this.routerSubscription = this.router.events
-      .pipe(filter((e) => e instanceof NavigationEnd))
-      .subscribe((event) => {
-        const url = (event as NavigationEnd).urlAfterRedirects;
-        if (url === '/asistencia' || url === '/asistencia') {
-          this.loadHistory();
-        }
-      });
+    if (this.isBrowser) {
+      this.loadHistory();
+      this.routerSubscription = this.router.events
+        .pipe(filter((e) => e instanceof NavigationEnd))
+        .subscribe((event) => {
+          const url = (event as NavigationEnd).urlAfterRedirects;
+          if (url === '/asistencia') {
+            this.loadHistory();
+          }
+        });
+    }
   }
 
   ngOnDestroy(): void {
@@ -77,7 +85,7 @@ export class Asistencia implements OnInit, OnDestroy {
   private mapToHistorial(r: AttendanceRecord, index: number): HistorialAsistencia {
     return {
       id: r.asistenciaId || index + 1,
-      date: r.fecha ? new Date(r.fecha).toLocaleDateString('en-US') : '',
+      date: r.fecha ? this.formatDate(r.fecha) : '',
       in: r.horaEntradaReal ? this.formatTime(r.horaEntradaReal) : '--:--',
       out: r.horaSalidaReal ? this.formatTime(r.horaSalidaReal) : '--:--',
       hours: r.horasTrabajadas ? `${r.horasTrabajadas} h` : '0 h',
@@ -90,17 +98,22 @@ export class Asistencia implements OnInit, OnDestroy {
     };
   }
 
+  private formatDate(dateStr: string): string {
+    const d = new Date(dateStr);
+    const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() + userTimezoneOffset).toLocaleDateString('es-GT');
+  }
+
   private formatTime(time: string): string {
     if (!time) return '--:--';
-    if (time.includes('T')) {
-      return new Date(time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-    return time.substring(0, 5);
+    const d = new Date(time);
+    return d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
   }
 
   private getStatusFromRecord(r: AttendanceRecord): string {
-    if (r.estadoJornada === 'completada') return 'Completa';
-    if (r.estadoJornada === 'incompleta') return 'Incompleta';
+    const state = (r.estadoJornada || '').toLowerCase();
+    if (state === 'completada' || state === 'completa') return 'Completa';
+    if (state === 'incompleta') return 'Incompleta';
     if (r.minutosTardia && r.minutosTardia > 0) return 'Llegada tarde';
     return 'Pendiente';
   }
@@ -134,16 +147,21 @@ export class Asistencia implements OnInit, OnDestroy {
 
   filtrar(): void {
     if (!this.fechaInicio && !this.fechaFin) {
-      this.filteredData = [];
+      this.filteredData = [...this.historyData];
       this.updatePagination();
       this.cdr.detectChanges();
       return;
     }
 
+    const start = this.fechaInicio ? new Date(this.fechaInicio) : null;
+    const end = this.fechaFin ? new Date(this.fechaFin) : null;
+    if (start) start.setHours(0,0,0,0);
+    if (end) end.setHours(23,59,59,999);
+
     this.filteredData = this.historyData.filter((item) => {
-      const itemDate = new Date(item.date);
-      const start = this.fechaInicio ? new Date(this.fechaInicio) : null;
-      const end = this.fechaFin ? new Date(this.fechaFin) : null;
+      // Re-parsear fecha local para comparar
+      const parts = item.date.split('/');
+      const itemDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
 
       if (start && itemDate < start) return false;
       if (end && itemDate > end) return false;
@@ -157,7 +175,7 @@ export class Asistencia implements OnInit, OnDestroy {
   limpiar(): void {
     this.fechaInicio = '';
     this.fechaFin = '';
-    this.filteredData = [];
+    this.filteredData = [...this.historyData];
     this.currentPage = 1;
     this.updatePagination();
     this.cdr.detectChanges();

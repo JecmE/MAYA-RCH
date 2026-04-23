@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In, Raw } from 'typeorm';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
@@ -27,6 +27,24 @@ export class KpiService {
     private dataSource: DataSource,
   ) {}
 
+  private sanitizeString(str: string | null | undefined): string {
+    if (!str) return '';
+    return str
+      .replace(/\?/g, (match, offset, original) => {
+        if (original.includes('Tecnolog')) return 'í';
+        if (original.includes('Garc')) return 'í';
+        if (original.includes('Rodr')) return 'í';
+        if (original.includes('Mart')) return 'í';
+        return 'í';
+      })
+      .replace(/Ã­/g, 'í')
+      .replace(/Ã³/g, 'ó')
+      .replace(/Ã¡/g, 'á')
+      .replace(/Ã©/g, 'é')
+      .replace(/Ãº/g, 'ú')
+      .replace(/Ã±/g, 'ñ');
+  }
+
   async getEmployeeDashboard(empleadoId: number, mes?: number, anio?: number) {
     const now = new Date();
     const month = mes || now.getMonth() + 1;
@@ -36,13 +54,12 @@ export class KpiService {
       where: { empleadoId, mes: month, anio: year },
     });
 
-    // Si es el mes actual o no existe el registro, lo recalculamos para asegurar datos frescos
     if (!kpi || (month === now.getMonth() + 1 && year === now.getFullYear())) {
       kpi = await this.calculateKpi(empleadoId, month, year);
     }
 
     return {
-      mes,
+      mes: month,
       anio: year,
       diasEsperados: kpi.diasEsperados,
       diasTrabajados: kpi.diasTrabajados,
@@ -52,6 +69,7 @@ export class KpiService {
       horasTrabajadas: kpi.horasTrabajadas,
       cumplimientoPct: kpi.cumplimientoPct,
       clasificacion: kpi.clasificacion,
+      observacion: kpi.observacion,
     };
   }
 
@@ -67,13 +85,14 @@ export class KpiService {
 
     if (equipoRaw.length === 0) {
       return {
-        mes,
+        mes: month,
         anio: year,
         cantidadEmpleados: 0,
         resumen: {
           totalDiasTrabajados: 0,
           totalTardias: 0,
           promedioCumplimiento: 0,
+          comparacionMesAnterior: 0
         },
         empleados: [],
       };
@@ -101,8 +120,6 @@ export class KpiService {
       },
     });
 
-    const previousKpiMap = new Map(previousKpis.map((k) => [k.empleadoId, k]));
-
     const currentAvg =
       kpis.length > 0
         ? kpis.reduce((sum, k) => sum + Number(k.cumplimientoPct), 0) / kpis.length
@@ -117,7 +134,7 @@ export class KpiService {
       previousAvg > 0 ? ((currentAvg - previousAvg) / previousAvg) * 100 : 0;
 
     return {
-      mes,
+      mes: month,
       anio: year,
       cantidadEmpleados: equipoRaw.length,
       resumen: {
@@ -130,7 +147,7 @@ export class KpiService {
         const kpi = kpiMap.get(e.empleado_id);
         return {
           empleadoId: e.empleado_id,
-          nombreCompleto: `${e.nombres} ${e.apellidos}`,
+          nombreCompleto: this.sanitizeString(`${e.nombres} ${e.apellidos}`),
           codigoEmpleado: e.codigo_empleado,
           diasEsperados: kpi?.diasEsperados || 0,
           diasTrabajados: kpi?.diasTrabajados || 0,
@@ -160,7 +177,7 @@ export class KpiService {
     };
 
     return {
-      mes,
+      mes: month,
       anio: year,
       totalEmpleados: kpis.length,
       promedioCumplimiento:
@@ -193,7 +210,7 @@ export class KpiService {
     return [
       {
         empleadoId,
-        nombreCompleto: empleado ? `${empleado.nombres} ${empleado.apellidos}` : '',
+        nombreCompleto: empleado ? this.sanitizeString(`${empleado.nombres} ${empleado.apellidos}`) : '',
         clasificacion: kpi.clasificacion,
         cumplimientoPct: kpi.cumplimientoPct,
         tardias: kpi.tardias,
@@ -208,10 +225,8 @@ export class KpiService {
     const hoy = new Date();
     const fechaActual = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
-    // Solo contar hasta la fecha actual (no futuros)
     const fechaCorte = fechaActual < fechaFin ? fechaActual : fechaFin;
 
-    // Calcular días laborables transcurridos (lunes a viernes)
     let diasTranscurridos = 0;
     const fechaTemp = new Date(fechaInicio);
     while (fechaTemp <= fechaCorte) {
@@ -248,7 +263,6 @@ export class KpiService {
     else if (cumplimientoPct >= 85) clasificacion = 'Bueno';
     else if (cumplimientoPct >= 70) clasificacion = 'En observacion';
 
-    // Buscar si ya existe para actualizarlo en lugar de intentar insertar uno nuevo
     let kpi = await this.kpiRepository.findOne({
       where: { empleadoId, mes, anio },
     });
@@ -288,10 +302,8 @@ export class KpiService {
     const month = mes || now.getMonth() + 1;
     const year = anio || now.getFullYear();
 
-    // Delete existing KPI for this employee/month/year
     await this.kpiRepository.delete({ empleadoId, mes: month, anio: year });
 
-    // Recalculate and save
     return this.calculateKpi(empleadoId, month, year);
   }
 
@@ -369,9 +381,9 @@ export class KpiService {
 
     return {
       empleado: {
-        nombreCompleto: `${empleado.nombres} ${empleado.apellidos}`,
-        puesto: empleado.puesto,
-        departamento: empleado.departamento,
+        nombreCompleto: this.sanitizeString(`${empleado.nombres} ${empleado.apellidos}`),
+        puesto: this.sanitizeString(empleado.puesto),
+        departamento: this.sanitizeString(empleado.departamento),
         email: empleado.email,
       },
       historialAsistencia: attendance.slice(0, 7).map((a) => ({
@@ -400,5 +412,18 @@ export class KpiService {
         : null,
       comparacionMesAnterior: Math.round(comparisonPct * 10) / 10,
     };
+  }
+
+  async saveObservation(empleadoId: number, mes: number, anio: number, observacion: string) {
+    const kpi = await this.kpiRepository.findOne({
+      where: { empleadoId, mes, anio },
+    });
+
+    if (!kpi) {
+      throw new NotFoundException('No se puede guardar observación para un periodo sin KPI calculado');
+    }
+
+    kpi.observacion = observacion;
+    return this.kpiRepository.save(kpi);
   }
 }

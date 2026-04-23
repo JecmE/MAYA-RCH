@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req, Query, ParseIntPipe, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query, ParseIntPipe, Param, Put, Body } from '@nestjs/common';
 import { KpiService } from './kpi.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -42,5 +42,16 @@ export class KpiController {
   @Get('employee/:id/profile')
   getEmployeeProfile(@Param('id', ParseIntPipe) id: number) {
     return this.kpiService.getEmployeeProfile(id);
+  }
+
+  @Put('observation/:empleadoId')
+  @Roles('Supervisor', 'RRHH', 'Administrador')
+  saveObservation(
+    @Param('empleadoId', ParseIntPipe) empleadoId: number,
+    @Body('mes') mes: number,
+    @Body('anio') anio: number,
+    @Body('observacion') observacion: string,
+  ) {
+    return this.kpiService.saveObservation(empleadoId, mes, anio, observacion);
   }
 }

@@ -13,6 +13,7 @@ export declare class KpiMensual {
     cumplimientoPct: number;
     clasificacion: string;
     fechaCalculo: Date;
+    observacion: string;
     empleado: Empleado;
     static CLASIFICACION_EXCELENTE: string;
     static CLASIFICACION_BUENO: string;

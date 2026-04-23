@@ -14,6 +14,7 @@ export interface KpiDashboard {
   horasTrabajadas: number;
   cumplimientoPct: number;
   clasificacion: string;
+  observacion?: string;
 }
 
 export interface SupervisorKpi {
@@ -132,8 +133,11 @@ export class KpiService {
     });
   }
 
-  getSupervisorDashboard(supervisorId: number): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/dashboard/supervisor`);
+  getSupervisorDashboard(supervisorId: number, mes?: number, anio?: number): Observable<any> {
+    let params: any = {};
+    if (mes) params.mes = mes;
+    if (anio) params.anio = anio;
+    return this.http.get<any>(`${this.apiUrl}/dashboard/supervisor`, { params });
   }
 
   getHrDashboard(): Observable<HrKpi> {
@@ -146,5 +150,9 @@ export class KpiService {
 
   getEmployeeProfile(empleadoId: number): Observable<EmployeeProfile> {
     return this.http.get<EmployeeProfile>(`${this.apiUrl}/employee/${empleadoId}/profile`);
+  }
+
+  saveObservation(empleadoId: number, mes: number, anio: number, observacion: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/observation/${empleadoId}`, { mes, anio, observacion });
   }
 }
