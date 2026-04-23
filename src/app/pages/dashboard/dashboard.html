@@ -417,7 +417,7 @@
         <div class="card side-card">
           <div class="card-header card-header-between">
             <h3 class="card-title">Avisos</h3>
-            <span class="notice-badge">3 Nuevos</span>
+            <span class="notice-badge">{{ notices.length }} Nuevos</span>
           </div>
 
           @if (role === 'admin') {
@@ -487,63 +487,19 @@
           @if (role !== 'admin') {
             <div class="notices-scroll">
               <div class="notices-list">
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-blue">i</div>
-                  <div>
-                    <p class="notice-title">Boleta de pago disponible</p>
-                    <p class="notice-text">
-                      Tu boleta de febrero ya está disponible para descargar.
-                    </p>
+                @for (notice of notices; track $index) {
+                  <div class="notice-item" [class.notice-item-last]="$last">
+                    <div class="notice-icon" [class]="'notice-icon-' + notice.color">{{ notice.icon }}</div>
+                    <div>
+                      <p class="notice-title">{{ notice.title }}</p>
+                      <p class="notice-text">{{ notice.text }}</p>
+                    </div>
                   </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-amber">📊</div>
-                  <div>
-                    <p class="notice-title">Actualización de KPIs</p>
-                    <p class="notice-text">Tu KPI del mes ha sido actualizado y revisado.</p>
+                } @empty {
+                  <div class="empty-notices">
+                    <p>No tienes avisos nuevos en este momento.</p>
                   </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-green">✓</div>
-                  <div>
-                    <p class="notice-title">Solicitud aprobada</p>
-                    <p class="notice-text">
-                      Tus vacaciones del 20 al 25 de marzo han sido aprobadas.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-blue">i</div>
-                  <div>
-                    <p class="notice-title">Recordatorio de marcaje</p>
-                    <p class="notice-text">
-                      No olvides registrar tu salida antes de finalizar tu jornada.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-amber">📌</div>
-                  <div>
-                    <p class="notice-title">Nueva política interna</p>
-                    <p class="notice-text">
-                      Se actualizó la política de permisos y vacaciones para este trimestre.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item notice-item-last">
-                  <div class="notice-icon notice-icon-green">✓</div>
-                  <div>
-                    <p class="notice-title">Timesheet validado</p>
-                    <p class="notice-text">
-                      Tus horas registradas de esta semana fueron revisadas correctamente.
-                    </p>
-                  </div>
-                </div>
+                }
               </div>
             </div>
           }

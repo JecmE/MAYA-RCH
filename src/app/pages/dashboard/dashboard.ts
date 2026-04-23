@@ -59,6 +59,8 @@ export class Dashboard implements OnInit, OnDestroy {
   rrhhStats: any = {};
   supervisorStats: any = {};
 
+  notices: { title: string; text: string; icon: string; color: string }[] = [];
+
   private isCheckingIn = false;
   private isCheckingOut = false;
 
@@ -112,6 +114,62 @@ export class Dashboard implements OnInit, OnDestroy {
     this.loadTodayStatus();
     this.loadKpiData();
     this.loadDashboardStats();
+    this.loadNotices();
+  }
+
+  private loadNotices(): void {
+    this.notices = [];
+
+    // 1. Aviso de Marcaje (Si ya entró y se acerca la hora de salida)
+    if (this.marcaEstado === 'Entrada') {
+      this.notices.push({
+        title: 'Recordatorio de marcaje',
+        text: 'No olvides registrar tu salida al finalizar tu jornada.',
+        icon: '⏰',
+        color: 'blue'
+      });
+    }
+
+    // 2. Aviso de Solicitudes (Consultar última solicitud)
+    this.leavesService.getMyRequests().subscribe({
+      next: (requests: any[]) => {
+        if (requests.length > 0) {
+          const last = requests[0];
+          if (last.estado !== 'pendiente') {
+            this.notices.push({
+              title: `Solicitud ${last.estado}`,
+              text: `Tu solicitud de ${last.tipoPermiso?.nombre || 'permiso'} ha sido ${last.estado}.`,
+              icon: last.estado === 'aprobado' ? '✅' : '❌',
+              color: last.estado === 'aprobado' ? 'green' : 'red'
+            });
+          }
+        }
+        this.cdr.detectChanges();
+      }
+    });
+
+    // 3. Aviso de KPIs (Si el rendimiento es bajo)
+    if (this.cumplimiento < 85 && this.cumplimiento > 0) {
+      this.notices.push({
+        title: 'Actualización de KPIs',
+        text: 'Tu rendimiento actual está por debajo de la meta. ¡Tú puedes mejorar!',
+        icon: '📊',
+        color: 'amber'
+      });
+    }
+
+    // 4. Aviso de Boleta (Si estamos a fin de mes o inicio del siguiente)
+    const now = new Date();
+    if (now.getDate() >= 25 || now.getDate() <= 5) {
+      this.notices.push({
+        title: 'Boleta de pago',
+        text: 'Tu boleta de pago del período actual pronto estará disponible.',
+        icon: '📄',
+        color: 'blue'
+      });
+    }
+
+    this.cdr.detectChanges();
   }
 
   private loadDashboardStats(): void {
@@ -262,15 +320,17 @@ export class Dashboard implements OnInit, OnDestroy {
     let horaSalidaEsperada = new Date(now);
     horaSalidaEsperada.setHours(hSal, mSal, sSal || 0, 0);
 
-    // Lógica robusta para turnos nocturnos
+    // Lógica inteligente para determinar si la salida es hoy o mañana
     if (this.isNocturnalShift()) {
-      // Si ya marcamos entrada hoy, la salida es obligatoriamente mañana
-      // (Porque el turno cruza la medianoche)
-      horaSalidaEsperada.setDate(horaSalidaEsperada.getDate() + 1);
+      // Si la hora actual es mayor o igual a la de entrada, la salida es MAÑANA
+      // Si la hora actual es menor a la de entrada (ya pasó medianoche), la salida es HOY
+      if (now.getHours() >= hEnt) {
+        horaSalidaEsperada.setDate(horaSalidaEsperada.getDate() + 1);
+      }
     }
 
     if (now < horaSalidaEsperada) {
-      this.checkOutDisabledReason = `Podrás marcar salida a partir de las ${this.formatShiftTime(this.horaSalidaTurno)}${this.isNocturnalShift() ? ' (Mañana)' : ''}.`;
+      this.checkOutDisabledReason = `Podrás marcar salida a partir de las ${this.formatShiftTime(this.horaSalidaTurno)}${this.isNocturnalShift() && now.getHours() >= hEnt ? ' (Mañana)' : ''}.`;
     } else {
       this.canCheckOut = true;
     }
