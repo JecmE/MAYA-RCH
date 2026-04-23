@@ -42,10 +42,13 @@
                     @if (horaEntradaTurno && horaSalidaTurno) {
                       <div class="info-row">
                         <span class="info-label">Horario:</span>
-                        <span class="info-value"
-                          >{{ formatShiftTime(horaEntradaTurno) }} -
-                          {{ formatShiftTime(horaSalidaTurno) }}</span
-                        >
+                        <span class="info-value">
+                          {{ formatShiftTime(horaEntradaTurno) }} -
+                          {{ formatShiftTime(horaSalidaTurno) }}
+                          @if (isNocturnalShift()) {
+                            <small class="text-slate-400 font-bold">(Mañana)</small>
+                          }
+                        </span>
                       </div>
                     }
 
@@ -99,14 +102,14 @@
                       </button>
                     </div>
 
-                    @if (checkInDisabledReason && !canCheckIn) {
+                    @if (marcaEstado === 'Pendiente' && checkInDisabledReason && !canCheckIn) {
                       <div class="info-box">
                         <span>ℹ️</span>
                         <span>{{ checkInDisabledReason }}</span>
                       </div>
                     }
 
-                    @if (checkOutDisabledReason && !canCheckOut) {
+                    @if (marcaEstado === 'Entrada' && checkOutDisabledReason && !canCheckOut) {
                       <div class="info-box">
                         <span>ℹ️</span>
                         <span>{{ checkOutDisabledReason }}</span>
@@ -127,8 +130,8 @@
                           {{
                             marcaSuccess ||
                               (marcaEstado === 'Entrada'
-                                ? 'Entrada registrada exitosamente a las ' + horaEntradaReal
-                                : 'Tu jornada de hoy ha sido completada')
+                                ? 'Entrada registrada a las ' + horaEntradaReal
+                                : 'Jornada completada. Podrás marcar de nuevo mañana.')
                           }}
                         </span>
                       </div>

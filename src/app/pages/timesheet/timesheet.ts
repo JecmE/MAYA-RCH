@@ -58,7 +58,7 @@ export class Timesheet implements OnInit, OnDestroy {
       .pipe(filter((e) => e instanceof NavigationEnd))
       .subscribe((event) => {
         const url = (event as NavigationEnd).urlAfterRedirects;
-        if (url === '/timesheet') {
+        if (url.startsWith('/timesheet')) {
           this.loadAllData();
         }
       });
@@ -85,18 +85,20 @@ export class Timesheet implements OnInit, OnDestroy {
   private loadEntries(): void {
     this.timesheetsService.getMyEntries().subscribe({
       next: (entries) => {
-        this.historyData = entries.map((e) => this.mapToRow(e));
+        this.historyData = entries.map((e, index) => this.mapToRow(e, index));
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error cargando timesheets:', err);
         this.historyData = [];
+        this.cdr.detectChanges();
       },
     });
   }
 
-  private mapToRow(e: RegistroTiempo): TimesheetRow {
+  private mapToRow(e: RegistroTiempo, index: number): TimesheetRow {
     return {
-      id: e.tiempoId || 0,
+      id: e.tiempoId ?? index + 1,
       project: e.proyectoNombre || `Proyecto ${e.proyectoId}`,
       projectId: e.proyectoId,
       projectCode: e.proyectoCodigo || '',

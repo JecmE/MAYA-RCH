@@ -89,7 +89,17 @@ export class Dashboard implements OnInit, OnDestroy {
           this.loadAllData();
         }
       });
-    setInterval(() => this.updateDateTime(), 60000);
+
+    // Actualizar reloj y disponibilidad cada 5 segundos para que sea reactivo
+    setInterval(() => {
+      this.updateDateTime();
+      if (this.marcaEstado === 'Pendiente') {
+        this.calculateCheckInAvailability();
+      } else if (this.marcaEstado === 'Entrada') {
+        this.calculateCheckOutAvailability();
+      }
+      this.cdr.detectChanges();
+    }, 5000);
   }
 
   ngOnDestroy(): void {
@@ -178,13 +188,9 @@ export class Dashboard implements OnInit, OnDestroy {
 
         if (!status.tieneEntrada && !status.tieneSalida) {
           this.calculateCheckInAvailability();
-          if (!this.canCheckIn) {
-            this.canCheckOut = false;
-            this.checkOutDisabledReason = 'Primero debes marcar entrada. Contacta a tu supervisor.';
-          } else {
-            this.canCheckOut = false;
-            this.checkOutDisabledReason = '';
-          }
+          // No mostramos mensaje de salida si aún no se ha entrado
+          this.canCheckOut = false;
+          this.checkOutDisabledReason = '';
         } else if (status.tieneEntrada && !status.tieneSalida) {
           this.canCheckIn = false;
           this.checkInDisabledReason = '';
@@ -211,13 +217,10 @@ export class Dashboard implements OnInit, OnDestroy {
 
   private calculateCheckInAvailability(): void {
     const now = new Date();
-    this.canCheckIn = true;
-    this.canCheckOut = false;
+    this.canCheckIn = false;
     this.checkInDisabledReason = '';
-    this.checkOutDisabledReason = '';
 
     if (!this.horaEntradaTurno) {
-      this.canCheckIn = false;
       this.checkInDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';
       return;
     }
@@ -233,11 +236,13 @@ export class Dashboard implements OnInit, OnDestroy {
     horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + this.toleranciaMinutos);
 
     if (now < horaEntradaMin) {
-      this.canCheckIn = false;
-      this.checkInDisabledReason = `Podrás marcar entrada a partir de las ${this.formatShiftTime(this.horaEntradaTurno)}. Contacta a tu supervisor si necesitas例外.`;
+      const horaHabilitacion = this.formatShiftTime(this.getFormattedTime(horaEntradaMin));
+      this.checkInDisabledReason = `Podrás marcar entrada a partir de las ${horaHabilitacion}`;
     } else if (now > horaEntradaMax) {
-      this.canCheckIn = false;
-      this.checkInDisabledReason = `Ya no puedes marcar entrada (límite: ${this.formatShiftTime(horaEntradaMax.toTimeString().substring(0, 8))}). Contacta a tu supervisor.`;
+      const horaLimite = this.formatShiftTime(this.getFormattedTime(horaEntradaMax));
+      this.checkInDisabledReason = `Límite excedido (${horaLimite}). Contacta a tu supervisor.`;
+    } else {
+      this.canCheckIn = true;
     }
   }
 
@@ -246,23 +251,33 @@ export class Dashboard implements OnInit, OnDestroy {
     this.canCheckOut = false;
     this.checkOutDisabledReason = '';
 
-    if (!this.horaSalidaTurno) {
-      this.canCheckOut = false;
+    if (!this.horaSalidaTurno || !this.horaEntradaTurno) {
       this.checkOutDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';
       return;
     }
 
-    const [h, m, s] = this.horaSalidaTurno.split(':').map(Number);
-    const horaSalidaEsperada = new Date(now);
-    horaSalidaEsperada.setHours(h, m, s || 0, 0);
+    const [hSal, mSal, sSal] = this.horaSalidaTurno.split(':').map(Number);
+    const [hEnt, mEnt] = this.horaEntradaTurno.split(':').map(Number);
+
+    let horaSalidaEsperada = new Date(now);
+    horaSalidaEsperada.setHours(hSal, mSal, sSal || 0, 0);
+
+    // Lógica robusta para turnos nocturnos
+    if (this.isNocturnalShift()) {
+      // Si ya marcamos entrada hoy, la salida es obligatoriamente mañana
+      // (Porque el turno cruza la medianoche)
+      horaSalidaEsperada.setDate(horaSalidaEsperada.getDate() + 1);
+    }
 
     if (now < horaSalidaEsperada) {
-      this.canCheckOut = false;
-      this.checkOutDisabledReason = `Podrás marcar salida a partir de las ${this.formatShiftTime(this.horaSalidaTurno)}.`;
+      this.checkOutDisabledReason = `Podrás marcar salida a partir de las ${this.formatShiftTime(this.horaSalidaTurno)}${this.isNocturnalShift() ? ' (Mañana)' : ''}.`;
     } else {
       this.canCheckOut = true;
-      this.checkOutDisabledReason = '';
     }
+  }
+
+  private getFormattedTime(date: Date): string {
+    return date.toTimeString().substring(0, 8);
   }
 
   private loadKpiData(): void {
@@ -310,6 +325,13 @@ export class Dashboard implements OnInit, OnDestroy {
     return 'Empleado';
   }
 
+  isNocturnalShift(): boolean {
+    if (!this.horaEntradaTurno || !this.horaSalidaTurno) return false;
+    const [hEnt, mEnt] = this.horaEntradaTurno.split(':').map(Number);
+    const [hSal, mSal] = this.horaSalidaTurno.split(':').map(Number);
+    return hSal < hEnt || (hSal === hEnt && mSal < mEnt);
+  }
+
   marcarEntrada(): void {
     if (this.isCheckingIn) return;
     this.isCheckingIn = true;
@@ -324,9 +346,8 @@ export class Dashboard implements OnInit, OnDestroy {
         }
         this.marcaSuccess = 'Entrada registrada correctamente';
         this.canCheckIn = false;
-        this.canCheckOut = true;
         this.checkInDisabledReason = '';
-        this.checkOutDisabledReason = '';
+        this.calculateCheckOutAvailability(); // Evaluar salida real inmediatamente
         this.isCheckingIn = false;
         this.loadKpiData();
         this.cdr.detectChanges();

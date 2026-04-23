@@ -1,8 +1,11 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 
+function isBrowser(): boolean {
+  return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+}
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const isBrowser = typeof window !== 'undefined' && window.localStorage;
-  const token = isBrowser ? localStorage.getItem('access_token') : null;
+  const token = isBrowser() ? localStorage.getItem('access_token') : null;
 
   if (token) {
     const cloned = req.clone({

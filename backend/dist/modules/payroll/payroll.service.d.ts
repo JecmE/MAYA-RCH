@@ -89,4 +89,7 @@ export declare class PayrollService {
         baseCalculo: number;
     }[]>;
     private calculateISR;
+    seedTestData(): Promise<{
+        message: string;
+    }>;
 }

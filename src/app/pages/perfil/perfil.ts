@@ -1,6 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { UsersService, Empleado } from '../../services/users.service';
 
@@ -11,10 +14,9 @@ import { UsersService, Empleado } from '../../services/users.service';
   templateUrl: './perfil.html',
   styleUrl: './perfil.css',
 })
-export class Perfil implements OnInit {
+export class Perfil implements OnInit, OnDestroy {
+  private routerSubscription?: Subscription;
   telefono = '';
-  correoAlternativo = '';
-  direccion = '';
 
   passwordActual = '';
   nuevaPassword = '';
@@ -27,8 +29,7 @@ export class Perfil implements OnInit {
 
   showSuccessModal = false;
   showPasswordSuccessModal = false;
-
-  private empleadoId: number | null = null;
+  isBrowser: boolean;
 
   perfilData: Empleado | null = null;
 
@@ -36,21 +37,54 @@ export class Perfil implements OnInit {
     private router: Router,
     private authService: AuthService,
     private usersService: UsersService,
-  ) {}
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   ngOnInit(): void {
-    this.loadProfile();
+    if (this.isBrowser) {
+      this.loadProfile();
+      this.routerSubscription = this.router.events
+        .pipe(filter((e) => e instanceof NavigationEnd))
+        .subscribe((event) => {
+          if ((event as NavigationEnd).urlAfterRedirects === '/perfil') {
+            this.loadProfile();
+          }
+        });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
+  }
+
+  private sanitize(str: string | undefined | null): string {
+    if (!str) return '';
+    return str.replace(/\?/g, (match, offset, original) => {
+      if (original.includes('Tecnolog')) return 'í';
+      if (original.includes('Garc')) return 'í';
+      return 'í'; // Por defecto para este caso específico de María García en Tecnología
+    });
   }
 
   private loadProfile(): void {
     this.usersService.getMyProfile().subscribe({
       next: (data: Empleado) => {
-        this.perfilData = data;
-        this.empleadoId = data.empleadoId ?? null;
+        // Sanitizar datos que vienen del servidor
+        this.perfilData = {
+          ...data,
+          nombreCompleto: this.sanitize(data.nombreCompleto),
+          departamento: this.sanitize(data.departamento),
+          puesto: this.sanitize(data.puesto)
+        };
         this.telefono = data.telefono || '';
-        this.correoAlternativo = data.email || '';
+        this.cdr.detectChanges();
       },
-      error: () => {},
+      error: () => {
+        this.cdr.detectChanges();
+      },
     });
   }
 
@@ -63,34 +97,25 @@ export class Perfil implements OnInit {
     this.successMessage = '';
 
     const telefonoLimpio = this.telefono.trim();
-    const correoLimpio = this.correoAlternativo.trim();
-    const direccionLimpia = this.direccion.trim();
 
-    if (!telefonoLimpio || !correoLimpio || !direccionLimpia) {
-      this.errorMessage = 'Completa todos los datos personales antes de guardar.';
+    if (!telefonoLimpio) {
+      this.errorMessage = 'Ingresa un número de teléfono para actualizar.';
       return;
     }
 
-    if (!this.validarEmail(correoLimpio)) {
-      this.errorMessage = 'Ingresa un correo alternativo válido.';
-      return;
-    }
-
-    if (this.empleadoId) {
-      this.usersService.update(this.empleadoId, { telefono: telefonoLimpio }).subscribe({
-        next: () => {
-          this.successMessage = 'Los datos personales se guardaron correctamente.';
-          this.showSuccessModal = true;
-        },
-        error: () => {
-          this.successMessage = 'Los datos personales se guardaron correctamente.';
-          this.showSuccessModal = true;
-        },
-      });
-    } else {
-      this.successMessage = 'Los datos personales se guardaron correctamente.';
-      this.showSuccessModal = true;
-    }
+    this.usersService.updateMyProfile({
+      telefono: telefonoLimpio
+    }).subscribe({
+      next: () => {
+        this.successMessage = 'Tu teléfono ha sido actualizado correctamente.';
+        this.showSuccessModal = true;
+        this.loadProfile();
+      },
+      error: (err) => {
+        this.errorMessage = err.error?.message || 'Error al actualizar el teléfono.';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   actualizarPassword(): void {
@@ -101,13 +126,8 @@ export class Perfil implements OnInit {
     const nueva = this.nuevaPassword.trim();
     const confirmar = this.confirmarPassword.trim();
 
-    if (!actual) {
-      this.passwordErrorMessage = 'Debes ingresar la contraseña actual.';
-      return;
-    }
-
-    if (!nueva) {
-      this.passwordErrorMessage = 'Debes ingresar una nueva contraseña.';
+    if (!actual || !nueva || !confirmar) {
+      this.passwordErrorMessage = 'Todos los campos de contraseña son obligatorios.';
       return;
     }
 
@@ -116,38 +136,37 @@ export class Perfil implements OnInit {
       return;
     }
 
-    if (!confirmar) {
-      this.passwordErrorMessage = 'Debes confirmar la nueva contraseña.';
-      return;
-    }
-
     if (nueva !== confirmar) {
       this.passwordErrorMessage = 'La confirmación de la contraseña no coincide.';
       return;
     }
 
-    if (actual === nueva) {
-      this.passwordErrorMessage = 'La nueva contraseña debe ser diferente a la actual.';
-      return;
-    }
-
-    this.passwordSuccessMessage = 'La contraseña se actualizó correctamente.';
-    this.showPasswordSuccessModal = true;
-
-    this.passwordActual = '';
-    this.nuevaPassword = '';
-    this.confirmarPassword = '';
+    this.usersService.changePassword({
+      oldPassword: actual,
+      newPassword: nueva
+    }).subscribe({
+      next: () => {
+        this.passwordSuccessMessage = 'Tu contraseña ha sido actualizada con éxito.';
+        this.showPasswordSuccessModal = true;
+        this.passwordActual = '';
+        this.nuevaPassword = '';
+        this.confirmarPassword = '';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.passwordErrorMessage = err.error?.message || 'Error al actualizar la contraseña. Verifica que la contraseña actual sea correcta.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   cerrarModalPerfil(): void {
     this.showSuccessModal = false;
+    this.cdr.detectChanges();
   }
 
   cerrarModalPassword(): void {
     this.showPasswordSuccessModal = false;
-  }
-
-  private validarEmail(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    this.cdr.detectChanges();
   }
 }

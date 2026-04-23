@@ -36,7 +36,8 @@ export class KpiService {
       where: { empleadoId, mes: month, anio: year },
     });
 
-    if (!kpi) {
+    // Si es el mes actual o no existe el registro, lo recalculamos para asegurar datos frescos
+    if (!kpi || (month === now.getMonth() + 1 && year === now.getFullYear())) {
       kpi = await this.calculateKpi(empleadoId, month, year);
     }
 
@@ -236,7 +237,7 @@ export class KpiService {
 
     const diasConEntrada = asistencia.filter((a) => a.horaEntradaReal !== null).length;
     const tardias = asistencia.reduce((sum, a) => sum + (a.minutosTardia > 0 ? 1 : 0), 0);
-    const faltas = diasTranscurridos - diasConEntrada;
+    const faltas = Math.max(0, diasTranscurridos - diasConEntrada);
 
     const horasTrabajadas = asistencia.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
 
@@ -247,20 +248,37 @@ export class KpiService {
     else if (cumplimientoPct >= 85) clasificacion = 'Bueno';
     else if (cumplimientoPct >= 70) clasificacion = 'En observacion';
 
-    const kpi = this.kpiRepository.create({
-      empleadoId,
-      anio,
-      mes,
-      diasEsperados: diasTranscurridos,
-      diasTrabajados,
-      tardias,
-      faltas,
-      horasEsperadas,
-      horasTrabajadas,
-      cumplimientoPct: Math.round(cumplimientoPct * 100) / 100,
-      clasificacion,
-      fechaCalculo: new Date(),
+    // Buscar si ya existe para actualizarlo en lugar de intentar insertar uno nuevo
+    let kpi = await this.kpiRepository.findOne({
+      where: { empleadoId, mes, anio },
     });
+
+    if (kpi) {
+      kpi.diasEsperados = diasTranscurridos;
+      kpi.diasTrabajados = diasTrabajados;
+      kpi.tardias = tardias;
+      kpi.faltas = faltas;
+      kpi.horasEsperadas = horasEsperadas;
+      kpi.horasTrabajadas = horasTrabajadas;
+      kpi.cumplimientoPct = Math.round(cumplimientoPct * 100) / 100;
+      kpi.clasificacion = clasificacion;
+      kpi.fechaCalculo = new Date();
+    } else {
+      kpi = this.kpiRepository.create({
+        empleadoId,
+        anio,
+        mes,
+        diasEsperados: diasTranscurridos,
+        diasTrabajados,
+        tardias,
+        faltas,
+        horasEsperadas,
+        horasTrabajadas,
+        cumplimientoPct: Math.round(cumplimientoPct * 100) / 100,
+        clasificacion,
+        fechaCalculo: new Date(),
+      });
+    }
 
     return this.kpiRepository.save(kpi);
   }

@@ -61,11 +61,12 @@
   color: #64748b;
 }
 
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-  align-items: start;
+.charts-full-width {
+  width: 100%;
+}
+
+.history-full-width {
+  width: 100%;
 }
 
 .classification-card {
@@ -188,11 +189,6 @@
 
   .page-title {
     font-size: 1.75rem;
-  }
-
-  .content-grid {
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 2rem;
   }
 
   .classification-grid {

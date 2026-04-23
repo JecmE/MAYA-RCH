@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface KpiDashboard {
+  mes?: number;
+  anio?: number;
   diasEsperados: number;
   diasTrabajados: number;
   tardias: number;
@@ -86,8 +88,48 @@ export class KpiService {
 
   constructor(private http: HttpClient) {}
 
-  getEmployeeDashboard(): Observable<KpiDashboard> {
-    return this.http.get<KpiDashboard>(`${this.apiUrl}/dashboard/employee`);
+  getEmployeeDashboard(mes?: number, anio?: number): Observable<KpiDashboard> {
+    let params: any = {};
+    if (mes) params.mes = mes;
+    if (anio) params.anio = anio;
+    return this.http.get<KpiDashboard>(`${this.apiUrl}/dashboard/employee`, { params });
+  }
+
+  getEmployeeHistory(months: number = 6): Observable<KpiDashboard[]> {
+    // Para simplificar, el backend no tiene un endpoint de historial,
+    // así que simularemos el historial haciendo varias peticiones paralelas o secuenciales.
+    // Sin embargo, para no complicar el servicio, podemos simplemente permitir
+    // pasar mes y año al dashboard y dejar que el componente maneje la lógica.
+    return new Observable<KpiDashboard[]>(observer => {
+      const results: KpiDashboard[] = [];
+      const now = new Date();
+      let count = 0;
+
+      for (let i = 0; i < months; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        this.getEmployeeDashboard(d.getMonth() + 1, d.getFullYear()).subscribe({
+          next: (data) => {
+            results.push(data);
+            count++;
+            if (count === months) {
+              // Ordenar por fecha antes de devolver
+              observer.next(results.sort((a, b) => {
+                if (a.anio !== b.anio) return a.anio! - b.anio!;
+                return a.mes! - b.mes!;
+              }));
+              observer.complete();
+            }
+          },
+          error: () => {
+            count++;
+            if (count === months) {
+              observer.next(results);
+              observer.complete();
+            }
+          }
+        });
+      }
+    });
   }
 
   getSupervisorDashboard(supervisorId: number): Observable<any> {

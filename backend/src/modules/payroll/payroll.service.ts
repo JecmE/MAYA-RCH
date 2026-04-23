@@ -245,60 +245,149 @@ export class PayrollService {
     return { message: 'Período cerrado correctamente' };
   }
 
-  async getMyPaycheck(empleadoId: number, periodoId?: number) {
+async getMyPaycheck(empleadoId: number, periodoId?: number) {
     let planilla;
+    let periodo: PeriodoPlanilla | null = null;
 
     if (periodoId) {
-      planilla = await this.planillaEmpleadoRepository.findOne({
-        where: { periodoId, empleadoId },
-        relations: ['periodo'],
+      periodo = await this.periodoRepository.findOne({
+        where: { periodoId },
       });
+      if (periodo) {
+        planilla = await this.planillaEmpleadoRepository.findOne({
+          where: { periodoId, empleadoId },
+          relations: ['periodo'],
+        });
+      }
     } else {
-      planilla = await this.planillaEmpleadoRepository.findOne({
-        where: { empleadoId },
-        relations: ['periodo'],
-        order: { fechaCalculo: 'DESC' },
+      periodo = await this.periodoRepository.findOne({
+        order: { fechaInicio: 'DESC' },
       });
+      if (periodo) {
+        planilla = await this.planillaEmpleadoRepository.findOne({
+          where: { empleadoId },
+          relations: ['periodo'],
+          order: { fechaCalculo: 'DESC' },
+        });
+      }
     }
 
-    if (!planilla) {
-      return { message: 'No se encontró boleta de pago' };
+    if (!periodo) {
+      return { message: 'No se encontró período de planilla' };
     }
 
-    const movimientos = await this.movimientoRepository.find({
-      where: { planillaEmpId: planilla.planillaEmpId },
-      relations: ['concepto'],
+    if (planilla) {
+      const movimientos = await this.movimientoRepository.find({
+        where: { planillaEmpId: planilla.planillaEmpId },
+        relations: ['concepto'],
+      });
+
+      return {
+        periodo: {
+          nombre: planilla.periodo?.nombre,
+          fechaInicio: planilla.periodo?.fechaInicio,
+          fechaFin: planilla.periodo?.fechaFin,
+        },
+        empleadoId: planilla.empleadoId,
+        tarifaHora: planilla.tarifaHoraUsada,
+        horasPagables: planilla.horasPagables,
+        montoBruto: planilla.montoBruto,
+        totalBonificaciones: planilla.totalBonificaciones,
+        totalDeducciones: planilla.totalDeducciones,
+        montoNeto: planilla.montoNeto,
+        movimientos: movimientos.map((m) => ({
+          concepto: m.concepto?.nombre,
+          tipo: m.tipo,
+          monto: m.monto,
+        })),
+      };
+    }
+
+    const asistencias = await this.asistenciaRepository.find({
+      where: { empleadoId },
     });
+
+    const horasTrabajadas = asistencias
+      .filter((a) => a.fecha >= periodo.fechaInicio && a.fecha <= periodo.fechaFin)
+      .reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
+
+    const empleado = await this.empleadoRepository.findOne({ where: { empleadoId } });
+    const tarifa = Number(empleado?.tarifaHora) || 45.5;
+
+    if (horasTrabajadas === 0) {
+      return {
+        periodo: {
+          nombre: periodo.nombre,
+          fechaInicio: periodo.fechaInicio,
+          fechaFin: periodo.fechaFin,
+        },
+        empleadoId,
+        tarifaHora: tarifa,
+        horasPagables: 0,
+        montoBruto: 0,
+        totalBonificaciones: 0,
+        totalDeducciones: 0,
+        montoNeto: 0,
+        movimientos: [],
+      };
+    }
+
+    const year = new Date(periodo.fechaFin).getFullYear();
+    const tablaIsr = await this.isrRepository.find({
+      where: { anio: year },
+      order: { rangoDesde: 'ASC' },
+    });
+
+    const montoBruto = tarifa * horasTrabajadas;
+    const totalBonificaciones = 0;
+    const baseImponible = montoBruto + totalBonificaciones;
+    const isr = this.calculateISR(baseImponible, tablaIsr);
+    const igss = baseImponible * 0.0483;
+    const totalDeducciones = isr + igss;
+    const montoNeto = baseImponible - totalDeducciones;
 
     return {
       periodo: {
-        nombre: planilla.periodo?.nombre,
-        fechaInicio: planilla.periodo?.fechaInicio,
-        fechaFin: planilla.periodo?.fechaFin,
+        nombre: periodo.nombre,
+        fechaInicio: periodo.fechaInicio,
+        fechaFin: periodo.fechaFin,
       },
-      empleadoId: planilla.empleadoId,
-      tarifaHora: planilla.tarifaHoraUsada,
-      horasPagables: planilla.horasPagables,
-      montoBruto: planilla.montoBruto,
-      totalBonificaciones: planilla.totalBonificaciones,
-      totalDeducciones: planilla.totalDeducciones,
-      montoNeto: planilla.montoNeto,
-      movimientos: movimientos.map((m) => ({
-        concepto: m.concepto?.nombre,
-        tipo: m.tipo,
-        monto: m.monto,
-      })),
+      empleadoId,
+      tarifaHora: tarifa,
+      horasPagables: horasTrabajadas,
+      montoBruto,
+      totalBonificaciones,
+      totalDeducciones,
+      montoNeto,
+      movimientos: [
+        { concepto: 'Salario Base', tipo: 'ingreso', monto: montoBruto },
+        { concepto: 'IGSS Laboral', tipo: 'deduccion', monto: igss },
+        { concepto: 'ISR Retenida', tipo: 'deduccion', monto: isr },
+      ],
     };
   }
 
+
   async getMyPeriods(empleadoId: number) {
+    if (!empleadoId) {
+      const periodos = await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } });
+      return periodos.map((p) => ({
+        periodoId: p.periodoId,
+        nombre: p.nombre,
+        fechaInicio: p.fechaInicio,
+        fechaFin: p.fechaFin,
+        tipo: p.tipo,
+        estado: p.estado,
+      }));
+    }
+
     const planillas = await this.planillaEmpleadoRepository.find({
       where: { empleadoId },
       relations: ['periodo'],
       order: { fechaCalculo: 'DESC' },
     });
 
-    return planillas
+    const periodos = planillas
       .filter((p) => p.periodo)
       .map((p) => ({
         periodoId: p.periodo.periodoId,
@@ -308,6 +397,12 @@ export class PayrollService {
         tipo: p.periodo.tipo,
         estado: p.periodo.estado,
       }));
+
+    if (periodos.length > 0) {
+      return periodos;
+    }
+
+    return [];
   }
 
   async getConcepts() {
@@ -335,5 +430,135 @@ export class PayrollService {
       }
     }
     return 0;
+  }
+
+  async seedTestData() {
+    let message = 'Seed data verificado: ';
+
+    const existingPeriodos = await this.periodoRepository.count();
+    if (existingPeriodos === 0) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      const periodoEnero = this.periodoRepository.create({
+        nombre: `Enero ${currentYear}`,
+        fechaInicio: `${currentYear}-01-01`,
+        fechaFin: `${currentYear}-01-31`,
+        tipo: 'mensual',
+        estado: PeriodoPlanilla.ESTADO_CERRADO,
+      });
+      await this.periodoRepository.save(periodoEnero);
+
+      const periodoFeb = this.periodoRepository.create({
+        nombre: `Febrero ${currentYear}`,
+        fechaInicio: `${currentYear}-02-01`,
+        fechaFin: new Date(currentYear, 2, 0).toISOString().split('T')[0],
+        tipo: 'mensual',
+        estado: PeriodoPlanilla.ESTADO_CERRADO,
+      });
+      await this.periodoRepository.save(periodoFeb);
+
+      const periodoActual = this.periodoRepository.create({
+        nombre: `${currentMonth === 3 ? 'Marzo' : 'Abril'} ${currentYear}`,
+        fechaInicio: `${currentYear}-${String(currentMonth).padStart(2,'0')}-01`,
+        fechaFin: new Date(currentYear, currentMonth, 0).toISOString().split('T')[0],
+        tipo: 'mensual',
+        estado: PeriodoPlanilla.ESTADO_ABIERTO,
+      });
+      await this.periodoRepository.save(periodoActual);
+
+      message += ' períodos creados, ';
+    }
+
+    const conceptosCount = await this.conceptoRepository.count();
+    if (conceptosCount === 0) {
+      await this.conceptoRepository.save({
+        codigo: 'SALARIO',
+        nombre: 'Salario Base',
+        tipo: ConceptoPlanilla.TIPO_INGRESO,
+        modoCalculo: ConceptoPlanilla.MODO_FIJO,
+        baseCalculo: 1,
+        activo: true,
+      });
+      await this.conceptoRepository.save({
+        codigo: 'BONOPUNT',
+        nombre: 'Bonificación Decreto 37-2001',
+        tipo: ConceptoPlanilla.TIPO_INGRESO,
+        modoCalculo: ConceptoPlanilla.MODO_FIJO,
+        baseCalculo: 2,
+        activo: true,
+      });
+      await this.conceptoRepository.save({
+        codigo: 'BONODESC',
+        nombre: 'Bono por Desempeño',
+        tipo: ConceptoPlanilla.TIPO_INGRESO,
+        modoCalculo: ConceptoPlanilla.MODO_VARIABLE,
+        baseCalculo: 3,
+        activo: true,
+      });
+      await this.conceptoRepository.save({
+        codigo: 'IGSS',
+        nombre: 'IGSS Laboral',
+        tipo: ConceptoPlanilla.TIPO_DEDUCCION,
+        modoCalculo: ConceptoPlanilla.MODO_PORCENTAJE,
+        baseCalculo: 4,
+        activo: true,
+      });
+      await this.conceptoRepository.save({
+        codigo: 'ISR',
+        nombre: 'ISR Retenido',
+        tipo: ConceptoPlanilla.TIPO_DEDUCCION,
+        modoCalculo: ConceptoPlanilla.MODO_VARIABLE,
+        baseCalculo: 5,
+        activo: true,
+      });
+
+      message += ' conceptos creados, ';
+    }
+
+    const tablaIsrCount = await this.isrRepository.count();
+    if (tablaIsrCount === 0) {
+      const year = new Date().getFullYear();
+      await this.isrRepository.save({
+        anio: year,
+        rangoDesde: 0,
+        rangoHasta: 60000,
+        cuotaFijo: 0,
+        porcentaje: 0,
+      });
+      await this.isrRepository.save({
+        anio: year,
+        rangoDesde: 60001,
+        rangoHasta: 90000,
+        cuotaFijo: 0,
+        porcentaje: 5,
+      });
+      await this.isrRepository.save({
+        anio: year,
+        rangoDesde: 90001,
+        rangoHasta: 120000,
+        cuotaFijo: 1500,
+        porcentaje: 7,
+      });
+      await this.isrRepository.save({
+        anio: year,
+        rangoDesde: 120001,
+        rangoHasta: 180000,
+        cuotaFijo: 3600,
+        porcentaje: 10,
+      });
+      await this.isrRepository.save({
+        anio: year,
+        rangoDesde: 180001,
+        rangoHasta: 999999999,
+        cuotaFijo: 9600,
+        porcentaje: 15,
+      });
+
+      message += ' tabla ISR creada. ';
+    }
+
+    return { message: message + ' Sistema listo para boletas.' };
   }
 }

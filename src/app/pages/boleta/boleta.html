@@ -4,6 +4,9 @@
       <button (click)="goBack()" class="back-button">←</button>
       <div>
         <h2 class="page-title">Boleta de Pago</h2>
+        @if (empleadoNombre) {
+          <p class="page-subtitle">Empleado: {{ empleadoNombre }}</p>
+        }
       </div>
     </div>
 
@@ -12,9 +15,10 @@
         <label class="form-label"> Período de Planilla </label>
 
         <div class="period-controls">
-          <select [(ngModel)]="periodoId" class="form-control">
+          <select name="periodoId" [(ngModel)]="periodoId" class="form-control" (change)="loadPaycheck()">
+            <option [ngValue]="null" disabled>Seleccione un período</option>
             @for (p of periodosDisponibles; track p.periodoId) {
-              <option [value]="p.periodoId">{{ p.nombre }}</option>
+              <option [ngValue]="p.periodoId">{{ p.nombre }}</option>
             }
           </select>
 
@@ -30,6 +34,12 @@
         </button>
       </div>
     </div>
+
+    @if (mensaje) {
+      <div class="alert-card alert-card--warning">
+        {{ mensaje }}
+      </div>
+    }
 
     <div class="summary-grid">
       <div class="summary-card">

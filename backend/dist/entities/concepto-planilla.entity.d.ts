@@ -13,4 +13,5 @@ export declare class ConceptoPlanilla {
     static MODO_FIJO: string;
     static MODO_PORCENTAJE: string;
     static MODO_HORAS: string;
+    static MODO_VARIABLE: string;
 }

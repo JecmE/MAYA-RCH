@@ -58,4 +58,10 @@ export class PayrollController {
   getConcepts() {
     return this.payrollService.getConcepts();
   }
+
+  @Post('seed-test-data')
+  @Roles('Empleado', 'Supervisor', 'RRHH', 'Administrador')
+  seedTestData() {
+    return this.payrollService.seedTestData();
+  }
 }

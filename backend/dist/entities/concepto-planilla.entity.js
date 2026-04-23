@@ -20,6 +20,7 @@ ConceptoPlanilla.TIPO_DEDUCCION = 'deduccion';
 ConceptoPlanilla.MODO_FIJO = 'fijo';
 ConceptoPlanilla.MODO_PORCENTAJE = 'porcentaje';
 ConceptoPlanilla.MODO_HORAS = 'horas';
+ConceptoPlanilla.MODO_VARIABLE = 'variable';
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)({ name: 'concepto_id' }),
     __metadata("design:type", Number)

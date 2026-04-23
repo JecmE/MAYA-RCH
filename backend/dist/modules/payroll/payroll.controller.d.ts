@@ -71,4 +71,7 @@ export declare class PayrollController {
         modoCalculo: string;
         baseCalculo: number;
     }[]>;
+    seedTestData(): Promise<{
+        message: string;
+    }>;
 }

@@ -22,6 +22,7 @@ const create_empleado_dto_1 = require("./dto/create-empleado.dto");
 const update_empleado_dto_1 = require("./dto/update-empleado.dto");
 const create_usuario_dto_1 = require("./dto/create-usuario.dto");
 const update_usuario_dto_1 = require("./dto/update-usuario.dto");
+const change_password_dto_1 = require("./dto/change-password.dto");
 let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
@@ -34,6 +35,9 @@ let UsersController = class UsersController {
     }
     async updateMyProfile(req, updateDto) {
         return this.usersService.updateEmpleado(req.user.empleadoId, updateDto, req.user.usuarioId);
+    }
+    async changePassword(req, changePasswordDto) {
+        return this.usersService.changePassword(req.user.usuarioId, changePasswordDto);
     }
     findOne(id) {
         return this.usersService.findEmpleadoById(id);
@@ -81,6 +85,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, update_empleado_dto_1.UpdateEmpleadoDto]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "updateMyProfile", null);
+__decorate([
+    (0, common_1.Put)('me/password'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, change_password_dto_1.ChangePasswordDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "changePassword", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),

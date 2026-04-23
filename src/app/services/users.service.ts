@@ -70,6 +70,14 @@ export class UsersService {
     return this.http.get<Empleado>(`${this.apiUrl}/me`);
   }
 
+  updateMyProfile(data: Partial<CreateEmpleadoDto>): Observable<Empleado> {
+    return this.http.put<Empleado>(`${this.apiUrl}/me`, data);
+  }
+
+  changePassword(data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/me/password`, data);
+  }
+
   create(data: CreateEmpleadoDto): Observable<Empleado> {
     return this.http.post<Empleado>(this.apiUrl, data);
   }

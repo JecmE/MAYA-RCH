@@ -19,6 +19,7 @@ import { CreateEmpleadoDto } from './dto/create-empleado.dto';
 import { UpdateEmpleadoDto } from './dto/update-empleado.dto';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -39,6 +40,11 @@ export class UsersController {
   @Put('me')
   async updateMyProfile(@Req() req: any, @Body() updateDto: UpdateEmpleadoDto) {
     return this.usersService.updateEmpleado(req.user.empleadoId, updateDto, req.user.usuarioId);
+  }
+
+  @Put('me/password')
+  async changePassword(@Req() req: any, @Body() changePasswordDto: ChangePasswordDto) {
+    return this.usersService.changePassword(req.user.usuarioId, changePasswordDto);
   }
 
   @Get(':id')
