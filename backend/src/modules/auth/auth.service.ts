@@ -58,7 +58,7 @@ export class AuthService {
     }
 
     if (usuario.estado !== 'activo') {
-      throw new UnauthorizedException('La cuenta está bloqueada o inactiva');
+      throw new UnauthorizedException('Tu cuenta ha sido bloqueada o está inactiva. Contacta a RRHH.');
     }
 
     const isMatch = await bcrypt.compare(loginDto.password, usuario.passwordHash);

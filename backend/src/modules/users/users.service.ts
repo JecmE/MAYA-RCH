@@ -28,16 +28,13 @@ export class UsersService {
 
   private sanitizeString(str: string | null | undefined): string {
     if (!str) return '';
-    // Corregir caracteres rotos comunes de SQL Server (Latin1 -> UTF8)
     return str
       .replace(/\?/g, (match, offset, original) => {
-        // Si el signo de interrogación está en una posición donde debería ir una tilde
-        // Intentamos inferir la palabra (esto es un parche visual)
         if (original.includes('Tecnolog')) return 'í';
         if (original.includes('Garc')) return 'í';
-        if (original.includes('Logistica')) return 'í';
-        if (original.includes('Administraci')) return 'ó';
-        return '?';
+        if (original.includes('Rodr')) return 'í';
+        if (original.includes('Mart')) return 'í';
+        return 'í';
       })
       .replace(/Ã­/g, 'í')
       .replace(/Ã³/g, 'ó')
@@ -56,6 +53,7 @@ export class UsersService {
     const empleados = await this.empleadoRepository.find({
       where,
       order: { nombres: 'ASC' },
+      relations: ['usuario', 'usuario.roles', 'supervisor'],
     });
 
     return empleados.map((emp) => ({
@@ -71,13 +69,15 @@ export class UsersService {
       departamento: this.sanitizeString(emp.departamento),
       puesto: this.sanitizeString(emp.puesto),
       supervisorId: emp.supervisorId,
+      supervisorNombre: emp.supervisor ? this.sanitizeString(`${emp.supervisor.nombres} ${emp.supervisor.apellidos}`) : null,
+      roles: emp.usuario?.roles?.map((r) => r.nombre) || [],
     }));
   }
 
   async getMyProfile(empleadoId: number) {
     const emp = await this.empleadoRepository.findOne({
       where: { empleadoId },
-      relations: ['usuario', 'usuario.roles'],
+      relations: ['usuario', 'usuario.roles', 'supervisor'],
     });
 
     if (!emp) {
@@ -97,13 +97,15 @@ export class UsersService {
       puesto: this.sanitizeString(emp.puesto),
       tarifaHora: emp.tarifaHora,
       roles: emp.usuario?.roles?.map((r) => r.nombre) || [],
+      supervisorId: emp.supervisorId,
+      supervisorNombre: emp.supervisor ? this.sanitizeString(`${emp.supervisor.nombres} ${emp.supervisor.apellidos}`) : null,
     };
   }
 
   async findEmpleadoById(id: number) {
     const emp = await this.empleadoRepository.findOne({
       where: { empleadoId: id },
-      relations: ['usuario', 'usuario.roles'],
+      relations: ['usuario', 'usuario.roles', 'supervisor'],
     });
 
     if (!emp) {
@@ -124,6 +126,7 @@ export class UsersService {
       puesto: this.sanitizeString(emp.puesto),
       tarifaHora: emp.tarifaHora,
       supervisorId: emp.supervisorId,
+      supervisorNombre: emp.supervisor ? this.sanitizeString(`${emp.supervisor.nombres} ${emp.supervisor.apellidos}`) : null,
       roles: emp.usuario?.roles?.map((r) => r.nombre) || [],
     };
   }
@@ -168,6 +171,17 @@ export class UsersService {
       throw new NotFoundException('Empleado no encontrado');
     }
 
+    // Sincronizar estado con el usuario si viene el campo 'activo'
+    if (updateEmpleadoDto.activo !== undefined) {
+      const usuario = await this.usuarioRepository.findOne({
+        where: { empleadoId: id },
+      });
+      if (usuario) {
+        usuario.estado = updateEmpleadoDto.activo ? 'activo' : 'bloqueado';
+        await this.usuarioRepository.save(usuario);
+      }
+    }
+
     Object.assign(empleado, updateEmpleadoDto);
     await this.empleadoRepository.save(empleado);
 
@@ -177,7 +191,7 @@ export class UsersService {
       accion: 'UPDATE',
       entidad: 'EMPLEADO',
       entidadId: id,
-      detalle: `Empleado actualizado`,
+      detalle: `Empleado actualizado: ${empleado.nombres} ${empleado.apellidos}`,
     });
 
     return this.findEmpleadoById(id);

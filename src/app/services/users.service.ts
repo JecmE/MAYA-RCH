@@ -17,6 +17,7 @@ export interface Empleado {
   puesto?: string;
   tarifaHora?: number;
   supervisorId?: number;
+  supervisorNombre?: string;
   nombreCompleto?: string;
   roles?: string[];
 }

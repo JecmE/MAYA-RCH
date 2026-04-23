@@ -20,6 +20,8 @@ export declare class UsersController {
         departamento: string;
         puesto: string;
         supervisorId: number;
+        supervisorNombre: string;
+        roles: string[];
     }[]>;
     getMyProfile(req: any): Promise<{
         empleadoId: number;
@@ -34,6 +36,8 @@ export declare class UsersController {
         puesto: string;
         tarifaHora: number;
         roles: string[];
+        supervisorId: number;
+        supervisorNombre: string;
     }>;
     updateMyProfile(req: any, updateDto: UpdateEmpleadoDto): Promise<{
         empleadoId: number;
@@ -49,6 +53,7 @@ export declare class UsersController {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     changePassword(req: any, changePasswordDto: ChangePasswordDto): Promise<{
@@ -68,6 +73,7 @@ export declare class UsersController {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     create(createEmpleadoDto: CreateEmpleadoDto, req: any): Promise<{
@@ -84,6 +90,7 @@ export declare class UsersController {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     update(id: number, updateEmpleadoDto: UpdateEmpleadoDto, req: any): Promise<{
@@ -100,6 +107,7 @@ export declare class UsersController {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     deactivate(id: number, req: any): Promise<{

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UsersService, Empleado } from '../../../services/users.service';
+import { AdminService, Turno } from '../../../services/admin.service';
 
 interface EmpleadoItem {
   id: number;
@@ -12,18 +13,20 @@ interface EmpleadoItem {
   departamento: string;
   correo: string;
   estado: string;
+  supervisorId?: number;
+  supervisorNombre?: string;
+  fechaIngreso?: string;
+  telefono?: string;
 }
 
 interface NuevoEmpleadoForm {
   nombres: string;
   apellidos: string;
-  documento: string;
   correo: string;
   telefono: string;
   puesto: string;
   departamento: string;
-  supervisor: string;
-  turno: string;
+  supervisorId: string;
   fechaIngreso: string;
   estado: string;
 }
@@ -51,27 +54,44 @@ export class Empleados implements OnInit {
   filtroEstado = 'Todos los estados';
 
   empleadosData: EmpleadoItem[] = [];
+  supervisoresDisponibles: { id: number; nombre: string }[] = [];
+  turnosDisponibles: Turno[] = [];
 
   nuevoEmpleado: NuevoEmpleadoForm = this.crearFormularioVacio();
 
   constructor(
     private router: Router,
     private usersService: UsersService,
+    private adminService: AdminService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadEmpleados();
+    this.loadSupervisores();
+    // Nota: Turnos se gestionarán en su propia vista, pero aquí cargamos para info
+    this.adminService.getShifts().subscribe(t => this.turnosDisponibles = t);
   }
 
   private loadEmpleados(): void {
     this.usersService.getAll().subscribe({
       next: (empleados) => {
         this.empleadosData = empleados.map((e) => this.mapToItem(e));
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error cargando empleados:', err);
         this.empleadosData = [];
       },
+    });
+  }
+
+  private loadSupervisores(): void {
+    this.usersService.getAll('true').subscribe(empleados => {
+      // Filtramos solo a los que tienen rol Supervisor o RRHH
+      this.supervisoresDisponibles = empleados
+        .filter(e => e.roles?.some(r => r === 'Supervisor' || r === 'RRHH'))
+        .map(e => ({ id: e.empleadoId!, nombre: e.nombreCompleto! }));
     });
   }
 
@@ -84,6 +104,10 @@ export class Empleados implements OnInit {
       departamento: e.departamento || 'Sin departamento',
       correo: e.email || '',
       estado: e.activo ? 'Activo' : 'Inactivo',
+      supervisorId: e.supervisorId,
+      supervisorNombre: e.supervisorNombre,
+      fechaIngreso: e.fechaIngreso,
+      telefono: e.telefono
     };
   }
 
@@ -100,67 +124,46 @@ export class Empleados implements OnInit {
 
   cerrarModalNuevoEmpleado(): void {
     this.modalNuevoEmpleado = false;
-    this.modoEdicion = false;
-    this.empleadoEditandoId = null;
-  }
-
-  cancelarNuevoEmpleado(): void {
-    this.nuevoEmpleado = this.crearFormularioVacio();
-    this.modalNuevoEmpleado = false;
-    this.modoEdicion = false;
-    this.empleadoEditandoId = null;
   }
 
   guardarEmpleado(): void {
-    const nombreCompleto = `${this.nuevoEmpleado.nombres} ${this.nuevoEmpleado.apellidos}`.trim();
-
-    if (this.modoEdicion && this.empleadoEditandoId !== null) {
-      this.usersService
-        .update(this.empleadoEditandoId, {
-          nombres: this.nuevoEmpleado.nombres,
-          apellidos: this.nuevoEmpleado.apellidos,
-          email: this.nuevoEmpleado.correo,
-          telefono: this.nuevoEmpleado.telefono,
-          puesto: this.nuevoEmpleado.puesto,
-          departamento: this.nuevoEmpleado.departamento,
-        })
-        .subscribe({
-          next: () => {
-            this.mostrarNotificacionExito('Empleado actualizado correctamente.');
-            this.loadEmpleados();
-          },
-          error: (err) => {
-            console.error('Error actualizando empleado:', err);
-          },
-        });
-    } else {
-      this.usersService
-        .create({
-          codigoEmpleado: this.generarCodigoEmpleado(),
-          nombres: this.nuevoEmpleado.nombres,
-          apellidos: this.nuevoEmpleado.apellidos,
-          email: this.nuevoEmpleado.correo,
-          telefono: this.nuevoEmpleado.telefono,
-          puesto: this.nuevoEmpleado.puesto,
-          departamento: this.nuevoEmpleado.departamento,
-          fechaIngreso: this.nuevoEmpleado.fechaIngreso || new Date().toISOString().split('T')[0],
-          activo: true,
-        })
-        .subscribe({
-          next: () => {
-            this.mostrarNotificacionExito('Empleado guardado correctamente.');
-            this.loadEmpleados();
-          },
-          error: (err) => {
-            console.error('Error guardando empleado:', err);
-          },
-        });
+    if (!this.nuevoEmpleado.nombres || !this.nuevoEmpleado.apellidos || !this.nuevoEmpleado.correo) {
+      alert('Por favor complete los campos obligatorios.');
+      return;
     }
 
-    this.nuevoEmpleado = this.crearFormularioVacio();
-    this.modalNuevoEmpleado = false;
-    this.modoEdicion = false;
-    this.empleadoEditandoId = null;
+    const payload: any = {
+      nombres: this.nuevoEmpleado.nombres,
+      apellidos: this.nuevoEmpleado.apellidos,
+      email: this.nuevoEmpleado.correo,
+      telefono: this.nuevoEmpleado.telefono,
+      puesto: this.nuevoEmpleado.puesto,
+      departamento: this.nuevoEmpleado.departamento,
+      supervisorId: this.nuevoEmpleado.supervisorId ? parseInt(this.nuevoEmpleado.supervisorId) : undefined,
+      fechaIngreso: this.nuevoEmpleado.fechaIngreso || new Date().toISOString().split('T')[0],
+      activo: this.nuevoEmpleado.estado === 'Activo'
+    };
+
+    if (this.modoEdicion && this.empleadoEditandoId !== null) {
+      this.usersService.update(this.empleadoEditandoId, payload).subscribe({
+        next: () => {
+          this.mostrarNotificacionExito('Empleado actualizado correctamente.');
+          this.loadEmpleados();
+          this.modalNuevoEmpleado = false;
+        },
+        error: (err) => alert(err.error?.message || 'Error al actualizar')
+      });
+    } else {
+      payload.codigoEmpleado = this.generarCodigoEmpleado();
+      this.usersService.create(payload).subscribe({
+        next: () => {
+          this.mostrarNotificacionExito('Empleado creado exitosamente.');
+          this.loadEmpleados();
+          this.modalNuevoEmpleado = false;
+        },
+        error: (err) => alert(err.error?.message || 'Error al crear')
+      });
+    }
   }
 
   verEmpleado(empleado: EmpleadoItem): void {
@@ -174,30 +177,38 @@ export class Empleados implements OnInit {
   }
 
   editarEmpleado(empleado: EmpleadoItem): void {
-    const partesNombre = empleado.nombre.trim().split(' ');
-    const nombres = partesNombre
-      .slice(0, Math.max(1, Math.floor(partesNombre.length / 2)))
-      .join(' ');
-    const apellidos = partesNombre.slice(Math.floor(partesNombre.length / 2)).join(' ');
-
     this.modoEdicion = true;
     this.empleadoEditandoId = empleado.id;
 
+    // Obtener nombres y apellidos
+    const parts = empleado.nombre.split(' ');
+    const nom = parts.slice(0, Math.ceil(parts.length / 2)).join(' ');
+    const ape = parts.slice(Math.ceil(parts.length / 2)).join(' ');
+
     this.nuevoEmpleado = {
-      nombres: nombres || '',
-      apellidos: apellidos || '',
-      documento: '',
-      correo: empleado.correo || '',
-      telefono: '',
-      puesto: empleado.puesto || '',
-      departamento: empleado.departamento || '',
-      supervisor: '',
-      turno: '',
-      fechaIngreso: '',
-      estado: empleado.estado || 'Activo',
+      nombres: nom,
+      apellidos: ape,
+      correo: empleado.correo,
+      telefono: empleado.telefono || '',
+      puesto: empleado.puesto,
+      departamento: empleado.departamento,
+      supervisorId: empleado.supervisorId?.toString() || '',
+      fechaIngreso: empleado.fechaIngreso ? new Date(empleado.fechaIngreso).toISOString().split('T')[0] : '',
+      estado: empleado.estado
     };
 
     this.modalNuevoEmpleado = true;
+  }
+
+  desactivarEmpleado(id: number): void {
+    if (confirm('¿Está seguro de desactivar este empleado? Esto también bloqueará su usuario.')) {
+      this.usersService.deactivate(id).subscribe({
+        next: () => {
+          this.mostrarNotificacionExito('Empleado desactivado.');
+          this.loadEmpleados();
+        }
+      });
+    }
   }
 
   limpiarFiltros(): void {
@@ -227,61 +238,32 @@ export class Empleados implements OnInit {
     });
   }
 
-  get totalEmpleados(): number {
-    return this.empleadosData.length;
-  }
-
-  get totalActivos(): number {
-    return this.empleadosData.filter((empleado) => empleado.estado === 'Activo').length;
-  }
-
-  get totalInactivos(): number {
-    return this.empleadosData.filter((empleado) => empleado.estado === 'Inactivo').length;
-  }
+  get totalEmpleados(): number { return this.empleadosData.length; }
+  get totalActivos(): number { return this.empleadosData.filter(e => e.estado === 'Activo').length; }
+  get totalInactivos(): number { return this.empleadosData.filter(e => e.estado === 'Inactivo').length; }
 
   get totalDepartamentos(): number {
-    const departamentos = new Set(
-      this.empleadosData
-        .map((empleado) => empleado.departamento)
-        .filter((departamento) => departamento && departamento !== 'Sin departamento'),
-    );
-
-    return departamentos.size;
+    return new Set(this.empleadosData.map(e => e.departamento)).size;
   }
 
   get departamentosDisponibles(): string[] {
-    return Array.from(
-      new Set(
-        this.empleadosData
-          .map((empleado) => empleado.departamento)
-          .filter((departamento) => !!departamento && departamento !== 'Sin departamento'),
-      ),
-    ).sort((a, b) => a.localeCompare(b));
+    return Array.from(new Set(this.empleadosData.map(e => e.departamento))).sort();
   }
 
   getEstadoClass(estado: string): string {
-    switch (estado) {
-      case 'Activo':
-        return 'status-badge--active';
-      case 'Inactivo':
-        return 'status-badge--inactive';
-      default:
-        return 'status-badge--default';
-    }
+    return estado === 'Activo' ? 'status-badge--active' : 'status-badge--inactive';
   }
 
   private crearFormularioVacio(): NuevoEmpleadoForm {
     return {
       nombres: '',
       apellidos: '',
-      documento: '',
       correo: '',
       telefono: '',
       puesto: '',
       departamento: '',
-      supervisor: '',
-      turno: '',
-      fechaIngreso: '',
+      supervisorId: '',
+      fechaIngreso: new Date().toISOString().split('T')[0],
       estado: 'Activo',
     };
   }
@@ -289,15 +271,10 @@ export class Empleados implements OnInit {
   private mostrarNotificacionExito(mensaje: string): void {
     this.mensajeExito = mensaje;
     this.mostrarMensajeExito = true;
-
-    setTimeout(() => {
-      this.mostrarMensajeExito = false;
-      this.mensajeExito = '';
-    }, 3000);
+    setTimeout(() => this.mostrarMensajeExito = false, 3000);
   }
 
   private generarCodigoEmpleado(): string {
-    const timestamp = Date.now().toString().slice(-8);
-    return `EMP-${timestamp}`;
+    return `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
   }
 }

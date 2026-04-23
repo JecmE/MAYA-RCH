@@ -405,6 +405,15 @@
   background: #bfdbfe;
 }
 
+.table-button--red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.table-button--red:hover {
+  background: #fecaca;
+}
+
 /* Footer */
 .employees-card__footer {
   background: #f8fafc;

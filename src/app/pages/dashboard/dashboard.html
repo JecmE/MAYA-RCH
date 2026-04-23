@@ -20,126 +20,124 @@
     <div class="dashboard-grid">
       <div class="dashboard-left">
         @if (role !== 'admin') {
-          <div class="summary-grid" [class.summary-grid-two]="role !== 'rrhh'">
-            @if (role !== 'rrhh') {
-              <div class="card section-card">
-                <div class="card-header">
-                  <h3 class="card-title">Marcaje de hoy</h3>
+          <div class="summary-grid summary-grid-two">
+            <div class="card section-card">
+              <div class="card-header">
+                <h3 class="card-title">Marcaje de hoy</h3>
+              </div>
+
+              <div class="card-body">
+                <div class="info-list">
+                  <div class="info-row">
+                    <span class="info-label">Turno:</span>
+                    <span class="info-badge">{{ turnoNombre || 'Sin turno' }}</span>
+                  </div>
+
+                  <div class="info-row">
+                    <span class="info-label">Tolerancia:</span>
+                    <span class="info-value">{{ toleranciaMinutos }} minutos</span>
+                  </div>
+
+                  @if (horaEntradaTurno && horaSalidaTurno) {
+                    <div class="info-row">
+                      <span class="info-label">Horario:</span>
+                      <span class="info-value">
+                        {{ formatShiftTime(horaEntradaTurno) }} -
+                        {{ formatShiftTime(horaSalidaTurno) }}
+                        @if (isNocturnalShift()) {
+                          <small class="text-slate-400 font-bold">(Mañana)</small>
+                        }
+                      </span>
+                    </div>
+                  }
+
+                  <div class="info-row">
+                    <span class="info-label">Estado del día:</span>
+                    <span
+                      class="info-status"
+                      [class.status-complete]="marcaEstado === 'Completa'"
+                      [class.status-entry]="marcaEstado === 'Entrada'"
+                      [class.status-pending]="marcaEstado === 'Pendiente'"
+                    >
+                      {{ marcaEstado }}
+                    </span>
+                  </div>
+
+                  <div class="divider"></div>
+
+                  <div class="info-row">
+                    <span class="info-label">Entrada registrada:</span>
+                    <span class="info-value">
+                      {{ horaEntradaReal }}
+                    </span>
+                  </div>
+
+                  <div class="info-row">
+                    <span class="info-label">Salida registrada:</span>
+                    <span class="info-value">
+                      {{ horaSalidaReal }}
+                    </span>
+                  </div>
                 </div>
 
-                <div class="card-body">
-                  <div class="info-list">
-                    <div class="info-row">
-                      <span class="info-label">Turno:</span>
-                      <span class="info-badge">{{ turnoNombre || 'Sin turno' }}</span>
-                    </div>
+                <div class="action-area">
+                  <div class="action-grid">
+                    <button
+                      [disabled]="!canCheckIn"
+                      (click)="marcarEntrada()"
+                      class="primary-button"
+                      [title]="checkInDisabledReason"
+                    >
+                      Marcar entrada
+                    </button>
 
-                    <div class="info-row">
-                      <span class="info-label">Tolerancia:</span>
-                      <span class="info-value">{{ toleranciaMinutos }} minutos</span>
-                    </div>
-
-                    @if (horaEntradaTurno && horaSalidaTurno) {
-                      <div class="info-row">
-                        <span class="info-label">Horario:</span>
-                        <span class="info-value">
-                          {{ formatShiftTime(horaEntradaTurno) }} -
-                          {{ formatShiftTime(horaSalidaTurno) }}
-                          @if (isNocturnalShift()) {
-                            <small class="text-slate-400 font-bold">(Mañana)</small>
-                          }
-                        </span>
-                      </div>
-                    }
-
-                    <div class="info-row">
-                      <span class="info-label">Estado del día:</span>
-                      <span
-                        class="info-status"
-                        [class.status-complete]="marcaEstado === 'Completa'"
-                        [class.status-entry]="marcaEstado === 'Entrada'"
-                        [class.status-pending]="marcaEstado === 'Pendiente'"
-                      >
-                        {{ marcaEstado }}
-                      </span>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="info-row">
-                      <span class="info-label">Entrada registrada:</span>
-                      <span class="info-value">
-                        {{ horaEntradaReal }}
-                      </span>
-                    </div>
-
-                    <div class="info-row">
-                      <span class="info-label">Salida registrada:</span>
-                      <span class="info-value">
-                        {{ horaSalidaReal }}
-                      </span>
-                    </div>
+                    <button
+                      [disabled]="!canCheckOut"
+                      (click)="marcarSalida()"
+                      class="primary-button"
+                      [title]="checkOutDisabledReason"
+                    >
+                      Marcar salida
+                    </button>
                   </div>
 
-                  <div class="action-area">
-                    <div class="action-grid">
-                      <button
-                        [disabled]="!canCheckIn"
-                        (click)="marcarEntrada()"
-                        class="primary-button"
-                        [title]="checkInDisabledReason"
-                      >
-                        Marcar entrada
-                      </button>
-
-                      <button
-                        [disabled]="!canCheckOut"
-                        (click)="marcarSalida()"
-                        class="primary-button"
-                        [title]="checkOutDisabledReason"
-                      >
-                        Marcar salida
-                      </button>
+                  @if (marcaEstado === 'Pendiente' && checkInDisabledReason && !canCheckIn) {
+                    <div class="info-box">
+                      <span>ℹ️</span>
+                      <span>{{ checkInDisabledReason }}</span>
                     </div>
+                  }
 
-                    @if (marcaEstado === 'Pendiente' && checkInDisabledReason && !canCheckIn) {
-                      <div class="info-box">
-                        <span>ℹ️</span>
-                        <span>{{ checkInDisabledReason }}</span>
-                      </div>
-                    }
+                  @if (marcaEstado === 'Entrada' && checkOutDisabledReason && !canCheckOut) {
+                    <div class="info-box">
+                      <span>ℹ️</span>
+                      <span>{{ checkOutDisabledReason }}</span>
+                    </div>
+                  }
 
-                    @if (marcaEstado === 'Entrada' && checkOutDisabledReason && !canCheckOut) {
-                      <div class="info-box">
-                        <span>ℹ️</span>
-                        <span>{{ checkOutDisabledReason }}</span>
-                      </div>
-                    }
+                  @if (marcaError) {
+                    <div class="error-box">
+                      <span>⚠️</span>
+                      <span>{{ marcaError }}</span>
+                    </div>
+                  }
 
-                    @if (marcaError) {
-                      <div class="error-box">
-                        <span>⚠️</span>
-                        <span>{{ marcaError }}</span>
-                      </div>
-                    }
-
-                    @if (marcaSuccess || marcaEstado !== 'Pendiente') {
-                      <div class="success-box">
-                        <span>✅</span>
-                        <span>
-                          {{
-                            marcaSuccess ||
-                              (marcaEstado === 'Entrada'
-                                ? 'Entrada registrada a las ' + horaEntradaReal
-                                : 'Jornada completada. Podrás marcar de nuevo mañana.')
-                          }}
-                        </span>
-                      </div>
-                    }
-                  </div>
+                  @if (marcaSuccess || marcaEstado !== 'Pendiente') {
+                    <div class="success-box">
+                      <span>✅</span>
+                      <span>
+                        {{
+                          marcaSuccess ||
+                            (marcaEstado === 'Entrada'
+                              ? 'Entrada registrada a las ' + horaEntradaReal
+                              : 'Jornada completada. Podrás marcar de nuevo mañana.')
+                        }}
+                      </span>
+                    </div>
+                  }
                 </div>
               </div>
-            }
+            </div>
 
             <div class="card section-card">
               <div class="card-header">
@@ -147,7 +145,7 @@
               </div>
 
               <div class="card-body">
-                <div class="kpi-grid" [class.kpi-grid-rrhh]="role === 'rrhh'">
+                <div class="kpi-grid">
                   <div class="kpi-box">
                     <p class="kpi-label">Llegadas tardes</p>
                     <p class="kpi-value">{{ tardiasMes }}</p>
@@ -335,36 +333,44 @@
           @if (role === 'rrhh') {
             <div class="quick-links-grid">
               <a routerLink="/rrhh/empleados" class="quick-link">
-                <span class="quick-link-icon">[E]</span>
+                <span class="quick-link-icon">👥</span>
                 <span class="quick-link-text">Empleados</span>
               </a>
-              <a routerLink="/rrhh/asistencia" class="quick-link">
-                <span class="quick-link-icon">[H]</span>
-                <span class="quick-link-text">Asistencia</span>
+              <a routerLink="/rrhh/planilla" class="quick-link">
+                <span class="quick-link-icon">💵</span>
+                <span class="quick-link-text">Planilla</span>
               </a>
               <a routerLink="/rrhh/turnos" class="quick-link">
-                <span class="quick-link-icon">[T]</span>
+                <span class="quick-link-icon">⏱️</span>
                 <span class="quick-link-text">Turnos</span>
               </a>
+              <a routerLink="/rrhh/asistencia" class="quick-link">
+                <span class="quick-link-icon">📅</span>
+                <span class="quick-link-text">Asistencia</span>
+              </a>
               <a routerLink="/rrhh/permisos" class="quick-link">
-                <span class="quick-link-icon">[L]</span>
+                <span class="quick-link-icon">📄</span>
                 <span class="quick-link-text">Permisos</span>
               </a>
               <a routerLink="/rrhh/proyectos" class="quick-link">
-                <span class="quick-link-icon">[J]</span>
+                <span class="quick-link-icon">📂</span>
                 <span class="quick-link-text">Proyectos</span>
               </a>
               <a routerLink="/rrhh/bonos" class="quick-link">
-                <span class="quick-link-icon">[B]</span>
+                <span class="quick-link-icon">💰</span>
                 <span class="quick-link-text">Bonos</span>
               </a>
               <a routerLink="/rrhh/reportes" class="quick-link">
-                <span class="quick-link-icon">[X]</span>
+                <span class="quick-link-icon">📊</span>
                 <span class="quick-link-text">Reportes</span>
               </a>
               <a routerLink="/rrhh/auditoria" class="quick-link">
-                <span class="quick-link-icon">[A]</span>
+                <span class="quick-link-icon">🔍</span>
                 <span class="quick-link-text">Auditoría</span>
+              </a>
+              <a routerLink="/rrhh/kpis" class="quick-link">
+                <span class="quick-link-icon">🏆</span>
+                <span class="quick-link-text">KPIs Globales</span>
               </a>
             </div>
           }

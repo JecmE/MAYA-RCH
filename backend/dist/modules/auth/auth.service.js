@@ -65,7 +65,7 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Credenciales inválidas');
         }
         if (usuario.estado !== 'activo') {
-            throw new common_1.UnauthorizedException('La cuenta está bloqueada o inactiva');
+            throw new common_1.UnauthorizedException('Tu cuenta ha sido bloqueada o está inactiva. Contacta a RRHH.');
         }
         const isMatch = await bcrypt.compare(loginDto.password, usuario.passwordHash);
         if (!isMatch) {

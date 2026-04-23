@@ -296,7 +296,7 @@ export class AdminService {
         this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
         this.registroAsistenciaRepository.count({
           where: {
-            fecha: Between(today, tomorrow),
+            fecha: today as any,
             minutosTardia: MoreThan(0),
           },
         }),
@@ -308,12 +308,12 @@ export class AdminService {
             clasificaciones: ['En riesgo', 'En observacion'],
           })
           .getCount(),
-        this.vacacionMovimientoRepository
-          .createQueryBuilder('vm')
-          .innerJoin('vm.solicitud', 's')
-          .where('s.estado = :estado', { estado: 'aprobado' })
-          .andWhere('vm.fechaInicio <= :today', { today })
-          .andWhere('vm.fechaFin >= :today', { today })
+        this.solicitudPermisoRepository
+          .createQueryBuilder('sp')
+          .innerJoin('sp.tipoPermiso', 'tp')
+          .where('sp.estado = :estado', { estado: 'aprobado' })
+          .andWhere('tp.descuentaVacaciones = :descuenta', { descuenta: 1 })
+          .andWhere(':today BETWEEN sp.fechaInicio AND sp.fechaFin', { today })
           .getCount(),
       ]);
 

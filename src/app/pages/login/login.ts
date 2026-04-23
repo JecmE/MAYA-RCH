@@ -1,13 +1,13 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
@@ -20,11 +20,14 @@ export class Login {
   constructor(
     private authService: AuthService,
     private router: Router,
+    private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object,
   ) {}
 
   handleLogin(event: Event) {
     event.preventDefault();
+    this.error = false;
+    this.errorMessage = '';
 
     this.authService.login({ username: this.username, password: this.password }).subscribe({
       next: (response) => {
@@ -45,8 +48,20 @@ export class Login {
         this.router.navigate(['/']);
       },
       error: (err) => {
+        console.error('Login error detail:', err);
         this.error = true;
-        this.errorMessage = err.error?.message || 'Error de autenticación';
+
+        // Extraer mensaje real del backend
+        if (err.error && err.error.message) {
+          this.errorMessage = err.error.message;
+        } else if (err.status === 401) {
+          this.errorMessage = 'Credenciales incorrectas o cuenta bloqueada.';
+        } else {
+          this.errorMessage = 'Error de conexión con el servidor.';
+        }
+
+        // Forzar a Angular a mostrar el error en pantalla
+        this.cdr.detectChanges();
       },
     });
   }

@@ -169,6 +169,36 @@ export class Dashboard implements OnInit, OnDestroy {
       });
     }
 
+    // 5. Avisos Exclusivos de RRHH
+    if (this.role === 'rrhh') {
+      if (this.rrhhStats.permisosPendientes > 0) {
+        this.notices.push({
+          title: 'Solicitudes en espera',
+          text: `Hay ${this.rrhhStats.permisosPendientes} solicitudes pendientes de revisión global.`,
+          icon: '📝',
+          color: 'blue'
+        });
+      }
+
+      if (this.rrhhStats.empleadosEnRiesgo > 0) {
+        this.notices.push({
+          title: 'Alerta de Desempeño',
+          text: `Se detectaron ${this.rrhhStats.empleadosEnRiesgo} empleados con bajo rendimiento este mes.`,
+          icon: '⚠️',
+          color: 'red'
+        });
+      }
+
+      if (now.getDate() >= 20) {
+        this.notices.push({
+          title: 'Procesamiento de Planilla',
+          text: 'Falta poco para el cierre de mes. Recuerda revisar los cálculos de planilla.',
+          icon: '💰',
+          color: 'green'
+        });
+      }
+    }
+
     this.cdr.detectChanges();
   }
 

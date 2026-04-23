@@ -29,6 +29,8 @@ export declare class UsersService {
         departamento: string;
         puesto: string;
         supervisorId: number;
+        supervisorNombre: string;
+        roles: string[];
     }[]>;
     getMyProfile(empleadoId: number): Promise<{
         empleadoId: number;
@@ -43,6 +45,8 @@ export declare class UsersService {
         puesto: string;
         tarifaHora: number;
         roles: string[];
+        supervisorId: number;
+        supervisorNombre: string;
     }>;
     findEmpleadoById(id: number): Promise<{
         empleadoId: number;
@@ -58,6 +62,7 @@ export declare class UsersService {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     createEmpleado(createEmpleadoDto: CreateEmpleadoDto, usuarioId: number): Promise<{
@@ -74,6 +79,7 @@ export declare class UsersService {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     updateEmpleado(id: number, updateEmpleadoDto: UpdateEmpleadoDto, usuarioId: number): Promise<{
@@ -90,6 +96,7 @@ export declare class UsersService {
         puesto: string;
         tarifaHora: number;
         supervisorId: number;
+        supervisorNombre: string;
         roles: string[];
     }>;
     deactivateEmpleado(id: number, usuarioId: number): Promise<{

@@ -18,9 +18,9 @@
       </button>
 
       <div class="page-header__content">
-        <h2 class="page-title">Empleados</h2>
+        <h2 class="page-title">Gestión de Empleados</h2>
         <p class="page-subtitle">
-          Gestiona la información general de colaboradores.
+          Administra la información personal y laboral de todo el equipo.
         </p>
       </div>
 
@@ -29,7 +29,7 @@
         class="new-employee-button"
         (click)="abrirModalNuevoEmpleado()"
       >
-        Nuevo empleado
+        + Nuevo empleado
       </button>
     </div>
 
@@ -131,7 +131,7 @@
                         class="table-button table-button--neutral"
                         (click)="verEmpleado(row)"
                       >
-                        Ver
+                        Detalle
                       </button>
 
                       <button
@@ -141,6 +141,16 @@
                       >
                         Editar
                       </button>
+
+                      @if (row.estado === 'Activo') {
+                        <button
+                          type="button"
+                          class="table-button table-button--red"
+                          (click)="desactivarEmpleado(row.id)"
+                        >
+                          Baja
+                        </button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -158,22 +168,15 @@
 
       <div class="employees-card__footer">
         <span>Mostrando {{ empleadosFiltrados.length }} de {{ totalEmpleados }} registros</span>
-        <div class="pagination-actions">
-          <button type="button" class="pagination-button pagination-button--disabled">
-            Anterior
-          </button>
-          <button type="button" class="pagination-button">
-            Siguiente
-          </button>
-        </div>
       </div>
     </div>
 
+    <!-- Modal Formulario -->
     @if (modalNuevoEmpleado) {
       <div class="modal-backdrop">
         <div class="employee-modal">
           <div class="employee-modal__header">
-            <h3>{{ modoEdicion ? 'Editar Empleado' : 'Nuevo Empleado' }}</h3>
+            <h3>{{ modoEdicion ? 'Editar Empleado' : 'Registrar Nuevo Empleado' }}</h3>
             <button
               type="button"
               class="employee-modal__close"
@@ -186,53 +189,43 @@
           <div class="employee-modal__body">
             <div class="form-grid form-grid--2">
               <div class="form-field">
-                <label>Nombres</label>
+                <label>Nombres <span class="req">*</span></label>
                 <input
                   type="text"
                   class="form-control"
-                  placeholder="Ingrese los nombres"
+                  placeholder="Ej: Juan Carlos"
                   [(ngModel)]="nuevoEmpleado.nombres"
                 />
               </div>
 
               <div class="form-field">
-                <label>Apellidos</label>
+                <label>Apellidos <span class="req">*</span></label>
                 <input
                   type="text"
                   class="form-control"
-                  placeholder="Ingrese los apellidos"
+                  placeholder="Ej: Pérez López"
                   [(ngModel)]="nuevoEmpleado.apellidos"
                 />
               </div>
             </div>
 
-            <div class="form-field">
-              <label>Documento o Identificación</label>
-              <input
-                type="text"
-                class="form-control"
-                placeholder="Ej: 1234567890123"
-                [(ngModel)]="nuevoEmpleado.documento"
-              />
-            </div>
-
             <div class="form-grid form-grid--2">
               <div class="form-field">
-                <label>Correo Electrónico</label>
+                <label>Correo Corporativo <span class="req">*</span></label>
                 <input
                   type="email"
                   class="form-control"
-                  placeholder="correo@ejemplo.com"
+                  placeholder="usuario@mayacr.com"
                   [(ngModel)]="nuevoEmpleado.correo"
                 />
               </div>
 
               <div class="form-field">
-                <label>Teléfono</label>
+                <label>Teléfono de Contacto</label>
                 <input
                   type="tel"
                   class="form-control"
-                  placeholder="5555-5555"
+                  placeholder="5555-1234"
                   [(ngModel)]="nuevoEmpleado.telefono"
                 />
               </div>
@@ -241,60 +234,39 @@
             <div class="form-grid form-grid--2">
               <div class="form-field">
                 <label>Puesto</label>
-                <select
+                <input
+                  type="text"
                   class="form-control"
+                  placeholder="Ej: Analista de Datos"
                   [(ngModel)]="nuevoEmpleado.puesto"
-                >
-                  <option value="">Seleccione un puesto</option>
-                  <option>Desarrollador Sr.</option>
-                  <option>Analista QA</option>
-                  <option>Diseñador UI/UX</option>
-                  <option>Especialista MKT</option>
-                </select>
+                />
               </div>
 
               <div class="form-field">
                 <label>Departamento</label>
-                <select
+                <input
+                  type="text"
                   class="form-control"
+                  placeholder="Ej: Tecnología"
                   [(ngModel)]="nuevoEmpleado.departamento"
-                >
-                  <option value="">Seleccione un departamento</option>
-                  <option>Tecnología</option>
-                  <option>Marketing</option>
-                  <option>RRHH</option>
-                  <option>Administración</option>
-                </select>
+                />
               </div>
             </div>
 
             <div class="form-field">
-              <label>Supervisor</label>
+              <label>Supervisor Inmediato</label>
               <select
                 class="form-control"
-                [(ngModel)]="nuevoEmpleado.supervisor"
+                [(ngModel)]="nuevoEmpleado.supervisorId"
               >
-                <option value="">Seleccione un supervisor</option>
-                <option>Ana López</option>
-                <option>José Ruiz</option>
-                <option>Carlos Martínez</option>
+                <option value="">Sin supervisor asignado</option>
+                @for (sup of supervisoresDisponibles; track sup.id) {
+                  <option [value]="sup.id">{{ sup.nombre }}</option>
+                }
               </select>
             </div>
 
             <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Turno Asignado</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevoEmpleado.turno"
-                >
-                  <option value="">Seleccione un turno</option>
-                  <option>Matutino (8:00 - 17:00)</option>
-                  <option>Vespertino (14:00 - 22:00)</option>
-                  <option>Nocturno (22:00 - 6:00)</option>
-                </select>
-              </div>
-
               <div class="form-field">
                 <label>Fecha de Ingreso</label>
                 <input
@@ -303,17 +275,17 @@
                   [(ngModel)]="nuevoEmpleado.fechaIngreso"
                 />
               </div>
-            </div>
 
-            <div class="form-field">
-              <label>Estado</label>
-              <select
-                class="form-control"
-                [(ngModel)]="nuevoEmpleado.estado"
-              >
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
+              <div class="form-field">
+                <label>Estado Inicial</label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="nuevoEmpleado.estado"
+                >
+                  <option>Activo</option>
+                  <option>Inactivo</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -321,7 +293,7 @@
             <button
               type="button"
               class="modal-button modal-button--secondary"
-              (click)="cancelarNuevoEmpleado()"
+              (click)="cerrarModalNuevoEmpleado()"
             >
               Cancelar
             </button>
@@ -331,18 +303,19 @@
               class="modal-button modal-button--primary"
               (click)="guardarEmpleado()"
             >
-              {{ modoEdicion ? 'Guardar Cambios' : 'Guardar Empleado' }}
+              {{ modoEdicion ? 'Guardar Cambios' : 'Registrar Empleado' }}
             </button>
           </div>
         </div>
       </div>
     }
 
+    <!-- Modal Detalle -->
     @if (modalVerEmpleado && empleadoSeleccionado) {
-      <div class="modal-backdrop">
-        <div class="employee-modal employee-modal--detail">
+      <div class="modal-backdrop" (click)="cerrarModalVerEmpleado()">
+        <div class="employee-modal employee-modal--detail" (click)="$event.stopPropagation()">
           <div class="employee-modal__header">
-            <h3>Detalle del Empleado</h3>
+            <h3>Ficha del Colaborador</h3>
             <button
               type="button"
               class="employee-modal__close"
@@ -355,17 +328,17 @@
           <div class="employee-modal__body">
             <div class="detail-grid">
               <div class="detail-item">
-                <span class="detail-label">Código</span>
-                <span class="detail-value">{{ empleadoSeleccionado.codigo }}</span>
+                <span class="detail-label">Código Empleado</span>
+                <span class="detail-value font-mono">{{ empleadoSeleccionado.codigo }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Nombre</span>
-                <span class="detail-value">{{ empleadoSeleccionado.nombre }}</span>
+                <span class="detail-label">Nombre Completo</span>
+                <span class="detail-value font-bold">{{ empleadoSeleccionado.nombre }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Puesto</span>
+                <span class="detail-label">Puesto / Cargo</span>
                 <span class="detail-value">{{ empleadoSeleccionado.puesto }}</span>
               </div>
 
@@ -375,8 +348,18 @@
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Correo</span>
+                <span class="detail-label">Correo Corporativo</span>
                 <span class="detail-value">{{ empleadoSeleccionado.correo }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Teléfono</span>
+                <span class="detail-value">{{ empleadoSeleccionado.telefono || 'N/A' }}</span>
+              </div>
+
+              <div class="detail-item">
+                <span class="detail-label">Supervisor</span>
+                <span class="detail-value">{{ empleadoSeleccionado.supervisorNombre || 'N/A' }}</span>
               </div>
 
               <div class="detail-item">

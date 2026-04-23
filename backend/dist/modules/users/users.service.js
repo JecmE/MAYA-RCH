@@ -38,11 +38,11 @@ let UsersService = class UsersService {
                 return 'í';
             if (original.includes('Garc'))
                 return 'í';
-            if (original.includes('Logistica'))
+            if (original.includes('Rodr'))
                 return 'í';
-            if (original.includes('Administraci'))
-                return 'ó';
-            return '?';
+            if (original.includes('Mart'))
+                return 'í';
+            return 'í';
         })
             .replace(/Ã­/g, 'í')
             .replace(/Ã³/g, 'ó')
@@ -59,6 +59,7 @@ let UsersService = class UsersService {
         const empleados = await this.empleadoRepository.find({
             where,
             order: { nombres: 'ASC' },
+            relations: ['usuario', 'usuario.roles', 'supervisor'],
         });
         return empleados.map((emp) => ({
             empleadoId: emp.empleadoId,
@@ -73,12 +74,14 @@ let UsersService = class UsersService {
             departamento: this.sanitizeString(emp.departamento),
             puesto: this.sanitizeString(emp.puesto),
             supervisorId: emp.supervisorId,
+            supervisorNombre: emp.supervisor ? this.sanitizeString(`${emp.supervisor.nombres} ${emp.supervisor.apellidos}`) : null,
+            roles: emp.usuario?.roles?.map((r) => r.nombre) || [],
         }));
     }
     async getMyProfile(empleadoId) {
         const emp = await this.empleadoRepository.findOne({
             where: { empleadoId },
-            relations: ['usuario', 'usuario.roles'],
+            relations: ['usuario', 'usuario.roles', 'supervisor'],
         });
         if (!emp) {
             throw new common_1.NotFoundException('Empleado no encontrado');
@@ -96,12 +99,14 @@ let UsersService = class UsersService {
             puesto: this.sanitizeString(emp.puesto),
             tarifaHora: emp.tarifaHora,
             roles: emp.usuario?.roles?.map((r) => r.nombre) || [],
+            supervisorId: emp.supervisorId,
+            supervisorNombre: emp.supervisor ? this.sanitizeString(`${emp.supervisor.nombres} ${emp.supervisor.apellidos}`) : null,
         };
     }
     async findEmpleadoById(id) {
         const emp = await this.empleadoRepository.findOne({
             where: { empleadoId: id },
-            relations: ['usuario', 'usuario.roles'],
+            relations: ['usuario', 'usuario.roles', 'supervisor'],
         });
         if (!emp) {
             throw new common_1.NotFoundException('Empleado no encontrado');
@@ -120,6 +125,7 @@ let UsersService = class UsersService {
             puesto: this.sanitizeString(emp.puesto),
             tarifaHora: emp.tarifaHora,
             supervisorId: emp.supervisorId,
+            supervisorNombre: emp.supervisor ? this.sanitizeString(`${emp.supervisor.nombres} ${emp.supervisor.apellidos}`) : null,
             roles: emp.usuario?.roles?.map((r) => r.nombre) || [],
         };
     }
@@ -155,6 +161,15 @@ let UsersService = class UsersService {
         if (!empleado) {
             throw new common_1.NotFoundException('Empleado no encontrado');
         }
+        if (updateEmpleadoDto.activo !== undefined) {
+            const usuario = await this.usuarioRepository.findOne({
+                where: { empleadoId: id },
+            });
+            if (usuario) {
+                usuario.estado = updateEmpleadoDto.activo ? 'activo' : 'bloqueado';
+                await this.usuarioRepository.save(usuario);
+            }
+        }
         Object.assign(empleado, updateEmpleadoDto);
         await this.empleadoRepository.save(empleado);
         await this.auditRepository.save({
@@ -163,7 +178,7 @@ let UsersService = class UsersService {
             accion: 'UPDATE',
             entidad: 'EMPLEADO',
             entidadId: id,
-            detalle: `Empleado actualizado`,
+            detalle: `Empleado actualizado: ${empleado.nombres} ${empleado.apellidos}`,
         });
         return this.findEmpleadoById(id);
     }
