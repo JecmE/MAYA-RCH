@@ -6,7 +6,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, DataSource } from 'typeorm';
+import { Repository, Between, LessThanOrEqual, MoreThanOrEqual, DataSource, In } from 'typeorm';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
@@ -358,38 +358,43 @@ export class AttendanceService {
 
   async getTeamAttendance(supervisorId: number, fecha?: string) {
     try {
-      const empleadosRaw = await this.dataSource.query(
-        `SELECT empleado_id, nombres, apellidos, codigo_empleado FROM EMPLEADO WHERE supervisor_id = @0 AND activo = 1`,
-        [supervisorId],
-      );
+      const equipo = await this.empleadoRepository.find({
+        where: { supervisorId, activo: true },
+      });
 
-      if (empleadosRaw.length === 0) {
+      if (equipo.length === 0) {
         return [];
       }
 
       const fechaBusqueda = fecha ? new Date(fecha) : new Date();
       fechaBusqueda.setHours(0, 0, 0, 0);
 
-      const idsStr = empleadosRaw.map((e: any) => e.empleado_id).join(',');
-      const registrosRaw = await this.dataSource.query(
-        `SELECT asistencia_id, empleado_id, fecha, hora_entrada_real, hora_salida_real, minutos_tardia, horas_trabajadas, estado_jornada FROM REGISTRO_ASISTENCIA WHERE empleado_id IN (${idsStr}) AND fecha = @0`,
-        [fechaBusqueda],
-      );
+      const empleadoIds = equipo.map((e) => e.empleadoId);
 
-      return empleadosRaw.map((emp: any) => {
-        const registro = registrosRaw.find((r: any) => r.empleado_id === emp.empleado_id);
+      const registros = await this.asistenciaRepository.find({
+        where: {
+          empleadoId: In(empleadoIds),
+          fecha: fechaBusqueda,
+        },
+      });
+
+      return equipo.map((emp) => {
+        const registro = registros.find((r) => r.empleadoId === emp.empleadoId);
         return {
-          empleadoId: emp.empleado_id,
+          empleadoId: emp.empleadoId,
           nombreCompleto: `${emp.nombres} ${emp.apellidos}`,
-          codigoEmpleado: emp.codigo_empleado,
+          codigoEmpleado: emp.codigoEmpleado,
+          departamento: emp.departamento || 'Sin asignar',
+          puesto: emp.puesto || 'Empleado',
           asistencia: registro
             ? {
-                asistenciaId: registro.asistencia_id,
-                horaEntradaReal: registro.hora_entrada_real,
-                horaSalidaReal: registro.hora_salida_real,
-                minutosTardia: registro.minutos_tardia,
-                horasTrabajadas: registro.horas_trabajadas,
-                estadoJornada: registro.estado_jornada,
+                asistenciaId: registro.asistenciaId,
+                horaEntradaReal: registro.horaEntradaReal,
+                horaSalidaReal: registro.horaSalidaReal,
+                minutosTardia: registro.minutosTardia,
+                horasTrabajadas: registro.horasTrabajadas,
+                estadoJornada: registro.estadoJornada,
+                observacion: registro.observacion,
               }
             : null,
         };

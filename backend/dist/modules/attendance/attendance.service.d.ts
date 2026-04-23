@@ -70,7 +70,22 @@ export declare class AttendanceService {
         message: string;
         asistencia: RegistroAsistencia;
     }>;
-    getTeamAttendance(supervisorId: number, fecha?: string): Promise<any>;
+    getTeamAttendance(supervisorId: number, fecha?: string): Promise<{
+        empleadoId: number;
+        nombreCompleto: string;
+        codigoEmpleado: string;
+        departamento: string;
+        puesto: string;
+        asistencia: {
+            asistenciaId: number;
+            horaEntradaReal: Date;
+            horaSalidaReal: Date;
+            minutosTardia: number;
+            horasTrabajadas: number;
+            estadoJornada: string;
+            observacion: string;
+        };
+    }[]>;
     private getTimeFromString;
     private formatTimeToString;
     private calculateHours;

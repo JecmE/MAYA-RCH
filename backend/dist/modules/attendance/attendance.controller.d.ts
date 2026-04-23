@@ -66,5 +66,20 @@ export declare class AttendanceController {
         message: string;
         asistencia: import("../../entities").RegistroAsistencia;
     }>;
-    getTeamAttendance(req: any, fecha?: string): Promise<any>;
+    getTeamAttendance(req: any, fecha?: string): Promise<{
+        empleadoId: number;
+        nombreCompleto: string;
+        codigoEmpleado: string;
+        departamento: string;
+        puesto: string;
+        asistencia: {
+            asistenciaId: number;
+            horaEntradaReal: Date;
+            horaSalidaReal: Date;
+            minutosTardia: number;
+            horasTrabajadas: number;
+            estadoJornada: string;
+            observacion: string;
+        };
+    }[]>;
 }

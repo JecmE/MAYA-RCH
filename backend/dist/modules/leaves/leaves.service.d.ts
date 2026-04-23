@@ -54,7 +54,28 @@ export declare class LeavesService {
             rutaUrl: string;
         }[];
     }[]>;
-    getPendingRequests(supervisorEmpleadoId: number): Promise<any>;
+    getPendingRequests(supervisorEmpleadoId: number): Promise<{
+        solicitudId: number;
+        empleadoId: number;
+        empleado: {
+            empleadoId: number;
+            nombreCompleto: string;
+            codigoEmpleado: string;
+        };
+        tipoPermiso: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        horasInicio: string;
+        horasFin: string;
+        motivo: string;
+        estado: string;
+        fechaSolicitud: Date;
+        adjuntos: {
+            adjuntoId: number;
+            nombreArchivo: string;
+            rutaUrl: string;
+        }[];
+    }[]>;
     approveRequest(solicitudId: number, comentario: string, usuarioId: number): Promise<{
         message: string;
     }>;

@@ -24,6 +24,7 @@ const solicitud_permiso_entity_1 = require("../../entities/solicitud-permiso.ent
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
+const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
@@ -44,6 +45,7 @@ exports.AdminModule = AdminModule = __decorate([
                 registro_asistencia_entity_1.RegistroAsistencia,
                 kpi_mensual_entity_1.KpiMensual,
                 vacacion_movimiento_entity_1.VacacionMovimiento,
+                registro_tiempo_entity_1.RegistroTiempo,
             ]),
         ],
         controllers: [admin_controller_1.AdminController],

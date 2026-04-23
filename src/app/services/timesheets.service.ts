@@ -50,12 +50,12 @@ export class TimesheetsService {
     return this.http.get<TeamTimesheetEntry[]>(`${this.apiUrl}/team`, { params });
   }
 
-  approveEntry(id: number): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}/approve`, {});
+  approveEntry(id: number, comentario: string): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/${id}/approve`, { comentario });
   }
 
-  rejectEntry(id: number): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}/reject`, {});
+  rejectEntry(id: number, comentario: string): Observable<void> {
+    return this.http.put<void>(`${this.apiUrl}/${id}/reject`, { comentario });
   }
 
   getProjectSummary(proyectoId: number, fechaInicio: string, fechaFin: string): Observable<any> {

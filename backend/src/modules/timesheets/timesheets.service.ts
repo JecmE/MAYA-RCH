@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
+import { Repository, Between, MoreThanOrEqual, LessThanOrEqual, In } from 'typeorm';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { Proyecto } from '../../entities/proyecto.entity';
 import { Empleado } from '../../entities/empleado.entity';
@@ -165,10 +165,10 @@ export class TimesheetsService {
       return [];
     }
 
-    const where: any = { empleadoId: empleadoIds as any };
+    const where: any = { empleadoId: In(empleadoIds) };
 
     if (fechaInicio && fechaFin) {
-      where.fecha = Between(new Date(fechaInicio), new Date(fechaFin));
+      where.fecha = Between(fechaInicio, fechaFin);
     }
 
     const registros = await this.tiempoRepository.find({
@@ -179,15 +179,11 @@ export class TimesheetsService {
 
     return registros.map((r) => ({
       tiempoId: r.tiempoId,
-      empleado: {
-        empleadoId: r.empleado?.empleadoId,
-        nombreCompleto: r.empleado?.nombreCompleto,
-        codigoEmpleado: r.empleado?.codigoEmpleado,
-      },
-      proyecto: {
-        proyectoId: r.proyecto?.proyectoId,
-        nombre: r.proyecto?.nombre,
-      },
+      empleadoId: r.empleadoId,
+      nombreCompleto: r.empleado ? `${r.empleado.nombres} ${r.empleado.apellidos}` : 'Empleado',
+      codigoEmpleado: r.empleado?.codigoEmpleado || 'N/A',
+      proyectoId: r.proyectoId,
+      nombreProyecto: r.proyecto?.nombre || 'Proyecto Sin Nombre',
       fecha: r.fecha,
       horas: r.horas,
       horasValidadas: r.horasValidadas,
@@ -197,76 +193,83 @@ export class TimesheetsService {
   }
 
   async approve(id: number, comentario: string, usuarioId: number) {
-    const registro = await this.tiempoRepository.findOne({
-      where: { tiempoId: id },
-    });
+    try {
+      const registro = await this.tiempoRepository.findOne({
+        where: { tiempoId: id },
+      });
 
-    if (!registro) {
-      throw new NotFoundException('Registro no encontrado');
+      if (!registro) {
+        throw new NotFoundException('Registro no encontrado');
+      }
+
+      // Usar .update para evitar conflictos con columnas varchar(10) como 'fecha'
+      await this.tiempoRepository.update(id, {
+        estado: 'aprobado',
+        horasValidadas: registro.horas
+      });
+
+      const aprobacion = this.aprobacionRepository.create({
+        tiempoId: id,
+        usuarioId: usuarioId,
+        decision: 'aprobado',
+        comentario: comentario || 'Aprobado por supervisor',
+        fechaHora: new Date(),
+      });
+      await this.aprobacionRepository.save(aprobacion);
+
+      await this.auditRepository.save({
+        usuarioId,
+        modulo: 'TIMESHEET',
+        accion: 'APPROVE',
+        entidad: 'REGISTRO_TIEMPO',
+        entidadId: id,
+        detalle: `Registro aprobado: ${comentario}`,
+      });
+
+      return { message: 'Registro aprobado' };
+    } catch (error) {
+      console.error('ERROR IN TIMESHEET APPROVE:', error);
+      throw error;
     }
-
-    if (registro.estado !== RegistroTiempo.ESTADO_PENDIENTE) {
-      throw new BadRequestException('El registro ya no está pendiente');
-    }
-
-    registro.estado = RegistroTiempo.ESTADO_APROBADO;
-    registro.horasValidadas = registro.horas;
-    await this.tiempoRepository.save(registro);
-
-    await this.aprobacionRepository.save({
-      tiempoId: id,
-      usuarioId,
-      decision: AprobacionTiempo.DECISION_APROBADO,
-      comentario,
-      fechaHora: new Date(),
-    });
-
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'TIMESHEET',
-      accion: 'APPROVE',
-      entidad: 'REGISTRO_TIEMPO',
-      entidadId: id,
-      detalle: `Registro aprobado: ${comentario}`,
-    });
-
-    return { message: 'Registro aprobado' };
   }
 
   async reject(id: number, comentario: string, usuarioId: number) {
-    const registro = await this.tiempoRepository.findOne({
-      where: { tiempoId: id },
-    });
+    try {
+      const registro = await this.tiempoRepository.findOne({
+        where: { tiempoId: id },
+      });
 
-    if (!registro) {
-      throw new NotFoundException('Registro no encontrado');
+      if (!registro) {
+        throw new NotFoundException('Registro no encontrado');
+      }
+
+      await this.tiempoRepository.update(id, {
+        estado: 'rechazado'
+      });
+
+      const aprobacion = this.aprobacionRepository.create({
+        tiempoId: id,
+        usuarioId: usuarioId,
+        decision: 'rechazado',
+        comentario: comentario || 'Rechazado por supervisor',
+        fechaHora: new Date(),
+      });
+      await this.aprobacionRepository.save(aprobacion);
+
+      await this.auditRepository.save({
+        usuarioId,
+        modulo: 'TIMESHEET',
+        accion: 'REJECT',
+        entidad: 'REGISTRO_TIEMPO',
+        entidadId: id,
+        detalle: `Registro rechazado: ${comentario}`,
+      });
+
+      return { message: 'Registro rechazado' };
+    } catch (error) {
+      console.error('ERROR IN TIMESHEET REJECT:', error);
+      throw error;
     }
-
-    if (registro.estado !== RegistroTiempo.ESTADO_PENDIENTE) {
-      throw new BadRequestException('El registro ya no está pendiente');
-    }
-
-    registro.estado = RegistroTiempo.ESTADO_RECHAZADO;
-    await this.tiempoRepository.save(registro);
-
-    await this.aprobacionRepository.save({
-      tiempoId: id,
-      usuarioId,
-      decision: AprobacionTiempo.DECISION_RECHAZADO,
-      comentario,
-      fechaHora: new Date(),
-    });
-
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'TIMESHEET',
-      accion: 'REJECT',
-      entidad: 'REGISTRO_TIEMPO',
-      entidadId: id,
-      detalle: `Registro rechazado: ${comentario}`,
-    });
-
-    return { message: 'Registro rechazado' };
   }
 
   async getProjectSummary(fechaInicio: string, fechaFin: string) {

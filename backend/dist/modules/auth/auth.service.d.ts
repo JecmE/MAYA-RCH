@@ -1,52 +1,46 @@
-import { JwtService } from '@nestjs/jwt';
 import { Repository, DataSource } from 'typeorm';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { JwtService } from '@nestjs/jwt';
 import { Usuario } from '../../entities/usuario.entity';
 import { Empleado } from '../../entities/empleado.entity';
+import { Rol } from '../../entities/rol.entity';
 import { ResetPasswordToken } from '../../entities/reset-password-token.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 export declare class AuthService {
     private usuarioRepository;
     private empleadoRepository;
+    private rolRepository;
     private resetTokenRepository;
     private auditRepository;
-    private dataSource;
     private jwtService;
-    constructor(usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, resetTokenRepository: Repository<ResetPasswordToken>, auditRepository: Repository<AuditLog>, dataSource: DataSource, jwtService: JwtService);
-    login(loginDto: LoginDto, ipAddress: string): Promise<{
+    private dataSource;
+    constructor(usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, rolRepository: Repository<Rol>, resetTokenRepository: Repository<ResetPasswordToken>, auditRepository: Repository<AuditLog>, jwtService: JwtService, dataSource: DataSource);
+    private sanitizeString;
+    login(loginDto: LoginDto, ip: string): Promise<{
         token: string;
         user: {
             usuarioId: number;
             username: string;
+            roles: string[];
             empleadoId: number;
             nombreCompleto: string;
             email: string;
-            roles: any;
         };
     }>;
     logout(usuarioId: number): Promise<{
         message: string;
     }>;
-    forgotPassword(email: string, ipAddress: string, userAgent: string): Promise<{
-        message: string;
-        resetToken?: undefined;
-    } | {
-        message: string;
-        resetToken: string;
-    }>;
-    resetPassword(token: string, newPassword: string): Promise<{
+    forgotPassword(email: string, ip: string, userAgent: string): Promise<{
         message: string;
     }>;
+    resetPassword(token: string, newPassword: string): Promise<void>;
     getProfile(usuarioId: number): Promise<{
         usuarioId: number;
         username: string;
         empleadoId: number;
         nombreCompleto: string;
         email: string;
-        telefono: string;
-        puesto: string;
-        departamento: string;
         roles: string[];
         ultimoLogin: Date;
     }>;

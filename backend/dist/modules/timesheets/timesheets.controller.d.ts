@@ -24,15 +24,11 @@ export declare class TimesheetsController {
     }>;
     getTeamTimesheets(req: any, fechaInicio?: string, fechaFin?: string): Promise<{
         tiempoId: number;
-        empleado: {
-            empleadoId: number;
-            nombreCompleto: string;
-            codigoEmpleado: string;
-        };
-        proyecto: {
-            proyectoId: number;
-            nombre: string;
-        };
+        empleadoId: number;
+        nombreCompleto: string;
+        codigoEmpleado: string;
+        proyectoId: number;
+        nombreProyecto: string;
         fecha: string;
         horas: number;
         horasValidadas: number;

@@ -51,7 +51,9 @@ let LeavesService = class LeavesService {
         }));
     }
     calculateDays(start, end) {
-        const diff = end.getTime() - start.getTime();
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        const diff = endDate.getTime() - startDate.getTime();
         return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
     }
     async createRequest(createDto, empleadoId) {
@@ -172,23 +174,35 @@ let LeavesService = class LeavesService {
             if (empleadosRaw.length === 0) {
                 return [];
             }
-            const idsStr = empleadosRaw.map((e) => e.empleado_id).join(',');
-            const solicitudesRaw = await this.dataSource.query(`SELECT sp.solicitud_id, sp.empleado_id, sp.tipo_permiso_id, sp.fecha_inicio, sp.fecha_fin, sp.horas_inicio, sp.horas_fin, sp.motivo, sp.estado, sp.fecha_solicitud, e.nombres + ' ' + e.apellidos as nombre_empleado, e.codigo_empleado, tp.nombre as tipo_permiso_nombre FROM SOLICITUD_PERMISO sp INNER JOIN EMPLEADO e ON sp.empleado_id = e.empleado_id INNER JOIN TIPO_PERMISO tp ON sp.tipo_permiso_id = tp.tipo_permiso_id WHERE sp.empleado_id IN (${idsStr}) AND sp.estado = @0 ORDER BY sp.fecha_solicitud ASC`, [solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE]);
-            return solicitudesRaw.map((s) => ({
-                solicitudId: s.solicitud_id,
-                empleado: {
-                    empleadoId: s.empleado_id,
-                    nombreCompleto: s.nombre_empleado,
-                    codigoEmpleado: s.codigo_empleado,
+            const ids = empleadosRaw.map((e) => e.empleado_id);
+            const solicitudes = await this.solicitudRepository.find({
+                where: {
+                    empleadoId: (0, typeorm_2.In)(ids)
                 },
-                tipoPermiso: s.tipo_permiso_nombre,
-                fechaInicio: s.fecha_inicio,
-                fechaFin: s.fecha_fin,
-                horasInicio: s.horas_inicio,
-                horasFin: s.horas_fin,
+                relations: ['empleado', 'tipoPermiso', 'adjuntos'],
+                order: { fechaSolicitud: 'DESC' }
+            });
+            return solicitudes.map((s) => ({
+                solicitudId: s.solicitudId,
+                empleadoId: s.empleadoId,
+                empleado: {
+                    empleadoId: s.empleadoId,
+                    nombreCompleto: `${s.empleado?.nombres} ${s.empleado?.apellidos}`,
+                    codigoEmpleado: s.empleado?.codigoEmpleado,
+                },
+                tipoPermiso: s.tipoPermiso?.nombre,
+                fechaInicio: s.fechaInicio,
+                fechaFin: s.fechaFin,
+                horasInicio: s.horasInicio,
+                horasFin: s.horasFin,
                 motivo: s.motivo,
                 estado: s.estado,
-                fechaSolicitud: s.fecha_solicitud,
+                fechaSolicitud: s.fechaSolicitud,
+                adjuntos: s.adjuntos?.map(a => ({
+                    adjuntoId: a.adjuntoId,
+                    nombreArchivo: a.nombreArchivo,
+                    rutaUrl: a.rutaUrl
+                }))
             }));
         }
         catch (error) {
@@ -197,53 +211,62 @@ let LeavesService = class LeavesService {
         }
     }
     async approveRequest(solicitudId, comentario, usuarioId) {
-        const solicitud = await this.solicitudRepository.findOne({
-            where: { solicitudId },
-            relations: ['tipoPermiso'],
-        });
-        if (!solicitud) {
-            throw new common_1.NotFoundException('Solicitud no encontrada');
-        }
-        if (solicitud.estado !== solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE) {
-            throw new common_1.BadRequestException('La solicitud ya no está pendiente');
-        }
-        const diasSolicitados = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
-        if (solicitud.tipoPermiso?.descuentaVacaciones) {
-            const saldo = await this.vacacionSaldoRepository.findOne({
-                where: { empleadoId: solicitud.empleadoId },
+        try {
+            const solicitud = await this.solicitudRepository.findOne({
+                where: { solicitudId },
+                relations: ['tipoPermiso'],
             });
-            if (saldo) {
-                saldo.diasDisponibles = saldo.diasDisponibles - diasSolicitados;
-                saldo.diasUsados = saldo.diasUsados + diasSolicitados;
-                await this.vacacionSaldoRepository.save(saldo);
-                await this.vacacionMovimientoRepository.save({
-                    empleadoId: solicitud.empleadoId,
-                    solicitudId: solicitudId,
-                    tipo: vacacion_movimiento_entity_1.VacacionMovimiento.TIPO_CONSUMO,
-                    dias: diasSolicitados,
-                    fecha: new Date(),
-                    comentario: `Uso por solicitud #${solicitudId}`,
-                });
+            if (!solicitud) {
+                throw new common_1.NotFoundException('Solicitud no encontrada');
             }
+            if (solicitud.estado !== solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE) {
+                throw new common_1.BadRequestException('La solicitud ya no está pendiente');
+            }
+            const diasSolicitados = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
+            if (solicitud.tipoPermiso?.descuentaVacaciones) {
+                const saldo = await this.vacacionSaldoRepository.findOne({
+                    where: { empleadoId: solicitud.empleadoId },
+                });
+                if (saldo) {
+                    const disponiblesActuales = Number(saldo.diasDisponibles);
+                    const usadosActuales = Number(saldo.diasUsados);
+                    await this.vacacionSaldoRepository.update(saldo.saldoId, {
+                        diasDisponibles: disponiblesActuales - diasSolicitados,
+                        diasUsados: usadosActuales + diasSolicitados
+                    });
+                    await this.vacacionMovimientoRepository.save({
+                        empleadoId: solicitud.empleadoId,
+                        solicitudId: solicitudId,
+                        tipo: vacacion_movimiento_entity_1.VacacionMovimiento.TIPO_CONSUMO,
+                        dias: diasSolicitados,
+                        fecha: new Date(),
+                        comentario: `Uso por solicitud #${solicitudId}`,
+                    });
+                }
+            }
+            solicitud.estado = solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_APROBADO;
+            await this.solicitudRepository.save(solicitud);
+            await this.decisionRepository.save({
+                solicitudId,
+                usuarioId,
+                decision: decision_permiso_entity_1.DecisionPermiso.DECISION_APROBADO,
+                comentario,
+                fechaHora: new Date(),
+            });
+            await this.auditRepository.save({
+                usuarioId,
+                modulo: 'PERMISOS',
+                accion: 'APPROVE',
+                entidad: 'SOLICITUD_PERMISO',
+                entidadId: solicitudId,
+                detalle: `Solicitud aprobada: ${diasSolicitados} días`,
+            });
+            return { message: 'Solicitud aprobada correctamente' };
         }
-        solicitud.estado = solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_APROBADO;
-        await this.solicitudRepository.save(solicitud);
-        await this.decisionRepository.save({
-            solicitudId,
-            usuarioId,
-            decision: decision_permiso_entity_1.DecisionPermiso.DECISION_APROBADO,
-            comentario,
-            fechaHora: new Date(),
-        });
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'PERMISOS',
-            accion: 'APPROVE',
-            entidad: 'SOLICITUD_PERMISO',
-            entidadId: solicitudId,
-            detalle: `Solicitud aprobada: ${diasSolicitados} días`,
-        });
-        return { message: 'Solicitud aprobada correctamente' };
+        catch (error) {
+            console.error('ERROR IN APPROVE:', error);
+            throw error;
+        }
     }
     async rejectRequest(solicitudId, comentario, usuarioId) {
         const solicitud = await this.solicitudRepository.findOne({

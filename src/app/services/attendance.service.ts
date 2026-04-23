@@ -43,6 +43,7 @@ export interface TeamAttendance {
   nombreCompleto: string;
   codigoEmpleado: string;
   departamento: string;
+  puesto?: string;
   asistencia: AttendanceRecord | null;
 }
 

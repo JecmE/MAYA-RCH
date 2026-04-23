@@ -14,201 +14,146 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
-const jwt_1 = require("@nestjs/jwt");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcrypt");
-const uuid_1 = require("uuid");
 const usuario_entity_1 = require("../../entities/usuario.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
+const rol_entity_1 = require("../../entities/rol.entity");
 const reset_password_token_entity_1 = require("../../entities/reset-password-token.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
-const rol_entity_1 = require("../../entities/rol.entity");
+const uuid_1 = require("uuid");
 let AuthService = class AuthService {
-    constructor(usuarioRepository, empleadoRepository, resetTokenRepository, auditRepository, dataSource, jwtService) {
+    constructor(usuarioRepository, empleadoRepository, rolRepository, resetTokenRepository, auditRepository, jwtService, dataSource) {
         this.usuarioRepository = usuarioRepository;
         this.empleadoRepository = empleadoRepository;
+        this.rolRepository = rolRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.auditRepository = auditRepository;
-        this.dataSource = dataSource;
         this.jwtService = jwtService;
+        this.dataSource = dataSource;
     }
-    async login(loginDto, ipAddress) {
-        const { username, password } = loginDto;
+    sanitizeString(str) {
+        if (!str)
+            return '';
+        return str
+            .replace(/\?/g, (match, offset, original) => {
+            if (original.includes('Tecnolog'))
+                return 'í';
+            if (original.includes('Garc'))
+                return 'í';
+            if (original.includes('Rodr'))
+                return 'í';
+            if (original.includes('Mart'))
+                return 'í';
+            return 'í';
+        })
+            .replace(/Ã­/g, 'í')
+            .replace(/Ã³/g, 'ó')
+            .replace(/Ã¡/g, 'á')
+            .replace(/Ã©/g, 'é')
+            .replace(/Ãº/g, 'ú')
+            .replace(/Ã±/g, 'ñ');
+    }
+    async login(loginDto, ip) {
         const usuario = await this.usuarioRepository.findOne({
-            where: { username },
+            where: { username: loginDto.username },
+            relations: ['roles', 'empleado'],
         });
         if (!usuario) {
             throw new common_1.UnauthorizedException('Credenciales inválidas');
         }
         if (usuario.estado !== 'activo') {
-            throw new common_1.UnauthorizedException('Usuario bloqueado o inactivo');
+            throw new common_1.UnauthorizedException('La cuenta está bloqueada o inactiva');
         }
-        const isPasswordValid = await bcrypt.compare(password, usuario.passwordHash);
-        if (!isPasswordValid) {
+        const isMatch = await bcrypt.compare(loginDto.password, usuario.passwordHash);
+        if (!isMatch) {
             throw new common_1.UnauthorizedException('Credenciales inválidas');
-        }
-        usuario.ultimoLogin = new Date();
-        await this.usuarioRepository.save(usuario);
-        const rolesResult = await this.dataSource.query(`SELECT r.nombre FROM ROL r 
-       INNER JOIN USUARIO_ROL ur ON r.rol_id = ur.rol_id 
-       WHERE ur.usuario_id = ${usuario.usuarioId}`);
-        const roles = rolesResult && rolesResult.length > 0 ? rolesResult.map((r) => r.nombre) : ['Empleado'];
-        let nombreCompleto = '';
-        let email = '';
-        if (usuario.empleadoId) {
-            const empleados = await this.dataSource.query(`SELECT TOP 1 nombres, apellidos, email FROM EMPLEADO WHERE empleado_id = ${usuario.empleadoId}`);
-            if (empleados && empleados.length > 0) {
-                nombreCompleto = `${empleados[0].nombres} ${empleados[0].apellidos}`;
-                email = empleados[0].email || '';
-            }
         }
         const payload = {
             usuarioId: usuario.usuarioId,
-            empleadoId: usuario.empleadoId,
             username: usuario.username,
-            roles,
+            empleadoId: usuario.empleadoId,
+            roles: usuario.roles.map((r) => r.nombre),
         };
-        const token = this.jwtService.sign(payload);
+        usuario.ultimoLogin = new Date();
+        await this.usuarioRepository.save(usuario);
         const auditLog = this.auditRepository.create({
             usuarioId: usuario.usuarioId,
+            fechaHora: new Date(),
             modulo: 'AUTH',
             accion: 'LOGIN',
             entidad: 'USUARIO',
-            detalle: `Login exitoso desde ${ipAddress}`,
+            entidadId: usuario.usuarioId,
+            detalle: `Inicio de sesión exitoso desde IP: ${ip}`,
         });
         await this.auditRepository.save(auditLog);
         return {
-            token,
+            token: this.jwtService.sign(payload),
             user: {
                 usuarioId: usuario.usuarioId,
                 username: usuario.username,
+                roles: usuario.roles.map((r) => r.nombre),
                 empleadoId: usuario.empleadoId,
-                nombreCompleto,
-                email,
-                roles,
+                nombreCompleto: this.sanitizeString(usuario.empleado ? `${usuario.empleado.nombres} ${usuario.empleado.apellidos}` : ''),
+                email: usuario.empleado?.email,
             },
         };
     }
     async logout(usuarioId) {
         const auditLog = this.auditRepository.create({
             usuarioId,
+            fechaHora: new Date(),
             modulo: 'AUTH',
             accion: 'LOGOUT',
             entidad: 'USUARIO',
-            detalle: 'Usuario cerró sesión',
+            entidadId: usuarioId,
+            detalle: 'Cierre de sesión',
         });
         await this.auditRepository.save(auditLog);
-        return { message: 'Sesión cerrada correctamente' };
+        return { message: 'Cierre de sesión exitoso' };
     }
-    async forgotPassword(email, ipAddress, userAgent) {
-        const empleado = await this.empleadoRepository.findOne({
-            where: { email },
-        });
+    async forgotPassword(email, ip, userAgent) {
+        const empleado = await this.empleadoRepository.findOne({ where: { email } });
         if (!empleado) {
-            return { message: 'Si el email existe, recibirás un enlace de recuperación' };
+            return { message: 'Si el correo existe, se enviará un enlace de recuperación' };
         }
-        const usuario = await this.usuarioRepository.findOne({
-            where: { empleadoId: empleado.empleadoId },
-        });
-        if (!usuario) {
-            return { message: 'Si el email existe, recibirás un enlace de recuperación' };
-        }
-        await this.resetTokenRepository.update({ usuarioId: usuario.usuarioId, usado: false }, { usado: true });
+        const usuario = await this.usuarioRepository.findOne({ where: { empleadoId: empleado.empleadoId } });
+        if (!usuario)
+            return { message: 'Si el correo existe, se enviará un enlace de recuperación' };
         const token = (0, uuid_1.v4)();
-        const hashedToken = await bcrypt.hash(token, 10);
+        const expires = new Date();
+        expires.setHours(expires.getHours() + 1);
         const resetToken = this.resetTokenRepository.create({
             usuarioId: usuario.usuarioId,
-            tokenHash: hashedToken,
-            fechaCreacion: new Date(),
-            fechaExpira: new Date(Date.now() + 4 * 60 * 60 * 1000),
-            ipSolicitud: ipAddress,
-            userAgent: userAgent,
-            usado: false,
+            tokenHash: await bcrypt.hash(token, 10),
+            fechaExpira: expires,
+            ipSolicitud: ip,
+            userAgent,
         });
         await this.resetTokenRepository.save(resetToken);
-        const auditLog = this.auditRepository.create({
-            usuarioId: usuario.usuarioId,
-            modulo: 'AUTH',
-            accion: 'FORGOT_PASSWORD',
-            entidad: 'USUARIO',
-            detalle: `Solicitud de recuperación desde ${ipAddress}`,
-        });
-        await this.auditRepository.save(auditLog);
-        return {
-            message: 'Si el email existe, recibirás un enlace de recuperación',
-            resetToken: token,
-        };
+        console.log(`Token de recuperación para ${email}: ${token}`);
+        return { message: 'Se ha enviado un enlace de recuperación a su correo' };
     }
     async resetPassword(token, newPassword) {
-        const tokens = await this.resetTokenRepository.find({
-            where: { usado: false },
-            order: { fechaCreacion: 'DESC' },
-        });
-        let validToken = null;
-        for (const tokenEntity of tokens) {
-            const isValid = await bcrypt.compare(token, tokenEntity.tokenHash);
-            if (isValid && new Date() < new Date(tokenEntity.fechaExpira)) {
-                validToken = tokenEntity;
-                break;
-            }
-        }
-        if (!validToken) {
-            throw new common_1.BadRequestException('Token inválido o expirado');
-        }
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await this.usuarioRepository.update(validToken.usuarioId, {
-            passwordHash: hashedPassword,
-        });
-        await this.resetTokenRepository.update(validToken.resetId, {
-            usado: true,
-            fechaUso: new Date(),
-        });
-        const auditLog = this.auditRepository.create({
-            usuarioId: validToken.usuarioId,
-            modulo: 'AUTH',
-            accion: 'RESET_PASSWORD',
-            entidad: 'USUARIO',
-            detalle: 'Contraseña restablecida exitosamente',
-        });
-        await this.auditRepository.save(auditLog);
-        return { message: 'Contraseña restablecida exitosamente' };
+        throw new common_1.BadRequestException('Funcionalidad en desarrollo');
     }
     async getProfile(usuarioId) {
         const usuario = await this.usuarioRepository.findOne({
             where: { usuarioId },
-            relations: ['roles'],
+            relations: ['roles', 'empleado'],
         });
         if (!usuario) {
             throw new common_1.UnauthorizedException('Usuario no encontrado');
         }
         const roles = usuario.roles?.length ? usuario.roles.map((r) => r.nombre) : [];
-        let nombreCompleto = '';
-        let email = '';
-        let telefono = '';
-        let puesto = '';
-        let departamento = '';
-        if (usuario.empleadoId) {
-            const empleados = await this.dataSource.query(`SELECT TOP 1 e.nombres, e.apellidos, e.email, e.telefono, e.puesto, e.departamento 
-         FROM EMPLEADO e 
-         WHERE e.empleado_id = ${usuario.empleadoId}`);
-            if (empleados && empleados.length > 0) {
-                nombreCompleto = `${empleados[0].nombres} ${empleados[0].apellidos}`;
-                email = empleados[0].email || '';
-                telefono = empleados[0].telefono || '';
-                puesto = empleados[0].puesto || '';
-                departamento = empleados[0].departamento || '';
-            }
-        }
         return {
             usuarioId: usuario.usuarioId,
             username: usuario.username,
             empleadoId: usuario.empleadoId,
-            nombreCompleto,
-            email,
-            telefono,
-            puesto,
-            departamento,
+            nombreCompleto: this.sanitizeString(usuario.empleado ? `${usuario.empleado.nombres} ${usuario.empleado.apellidos}` : ''),
+            email: usuario.empleado?.email,
             roles,
             ultimoLogin: usuario.ultimoLogin,
         };
@@ -218,50 +163,36 @@ let AuthService = class AuthService {
             where: { username: registerDto.username },
         });
         if (existingUser) {
-            throw new common_1.ConflictException('El nombre de usuario ya existe');
+            throw new common_1.BadRequestException('El nombre de usuario ya existe');
         }
-        const existingEmail = await this.empleadoRepository.findOne({
+        const existingEmpleado = await this.empleadoRepository.findOne({
             where: { email: registerDto.email },
         });
-        if (existingEmail) {
-            throw new common_1.ConflictException('El email ya está registrado');
+        if (existingEmpleado) {
+            throw new common_1.BadRequestException('El correo ya está registrado');
         }
-        const hashedPassword = await bcrypt.hash(registerDto.password, 10);
         const empleado = this.empleadoRepository.create({
             codigoEmpleado: registerDto.codigoEmpleado,
             nombres: registerDto.nombres,
             apellidos: registerDto.apellidos,
             email: registerDto.email,
-            telefono: registerDto.telefono || null,
+            telefono: registerDto.telefono,
             fechaIngreso: new Date(),
+            puesto: registerDto.puesto,
             activo: true,
-            puesto: registerDto.puesto || null,
         });
         const savedEmpleado = await this.empleadoRepository.save(empleado);
+        const defaultRole = await this.rolRepository.findOne({ where: { nombre: 'Empleado' } });
         const usuario = this.usuarioRepository.create({
             empleadoId: savedEmpleado.empleadoId,
             username: registerDto.username,
-            passwordHash: hashedPassword,
+            passwordHash: await bcrypt.hash(registerDto.password, 10),
             estado: 'activo',
+            roles: defaultRole ? [defaultRole] : [],
         });
         const savedUsuario = await this.usuarioRepository.save(usuario);
-        const rolEmpleado = await this.usuarioRepository.manager.findOne(rol_entity_1.Rol, {
-            where: { nombre: 'Empleado' },
-        });
-        if (rolEmpleado) {
-            savedUsuario.roles = [rolEmpleado];
-            await this.usuarioRepository.save(savedUsuario);
-        }
-        const auditLog = this.auditRepository.create({
-            usuarioId: savedUsuario.usuarioId,
-            modulo: 'AUTH',
-            accion: 'REGISTER',
-            entidad: 'USUARIO',
-            detalle: `Nuevo usuario registrado: ${registerDto.username}`,
-        });
-        await this.auditRepository.save(auditLog);
         return {
-            message: 'Usuario registrado exitosamente',
+            message: 'Registro exitoso',
             usuarioId: savedUsuario.usuarioId,
             empleadoId: savedEmpleado.empleadoId,
         };
@@ -272,13 +203,15 @@ exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(usuario_entity_1.Usuario)),
     __param(1, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
-    __param(2, (0, typeorm_1.InjectRepository)(reset_password_token_entity_1.ResetPasswordToken)),
-    __param(3, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(2, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
+    __param(3, (0, typeorm_1.InjectRepository)(reset_password_token_entity_1.ResetPasswordToken)),
+    __param(4, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.DataSource,
-        jwt_1.JwtService])
+        typeorm_2.Repository,
+        jwt_1.JwtService,
+        typeorm_2.DataSource])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

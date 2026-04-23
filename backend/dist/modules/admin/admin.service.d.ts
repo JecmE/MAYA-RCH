@@ -11,6 +11,7 @@ import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 export declare class AdminService {
     private turnoRepository;
     private tipoPermisoRepository;
@@ -24,7 +25,8 @@ export declare class AdminService {
     private registroAsistenciaRepository;
     private kpiMensualRepository;
     private vacacionMovimientoRepository;
-    constructor(turnoRepository: Repository<Turno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>);
+    private registroTiempoRepository;
+    constructor(turnoRepository: Repository<Turno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>);
     getShifts(): Promise<{
         turnoId: number;
         nombre: string;

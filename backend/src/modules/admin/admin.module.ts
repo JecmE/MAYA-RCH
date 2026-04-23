@@ -15,6 +15,7 @@ import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
       RegistroAsistencia,
       KpiMensual,
       VacacionMovimiento,
+      RegistroTiempo,
     ]),
   ],
   controllers: [AdminController],

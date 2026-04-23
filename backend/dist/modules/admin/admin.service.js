@@ -28,8 +28,9 @@ const solicitud_permiso_entity_1 = require("../../entities/solicitud-permiso.ent
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
+const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity");
 let AdminService = class AdminService {
-    constructor(turnoRepository, tipoPermisoRepository, parametroRepository, auditRepository, rolRepository, reglaBonoRepository, usuarioRepository, empleadoRepository, solicitudPermisoRepository, registroAsistenciaRepository, kpiMensualRepository, vacacionMovimientoRepository) {
+    constructor(turnoRepository, tipoPermisoRepository, parametroRepository, auditRepository, rolRepository, reglaBonoRepository, usuarioRepository, empleadoRepository, solicitudPermisoRepository, registroAsistenciaRepository, kpiMensualRepository, vacacionMovimientoRepository, registroTiempoRepository) {
         this.turnoRepository = turnoRepository;
         this.tipoPermisoRepository = tipoPermisoRepository;
         this.parametroRepository = parametroRepository;
@@ -42,6 +43,7 @@ let AdminService = class AdminService {
         this.registroAsistenciaRepository = registroAsistenciaRepository;
         this.kpiMensualRepository = kpiMensualRepository;
         this.vacacionMovimientoRepository = vacacionMovimientoRepository;
+        this.registroTiempoRepository = registroTiempoRepository;
     }
     async getShifts() {
         const turnos = await this.turnoRepository.find({
@@ -281,8 +283,8 @@ let AdminService = class AdminService {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const currentMonth = today.getMonth() + 1;
         const currentYear = today.getFullYear();
-        const [teamSize, pendingPermissions, teamTardias, teamKpis] = await Promise.all([
-            this.empleadoRepository.count({ where: { supervisorId } }),
+        const [teamSize, pendingPermissions, teamTardias, teamKpis, pendingTimesheets] = await Promise.all([
+            this.empleadoRepository.count({ where: { supervisorId, activo: true } }),
             this.solicitudPermisoRepository
                 .createQueryBuilder('sp')
                 .innerJoin('sp.empleado', 'emp')
@@ -305,11 +307,17 @@ let AdminService = class AdminService {
                 .andWhere('kpi.mes = :mes', { mes: currentMonth })
                 .select('AVG(kpi.cumplimientoPct)', 'avgCumplimiento')
                 .getRawOne(),
+            this.registroTiempoRepository
+                .createQueryBuilder('rt')
+                .innerJoin('rt.empleado', 'emp')
+                .where('emp.supervisorId = :supervisorId', { supervisorId })
+                .andWhere('rt.estado = :estado', { estado: 'pendiente' })
+                .getCount(),
         ]);
         return {
             empleadosACargo: teamSize,
             permisosPendientes: pendingPermissions,
-            horasPendientes: 0,
+            horasPendientes: pendingTimesheets,
             kpiPromedio: teamKpis?.avgCumplimiento ? Math.round(Number(teamKpis.avgCumplimiento)) : 0,
         };
     }
@@ -329,7 +337,9 @@ exports.AdminService = AdminService = __decorate([
     __param(9, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
     __param(10, (0, typeorm_1.InjectRepository)(kpi_mensual_entity_1.KpiMensual)),
     __param(11, (0, typeorm_1.InjectRepository)(vacacion_movimiento_entity_1.VacacionMovimiento)),
+    __param(12, (0, typeorm_1.InjectRepository)(registro_tiempo_entity_1.RegistroTiempo)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

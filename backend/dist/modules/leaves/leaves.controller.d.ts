@@ -34,7 +34,28 @@ export declare class LeavesController {
             rutaUrl: string;
         }[];
     }[]>;
-    getPending(req: any): Promise<any>;
+    getPending(req: any): Promise<{
+        solicitudId: number;
+        empleadoId: number;
+        empleado: {
+            empleadoId: number;
+            nombreCompleto: string;
+            codigoEmpleado: string;
+        };
+        tipoPermiso: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        horasInicio: string;
+        horasFin: string;
+        motivo: string;
+        estado: string;
+        fechaSolicitud: Date;
+        adjuntos: {
+            adjuntoId: number;
+            nombreArchivo: string;
+            rutaUrl: string;
+        }[];
+    }[]>;
     approve(id: number, body: any, req: any): Promise<{
         message: string;
     }>;

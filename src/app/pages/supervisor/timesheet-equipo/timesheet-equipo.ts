@@ -143,12 +143,13 @@ export class TimesheetEquipo implements OnInit {
   }
 
   aprobarRegistro(id: number): void {
-    this.timesheetsService.approveEntry(id).subscribe({
+    const defaultComment = 'Registro aprobado por supervisor';
+    this.timesheetsService.approveEntry(id, defaultComment).subscribe({
       next: () => {
         const registro = this.registros.find((r) => r.id === id);
         if (registro) {
           registro.estado = 'Aprobado';
-          registro.comentario = 'Registro aprobado por supervisor';
+          registro.comentario = defaultComment;
           this.aplicarFiltros();
         }
       },
@@ -157,12 +158,13 @@ export class TimesheetEquipo implements OnInit {
   }
 
   rechazarRegistro(id: number): void {
-    this.timesheetsService.rejectEntry(id).subscribe({
+    const defaultComment = 'Registro rechazado por supervisor';
+    this.timesheetsService.rejectEntry(id, defaultComment).subscribe({
       next: () => {
         const registro = this.registros.find((r) => r.id === id);
         if (registro) {
           registro.estado = 'Rechazado';
-          registro.comentario = 'Registro rechazado por supervisor';
+          registro.comentario = defaultComment;
           this.aplicarFiltros();
         }
       },

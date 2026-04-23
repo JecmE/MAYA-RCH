@@ -21,6 +21,7 @@ import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 
 @Injectable()
 export class AdminService {
@@ -49,6 +50,8 @@ export class AdminService {
     private kpiMensualRepository: Repository<KpiMensual>,
     @InjectRepository(VacacionMovimiento)
     private vacacionMovimientoRepository: Repository<VacacionMovimiento>,
+    @InjectRepository(RegistroTiempo)
+    private registroTiempoRepository: Repository<RegistroTiempo>,
   ) {}
 
   async getShifts() {
@@ -332,36 +335,43 @@ export class AdminService {
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
 
-    const [teamSize, pendingPermissions, teamTardias, teamKpis] = await Promise.all([
-      this.empleadoRepository.count({ where: { supervisorId } }),
-      this.solicitudPermisoRepository
-        .createQueryBuilder('sp')
-        .innerJoin('sp.empleado', 'emp')
-        .where('emp.supervisorId = :supervisorId', { supervisorId })
-        .andWhere('sp.estado = :estado', { estado: 'pendiente' })
-        .getCount(),
-      this.registroAsistenciaRepository
-        .createQueryBuilder('ra')
-        .innerJoin('ra.empleado', 'emp')
-        .where('emp.supervisorId = :supervisorId', { supervisorId })
-        .andWhere('ra.fecha >= :today', { today })
-        .andWhere('ra.fecha < :tomorrow', { tomorrow })
-        .andWhere('ra.minutosTardia > 0')
-        .getCount(),
-      this.kpiMensualRepository
-        .createQueryBuilder('kpi')
-        .innerJoin('kpi.empleado', 'emp')
-        .where('emp.supervisorId = :supervisorId', { supervisorId })
-        .andWhere('kpi.anio = :anio', { anio: currentYear })
-        .andWhere('kpi.mes = :mes', { mes: currentMonth })
-        .select('AVG(kpi.cumplimientoPct)', 'avgCumplimiento')
-        .getRawOne(),
-    ]);
+    const [teamSize, pendingPermissions, teamTardias, teamKpis, pendingTimesheets] =
+      await Promise.all([
+        this.empleadoRepository.count({ where: { supervisorId, activo: true } }),
+        this.solicitudPermisoRepository
+          .createQueryBuilder('sp')
+          .innerJoin('sp.empleado', 'emp')
+          .where('emp.supervisorId = :supervisorId', { supervisorId })
+          .andWhere('sp.estado = :estado', { estado: 'pendiente' })
+          .getCount(),
+        this.registroAsistenciaRepository
+          .createQueryBuilder('ra')
+          .innerJoin('ra.empleado', 'emp')
+          .where('emp.supervisorId = :supervisorId', { supervisorId })
+          .andWhere('ra.fecha >= :today', { today })
+          .andWhere('ra.fecha < :tomorrow', { tomorrow })
+          .andWhere('ra.minutosTardia > 0')
+          .getCount(),
+        this.kpiMensualRepository
+          .createQueryBuilder('kpi')
+          .innerJoin('kpi.empleado', 'emp')
+          .where('emp.supervisorId = :supervisorId', { supervisorId })
+          .andWhere('kpi.anio = :anio', { anio: currentYear })
+          .andWhere('kpi.mes = :mes', { mes: currentMonth })
+          .select('AVG(kpi.cumplimientoPct)', 'avgCumplimiento')
+          .getRawOne(),
+        this.registroTiempoRepository
+          .createQueryBuilder('rt')
+          .innerJoin('rt.empleado', 'emp')
+          .where('emp.supervisorId = :supervisorId', { supervisorId })
+          .andWhere('rt.estado = :estado', { estado: 'pendiente' })
+          .getCount(),
+      ]);
 
     return {
       empleadosACargo: teamSize,
       permisosPendientes: pendingPermissions,
-      horasPendientes: 0,
+      horasPendientes: pendingTimesheets,
       kpiPromedio: teamKpis?.avgCumplimiento ? Math.round(Number(teamKpis.avgCumplimiento)) : 0,
     };
   }
