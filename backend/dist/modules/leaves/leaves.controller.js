@@ -22,8 +22,23 @@ let LeavesController = class LeavesController {
     constructor(leavesService) {
         this.leavesService = leavesService;
     }
-    getTypes() {
-        return this.leavesService.getTiposPermiso();
+    getTypes(todos) {
+        return this.leavesService.getTiposPermiso(todos === 'true');
+    }
+    createType(dto, req) {
+        return this.leavesService.createTipoPermiso(dto, req.user.usuarioId);
+    }
+    updateType(id, dto, req) {
+        return this.leavesService.updateTipoPermiso(id, dto, req.user.usuarioId);
+    }
+    getAllRequests() {
+        return this.leavesService.getAllRequests();
+    }
+    getAllBalances() {
+        return this.leavesService.getAllBalances();
+    }
+    getMovements() {
+        return this.leavesService.getVacationMovements();
     }
     createRequest(createDto, req) {
         return this.leavesService.createRequest(createDto, req.user.empleadoId);
@@ -46,6 +61,9 @@ let LeavesController = class LeavesController {
     getEmployeeVacationBalance(employeeId) {
         return this.leavesService.getVacationBalance(employeeId);
     }
+    adjustBalance(dto, req) {
+        return this.leavesService.adjustVacationBalance(dto, req.user.usuarioId);
+    }
     getAttachment(fileName, res) {
         return this.leavesService.getAttachment(fileName, res);
     }
@@ -53,10 +71,51 @@ let LeavesController = class LeavesController {
 exports.LeavesController = LeavesController;
 __decorate([
     (0, common_1.Get)('types'),
+    __param(0, (0, common_1.Query)('todos')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "getTypes", null);
+__decorate([
+    (0, common_1.Post)('types'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "createType", null);
+__decorate([
+    (0, common_1.Put)('types/:id'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "updateType", null);
+__decorate([
+    (0, common_1.Get)('all'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], LeavesController.prototype, "getTypes", null);
+], LeavesController.prototype, "getAllRequests", null);
+__decorate([
+    (0, common_1.Get)('balances'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "getAllBalances", null);
+__decorate([
+    (0, common_1.Get)('movements'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "getMovements", null);
 __decorate([
     (0, common_1.Post)('request'),
     __param(0, (0, common_1.Body)()),
@@ -115,6 +174,15 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], LeavesController.prototype, "getEmployeeVacationBalance", null);
+__decorate([
+    (0, common_1.Post)('balances/adjust'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], LeavesController.prototype, "adjustBalance", null);
 __decorate([
     (0, common_1.Get)('attachment/:fileName'),
     __param(0, (0, common_1.Param)('fileName')),

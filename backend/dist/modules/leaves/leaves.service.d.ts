@@ -19,12 +19,64 @@ export declare class LeavesService {
     private adjuntoRepository;
     private dataSource;
     constructor(solicitudRepository: Repository<SolicitudPermiso>, tipoPermisoRepository: Repository<TipoPermiso>, decisionRepository: Repository<DecisionPermiso>, vacacionSaldoRepository: Repository<VacacionSaldo>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, empleadoRepository: Repository<Empleado>, auditRepository: Repository<AuditLog>, adjuntoRepository: Repository<AdjuntoSolicitud>, dataSource: DataSource);
-    getTiposPermiso(): Promise<{
-        tipoPermisoId: number;
+    getTiposPermiso(todos?: boolean): Promise<{
         nombre: string;
+        tipoPermisoId: number;
         requiereDocumento: boolean;
         descuentaVacaciones: boolean;
+        activo: boolean;
+        solicitudes: SolicitudPermiso[];
     }[]>;
+    createTipoPermiso(dto: any, usuarioId: number): Promise<TipoPermiso>;
+    updateTipoPermiso(id: number, dto: any, usuarioId: number): Promise<any>;
+    getAllRequests(): Promise<{
+        empleadoNombre: string;
+        departamento: string;
+        tipoPermisoNombre: string;
+        diasSolicitados: number;
+        diasDisponibles: number;
+        solicitudId: number;
+        empleadoId: number;
+        tipoPermisoId: number;
+        fechaInicio: Date;
+        fechaFin: Date;
+        horasInicio: string;
+        horasFin: string;
+        motivo: string;
+        estado: string;
+        fechaSolicitud: Date;
+        empleado: Empleado;
+        tipoPermiso: TipoPermiso;
+        decisiones: DecisionPermiso[];
+        adjuntos: AdjuntoSolicitud[];
+        vacacionMovimientos: VacacionMovimiento[];
+    }[]>;
+    getAllBalances(): Promise<{
+        empleadoNombre: string;
+        departamento: string;
+        saldoId: number;
+        empleadoId: number;
+        diasDisponibles: number;
+        diasUsados: number;
+        fechaCorte: Date;
+        empleado: Empleado;
+    }[]>;
+    getVacationMovements(): Promise<{
+        empleadoNombre: string;
+        movimientoId: number;
+        empleadoId: number;
+        solicitudId: number;
+        tipo: string;
+        dias: number;
+        fecha: Date;
+        comentario: string;
+        empleado: Empleado;
+        solicitud: SolicitudPermiso;
+    }[]>;
+    adjustVacationBalance(dto: any, usuarioId: number): Promise<{
+        message: string;
+    }>;
+    private sanitizeString;
     private calculateDays;
     createRequest(createDto: any, empleadoId: number): Promise<{
         solicitudId: number;
@@ -32,50 +84,8 @@ export declare class LeavesService {
         mensaje: string;
     }>;
     private saveAttachment;
-    getAttachment(fileName: string, res: any): Promise<void>;
-    getMyRequests(empleadoId: number): Promise<{
-        solicitudId: number;
-        tipoPermiso: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        horasInicio: string;
-        horasFin: string;
-        motivo: string;
-        estado: string;
-        fechaSolicitud: Date;
-        decisiones: {
-            decision: string;
-            comentario: string;
-            fechaHora: Date;
-        }[];
-        adjuntos: {
-            adjuntoId: number;
-            nombreArchivo: string;
-            rutaUrl: string;
-        }[];
-    }[]>;
-    getPendingRequests(supervisorEmpleadoId: number): Promise<{
-        solicitudId: number;
-        empleadoId: number;
-        empleado: {
-            empleadoId: number;
-            nombreCompleto: string;
-            codigoEmpleado: string;
-        };
-        tipoPermiso: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        horasInicio: string;
-        horasFin: string;
-        motivo: string;
-        estado: string;
-        fechaSolicitud: Date;
-        adjuntos: {
-            adjuntoId: number;
-            nombreArchivo: string;
-            rutaUrl: string;
-        }[];
-    }[]>;
+    getMyRequests(empleadoId: number): Promise<SolicitudPermiso[]>;
+    getPendingRequests(supervisorEmpleadoId: number): Promise<SolicitudPermiso[]>;
     approveRequest(solicitudId: number, comentario: string, usuarioId: number): Promise<{
         message: string;
     }>;
@@ -86,8 +96,7 @@ export declare class LeavesService {
         empleadoId: number;
         diasDisponibles: number;
         diasUsados: number;
-        diasLibres: number;
         diasTotales: number;
-        fechaCorte: Date;
     }>;
+    getAttachment(fileName: string, res: any): Promise<void>;
 }

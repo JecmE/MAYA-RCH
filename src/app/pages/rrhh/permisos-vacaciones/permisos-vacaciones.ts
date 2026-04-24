@@ -1,26 +1,30 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { LeavesService, SolicitudPermiso, TipoPermiso } from '../../../services/leaves.service';
+import { LeavesService } from '../../../services/leaves.service';
 
 interface SolicitudItem {
-  id: string;
+  id: number;
   empleado: string;
+  departamento: string;
   tipo: string;
   fechaSolicitud: string;
   periodo: string;
-  saldo: string;
-  estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
+  estado: string;
   comentario: string;
-  adjunto: 'Si' | 'No';
+  hasAdjunto: boolean;
+  diasSolicitados: number;
+  diasDisponibles: number;
 }
 
 interface SaldoItem {
+  empleadoId: number;
   empleado: string;
+  departamento: string;
   disponibles: number;
   usados: number;
-  restantes: number;
+  totales: number;
 }
 
 interface MovimientoItem {
@@ -29,24 +33,6 @@ interface MovimientoItem {
   fecha: string;
   cantidad: number;
   motivo: string;
-}
-
-interface TipoPermisoItem {
-  nombre: string;
-  requiereDoc: 'Si' | 'No';
-  descuentaVacaciones: 'Si' | 'No';
-  estado: 'Activo' | 'Inactivo';
-}
-
-interface NuevaSolicitudForm {
-  empleado: string;
-  tipo: string;
-  fechaSolicitud: string;
-  periodo: string;
-  saldo: string;
-  estado: 'Pendiente' | 'Aprobado' | 'Rechazado';
-  comentario: string;
-  adjunto: 'Si' | 'No';
 }
 
 @Component({
@@ -60,299 +46,262 @@ export class PermisosVacaciones implements OnInit {
   activeTab: 'solicitudes' | 'saldos' | 'movimientos' | 'tipos' = 'solicitudes';
 
   filtroBusqueda = '';
-  filtroTipo = 'Todos los tipos';
-  filtroEstado = 'Todos los estados';
+  filtroEstado = 'Todos';
+  filtroTipo = 'Todos';
+  filtroDepartamento = 'Todos los departamentos';
 
   modalDetalle = false;
-  modalNuevaSolicitud = false;
+  modalTipo = false;
+  modalAjusteSaldo = false;
+  modoEdicionTipo = false;
+  isProcessing = false;
 
-  solicitudSeleccionada: SolicitudItem | null = null;
+  solicitudSeleccionada: any = null;
+  comentarioIntervencion = '';
+
+  tipoEditando: any = { nombre: '', requiereDocumento: false, descuentaVacaciones: false, activo: true };
+  ajusteSaldo: any = { empleadoId: 0, empleadoNombre: '', dias: 0, motivo: '' };
 
   mostrarMensajeExito = false;
   mensajeExito = '';
 
-  nuevaSolicitud: NuevaSolicitudForm = this.crearFormularioSolicitudVacio();
-
   solicitudes: SolicitudItem[] = [];
   saldosData: SaldoItem[] = [];
   movimientosData: MovimientoItem[] = [];
-  tiposData: TipoPermisoItem[] = [];
+  tiposData: any[] = [];
 
   constructor(
     private router: Router,
     private leavesService: LeavesService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadData();
   }
 
-  private loadData(): void {
-    this.leavesService.getMyRequests().subscribe({
-      next: (data: SolicitudPermiso[]) => {
-        this.solicitudes = data.map((s) => this.mapSolicitudToItem(s));
-      },
-      error: () => {
-        this.solicitudes = [];
-      },
-    });
-
-    this.leavesService.getTypes().subscribe({
-      next: (data: TipoPermiso[]) => {
-        this.tiposData = data.map((t) => this.mapTipoToItem(t));
-      },
-      error: () => {
-        this.tiposData = [];
-      },
-    });
-
-    this.leavesService.getVacationBalance().subscribe({
-      next: (balance) => {
-        this.saldosData = [
-          {
-            empleado: 'Empleado Actual',
-            disponibles: balance.diasTotales,
-            usados: balance.diasUsados,
-            restantes: balance.diasDisponibles,
-          },
-        ];
-      },
-      error: () => {
-        this.saldosData = [];
-      },
-    });
+  setTab(tab: 'solicitudes' | 'saldos' | 'movimientos' | 'tipos'): void {
+    this.activeTab = tab;
+    this.loadData();
   }
 
-  private mapSolicitudToItem(s: SolicitudPermiso): SolicitudItem {
-    return {
-      id: s.solicitudId?.toString() || '',
-      empleado: `Empleado ${s.empleadoId}`,
-      tipo: s.tipoPermiso?.nombre || 'Permiso',
-      fechaSolicitud: s.fechaSolicitud || new Date().toLocaleDateString(),
-      periodo: `${s.fechaInicio} - ${s.fechaFin}`,
-      saldo: '',
-      estado: (s.estado as 'Pendiente' | 'Aprobado' | 'Rechazado') || 'Pendiente',
-      comentario: s.motivo || '',
-      adjunto: 'No',
-    };
+  loadData(): void {
+    if (this.activeTab === 'solicitudes') {
+      this.leavesService.getAllRequests().subscribe(data => {
+        this.solicitudes = data.map(s => ({
+          id: s.solicitudId,
+          empleado: s.empleadoNombre,
+          departamento: s.departamento || '-',
+          tipo: s.tipoPermisoNombre || 'Sin tipo',
+          fechaSolicitud: this.formatDate(s.fechaSolicitud),
+          periodo: `${this.formatDate(s.fechaInicio)} - ${this.formatDate(s.fechaFin)}`,
+          estado: this.capitalize(s.estado),
+          comentario: s.motivo || '',
+          hasAdjunto: s.adjuntos && s.adjuntos.length > 0,
+          diasSolicitados: s.diasSolicitados,
+          diasDisponibles: s.diasDisponibles
+        }));
+        this.cdr.detectChanges();
+      });
+    } else if (this.activeTab === 'saldos') {
+      this.leavesService.getAllBalances().subscribe(data => {
+        this.saldosData = data.map(s => ({
+          empleadoId: s.empleadoId,
+          empleado: s.empleadoNombre,
+          departamento: s.departamento || '-',
+          disponibles: s.diasDisponibles,
+          usados: s.diasUsados,
+          totales: Number(s.diasDisponibles) + Number(s.diasUsados)
+        }));
+        this.cdr.detectChanges();
+      });
+    } else if (this.activeTab === 'movimientos') {
+      this.leavesService.getVacationMovements().subscribe(data => {
+        this.movimientosData = data.map(m => ({
+          empleado: m.empleadoNombre,
+          tipo: this.capitalize(m.tipo),
+          fecha: this.formatDate(m.fecha),
+          cantidad: m.dias,
+          motivo: m.comentario
+        }));
+        this.cdr.detectChanges();
+      });
+    } else if (this.activeTab === 'tipos') {
+      this.leavesService.getTypes(true).subscribe(data => {
+        this.tiposData = data;
+        this.cdr.detectChanges();
+      });
+    }
   }
 
-  private mapTipoToItem(t: TipoPermiso): TipoPermisoItem {
-    return {
-      nombre: t.nombre,
-      requiereDoc: t.requiereDocumento ? 'Si' : 'No',
-      descuentaVacaciones: t.descuentaVacaciones ? 'Si' : 'No',
-      estado: t.activo ? 'Activo' : 'Inactivo',
-    };
+  private formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() + offset).toLocaleDateString('es-GT');
+  }
+
+  private capitalize(str: string): string {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
   goBack(): void {
     this.router.navigate(['/']);
   }
 
-  setTab(tab: 'solicitudes' | 'saldos' | 'movimientos' | 'tipos'): void {
-    this.activeTab = tab;
-  }
-
-  limpiarFiltros(): void {
-    this.filtroBusqueda = '';
-    this.filtroTipo = 'Todos los tipos';
-    this.filtroEstado = 'Todos los estados';
-  }
-
-  abrirModalNuevaSolicitud(): void {
-    this.nuevaSolicitud = this.crearFormularioSolicitudVacio();
-    this.modalNuevaSolicitud = true;
-  }
-
-  cerrarModalNuevaSolicitud(): void {
-    this.modalNuevaSolicitud = false;
-  }
-
-  cancelarNuevaSolicitud(): void {
-    this.nuevaSolicitud = this.crearFormularioSolicitudVacio();
-    this.modalNuevaSolicitud = false;
-  }
-
-  guardarNuevaSolicitud(): void {
-    const nueva: SolicitudItem = {
-      id: this.generarIdSolicitud(),
-      empleado: this.nuevaSolicitud.empleado.trim() || 'Sin empleado',
-      tipo: this.nuevaSolicitud.tipo || 'Sin tipo',
-      fechaSolicitud:
-        this.formatearFechaInput(this.nuevaSolicitud.fechaSolicitud) ||
-        this.obtenerFechaActualTexto(),
-      periodo: this.nuevaSolicitud.periodo.trim() || 'Sin período',
-      saldo: this.nuevaSolicitud.saldo.trim() || '0 días',
-      estado: this.nuevaSolicitud.estado || 'Pendiente',
-      comentario: this.nuevaSolicitud.comentario.trim() || 'Sin comentario',
-      adjunto: this.nuevaSolicitud.adjunto || 'No',
-    };
-
-    this.solicitudes = [nueva, ...this.solicitudes];
-    this.nuevaSolicitud = this.crearFormularioSolicitudVacio();
-    this.modalNuevaSolicitud = false;
-    this.mostrarNotificacion(`Solicitud ${nueva.id} creada correctamente.`);
-  }
-
-  verDetalle(solicitud: SolicitudItem): void {
+  verDetalle(solicitud: any): void {
     this.solicitudSeleccionada = solicitud;
+    this.comentarioIntervencion = '';
     this.modalDetalle = true;
   }
 
-  cerrarDetalle(): void {
-    this.modalDetalle = false;
-    this.solicitudSeleccionada = null;
-  }
+  get recomendacionRRHH(): string {
+    if (!this.solicitudSeleccionada) return '';
+    const disponibles = this.solicitudSeleccionada.diasDisponibles;
+    const solicitados = this.solicitudSeleccionada.diasSolicitados;
 
-  aprobarSolicitud(solicitud: SolicitudItem): void {
-    const id = parseInt(solicitud.id, 10);
-    this.leavesService.approveRequest(id, 'Aprobado').subscribe({
-      next: () => {
-        this.solicitudes = this.solicitudes.map((item) =>
-          item.id === solicitud.id ? { ...item, estado: 'Aprobado' } : item,
-        );
-        this.mostrarNotificacion(`Solicitud ${solicitud.id} aprobada correctamente.`);
-      },
-      error: (err) => {
-        this.mostrarNotificacion(`Error al aprobar: ${err.error?.message || err.message}`);
-      },
-    });
-  }
+    if (this.solicitudSeleccionada.tipo !== 'Vacaciones') {
+      return 'Este permiso no descuenta vacaciones. Validar motivo y adjuntos si aplica.';
+    }
 
-  rechazarSolicitud(solicitud: SolicitudItem): void {
-    const id = parseInt(solicitud.id, 10);
-    this.leavesService.rejectRequest(id, 'Rechazado').subscribe({
-      next: () => {
-        this.solicitudes = this.solicitudes.map((item) =>
-          item.id === solicitud.id ? { ...item, estado: 'Rechazado' } : item,
-        );
-        this.mostrarNotificacion(`Solicitud ${solicitud.id} rechazada correctamente.`);
-      },
-      error: (err) => {
-        this.mostrarNotificacion(`Error al rechazar: ${err.error?.message || err.message}`);
-      },
-    });
-  }
-
-  get solicitudesFiltradas(): SolicitudItem[] {
-    const texto = this.filtroBusqueda.trim().toLowerCase();
-
-    return this.solicitudes.filter((item) => {
-      const coincideBusqueda =
-        !texto ||
-        item.empleado.toLowerCase().includes(texto) ||
-        item.tipo.toLowerCase().includes(texto);
-
-      const coincideTipo = this.filtroTipo === 'Todos los tipos' || item.tipo === this.filtroTipo;
-
-      const coincideEstado =
-        this.filtroEstado === 'Todos los estados' || item.estado === this.filtroEstado;
-
-      return coincideBusqueda && coincideTipo && coincideEstado;
-    });
-  }
-
-  get solicitudesPendientes(): number {
-    return this.solicitudes.filter((item) => item.estado === 'Pendiente').length;
-  }
-
-  get aprobadasHoy(): number {
-    return this.solicitudes.filter((item) => item.estado === 'Aprobado').length;
-  }
-
-  get enVacaciones(): number {
-    return this.solicitudes.filter(
-      (item) => item.tipo === 'Vacaciones' && item.estado === 'Aprobado',
-    ).length;
-  }
-
-  get rechazadas(): number {
-    return this.solicitudes.filter((item) => item.estado === 'Rechazado').length;
-  }
-
-  getEstadoClass(estado: string): string {
-    switch (estado) {
-      case 'Pendiente':
-        return 'status-badge--pending';
-      case 'Aprobado':
-        return 'status-badge--approved';
-      case 'Rechazado':
-        return 'status-badge--rejected';
-      default:
-        return 'status-badge--default';
+    if (solicitados > disponibles) {
+      return `⚠️ RIESGO: El empleado solicita ${solicitados} días pero solo tiene ${disponibles}. Se sugiere RECHAZAR o hablar con el colaborador.`;
+    } else if (disponibles - solicitados < 2) {
+      return `ℹ️ OBSERVACIÓN: El saldo quedará muy bajo (${disponibles - solicitados} días). Se sugiere confirmar con el jefe inmediato.`;
+    } else {
+      return '✅ FACTIBLE: El empleado tiene saldo suficiente para cubrir esta solicitud.';
     }
   }
 
-  getSaldoClass(restantes: number): string {
-    if (restantes === 0) return 'status-badge--rejected';
-    if (restantes < 5) return 'status-badge--pending';
-    return 'status-badge--approved';
-  }
-
-  getMovimientoClass(tipo: string): string {
-    switch (tipo) {
-      case 'Uso':
-        return 'status-badge--rejected';
-      case 'Asignación':
-        return 'status-badge--approved';
-      default:
-        return 'status-badge--info';
+  intervenirSolicitud(estado: string): void {
+    if (!this.comentarioIntervencion.trim()) {
+      alert('Debe ingresar un comentario para la intervención.');
+      return;
     }
+
+    this.isProcessing = true;
+    const action = estado === 'Aprobado'
+      ? this.leavesService.approveRequest(this.solicitudSeleccionada.id, this.comentarioIntervencion)
+      : this.leavesService.rejectRequest(this.solicitudSeleccionada.id, this.comentarioIntervencion);
+
+    action.subscribe({
+      next: () => {
+        this.isProcessing = false;
+        this.mostrarNotificacion(`Solicitud ${estado.toLowerCase()} correctamente.`);
+        this.modalDetalle = false;
+        this.loadData();
+      },
+      error: (err) => {
+        this.isProcessing = false;
+        alert(err.error?.message || 'Error al intervenir');
+      }
+    });
   }
 
-  getSiNoClass(valor: 'Si' | 'No'): string {
-    return valor === 'Si' ? 'status-badge--info' : 'status-badge--default';
+  verAdjunto(solicitudId: number): void {
+    this.leavesService.getAllRequests().subscribe(all => {
+      const s = all.find(x => x.solicitudId === solicitudId);
+      if (s && s.adjuntos && s.adjuntos.length > 0) {
+        const url = s.adjuntos[0].rutaUrl;
+        this.leavesService.downloadAttachment(url).subscribe({
+          next: (blob) => {
+            const fileUrl = URL.createObjectURL(blob);
+            window.open(fileUrl, '_blank');
+          },
+          error: () => alert('Error al descargar el archivo.')
+        });
+      } else {
+        alert('No se encontró el archivo adjunto.');
+      }
+    });
   }
 
-  getTipoEstadoClass(estado: 'Activo' | 'Inactivo'): string {
-    return estado === 'Activo' ? 'status-badge--approved' : 'status-badge--default';
-  }
-
-  private crearFormularioSolicitudVacio(): NuevaSolicitudForm {
-    return {
-      empleado: '',
-      tipo: '',
-      fechaSolicitud: '',
-      periodo: '',
-      saldo: '',
-      estado: 'Pendiente',
-      comentario: '',
-      adjunto: 'No',
+  abrirAjusteSaldo(row: SaldoItem): void {
+    this.ajusteSaldo = {
+      empleadoId: row.empleadoId,
+      empleadoNombre: row.empleado,
+      dias: 0,
+      motivo: ''
     };
+    this.modalAjusteSaldo = true;
   }
 
-  private generarIdSolicitud(): string {
-    const ids = this.solicitudes
-      .map((item) => Number(item.id.replace('S-', '')))
-      .filter((id) => !isNaN(id));
-
-    const siguiente = ids.length ? Math.max(...ids) + 1 : 101;
-    return `S-${siguiente}`;
+  guardarAjusteSaldo(): void {
+    if (!this.ajusteSaldo.motivo || this.ajusteSaldo.dias === 0) {
+      alert('Indique los días a ajustar y el motivo.');
+      return;
+    }
+    this.leavesService.adjustBalance(this.ajusteSaldo).subscribe({
+      next: () => {
+        this.mostrarNotificacion('Saldo ajustado correctamente.');
+        this.modalAjusteSaldo = false;
+        this.loadData();
+      },
+      error: (err) => alert(err.error?.message || 'Error al ajustar')
+    });
   }
 
-  private obtenerFechaActualTexto(): string {
-    const hoy = new Date();
-    const dia = String(hoy.getDate()).padStart(2, '0');
-    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-    const anio = hoy.getFullYear();
-    return `${dia}/${mes}/${anio}`;
+  abrirNuevoTipo(): void {
+    this.modoEdicionTipo = false;
+    this.tipoEditando = { nombre: '', requiereDocumento: false, descuentaVacaciones: false, activo: true };
+    this.modalTipo = true;
   }
 
-  private formatearFechaInput(valor: string): string {
-    if (!valor) return '';
-    const [anio, mes, dia] = valor.split('-');
-    if (!anio || !mes || !dia) return valor;
-    return `${dia}/${mes}/${anio}`;
+  editarTipo(tipo: any): void {
+    this.modoEdicionTipo = true;
+    this.tipoEditando = { ...tipo };
+    this.modalTipo = true;
+  }
+
+  guardarTipo(): void {
+    const action = this.modoEdicionTipo
+      ? this.leavesService.updateType(this.tipoEditando.tipoPermisoId, this.tipoEditando)
+      : this.leavesService.createType(this.tipoEditando);
+
+    action.subscribe({
+      next: () => {
+        this.mostrarNotificacion('Tipo de permiso guardado.');
+        this.modalTipo = false;
+        this.loadData();
+      },
+      error: (err) => alert(err.error?.message || 'Error al guardar')
+    });
   }
 
   private mostrarNotificacion(mensaje: string): void {
     this.mensajeExito = mensaje;
     this.mostrarMensajeExito = true;
+    setTimeout(() => this.mostrarMensajeExito = false, 3000);
+  }
 
-    setTimeout(() => {
-      this.mostrarMensajeExito = false;
-      this.mensajeExito = '';
-    }, 3000);
+  get filteredSolicitudes(): SolicitudItem[] {
+    return this.solicitudes.filter(s => {
+      const matchBusqueda = !this.filtroBusqueda || s.empleado.toLowerCase().includes(this.filtroBusqueda.toLowerCase());
+      const matchEstado = this.filtroEstado === 'Todos' || s.estado === this.filtroEstado;
+      const matchTipo = this.filtroTipo === 'Todos' || s.tipo === this.filtroTipo;
+      const matchDep = this.filtroDepartamento === 'Todos los departamentos' || s.departamento === this.filtroDepartamento;
+      return matchBusqueda && matchEstado && matchTipo && matchDep;
+    });
+  }
+
+  get tiposUnicos(): string[] {
+    return Array.from(new Set(this.solicitudes.map(s => s.tipo))).filter(t => t).sort();
+  }
+
+  get departamentos(): string[] {
+    const deps = new Set<string>();
+    this.solicitudes.forEach(s => { if(s.departamento && s.departamento !== '-') deps.add(s.departamento); });
+    this.saldosData.forEach(s => { if(s.departamento && s.departamento !== '-') deps.add(s.departamento); });
+    return Array.from(deps).sort();
+  }
+
+  getEstadoClass(estado: string): string {
+    switch (estado) {
+      case 'Aprobado': return 'badge--green';
+      case 'Pendiente': return 'badge--amber';
+      case 'Rechazado': return 'badge--red';
+      default: return 'badge--grey';
+    }
   }
 }

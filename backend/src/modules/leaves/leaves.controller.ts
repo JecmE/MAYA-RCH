@@ -22,8 +22,38 @@ export class LeavesController {
   constructor(private readonly leavesService: LeavesService) {}
 
   @Get('types')
-  getTypes() {
-    return this.leavesService.getTiposPermiso();
+  getTypes(@Query('todos') todos?: string) {
+    return this.leavesService.getTiposPermiso(todos === 'true');
+  }
+
+  @Post('types')
+  @Roles('RRHH', 'Administrador')
+  createType(@Body() dto: any, @Req() req: any) {
+    return this.leavesService.createTipoPermiso(dto, req.user.usuarioId);
+  }
+
+  @Put('types/:id')
+  @Roles('RRHH', 'Administrador')
+  updateType(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @Req() req: any) {
+    return this.leavesService.updateTipoPermiso(id, dto, req.user.usuarioId);
+  }
+
+  @Get('all')
+  @Roles('RRHH', 'Administrador')
+  getAllRequests() {
+    return this.leavesService.getAllRequests();
+  }
+
+  @Get('balances')
+  @Roles('RRHH', 'Administrador')
+  getAllBalances() {
+    return this.leavesService.getAllBalances();
+  }
+
+  @Get('movements')
+  @Roles('RRHH', 'Administrador')
+  getMovements() {
+    return this.leavesService.getVacationMovements();
   }
 
   @Post('request')
@@ -71,6 +101,12 @@ export class LeavesController {
   @Roles('RRHH', 'Administrador')
   getEmployeeVacationBalance(@Param('employeeId', ParseIntPipe) employeeId: number) {
     return this.leavesService.getVacationBalance(employeeId);
+  }
+
+  @Post('balances/adjust')
+  @Roles('RRHH', 'Administrador')
+  adjustBalance(@Body() dto: any, @Req() req: any) {
+    return this.leavesService.adjustVacationBalance(dto, req.user.usuarioId);
   }
 
   @Get('attachment/:fileName')
