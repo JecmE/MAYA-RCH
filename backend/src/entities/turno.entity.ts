@@ -21,6 +21,9 @@ export class Turno {
   @Column({ name: 'horas_esperadas_dia', type: 'decimal', precision: 4, scale: 2, default: 8 })
   horasEsperadasDia: number;
 
+  @Column({ length: 100, nullable: true, default: 'Lun,Mar,Mie,Jue,Vie' })
+  dias: string;
+
   @Column({ default: 1 })
   activo: boolean;
 

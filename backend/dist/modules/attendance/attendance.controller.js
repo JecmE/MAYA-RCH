@@ -43,6 +43,9 @@ let AttendanceController = class AttendanceController {
     async getTeamAttendance(req, fecha) {
         return this.attendanceService.getTeamAttendance(req.user.empleadoId, fecha);
     }
+    async getAllAttendance(fecha) {
+        return this.attendanceService.getAllAttendance(fecha);
+    }
 };
 exports.AttendanceController = AttendanceController;
 __decorate([
@@ -104,6 +107,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AttendanceController.prototype, "getTeamAttendance", null);
+__decorate([
+    (0, common_1.Get)('all'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Query)('fecha')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AttendanceController.prototype, "getAllAttendance", null);
 exports.AttendanceController = AttendanceController = __decorate([
     (0, common_1.Controller)('attendance'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

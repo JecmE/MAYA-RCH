@@ -48,8 +48,13 @@ export class AttendanceService {
     }
 
     const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-      where: { empleadoId, activo: true },
+      where: {
+        empleadoId,
+        activo: true,
+        fechaInicio: LessThanOrEqual(today)
+      },
       relations: ['turno'],
+      order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
     });
 
     if (!empleadoTurno) {
@@ -58,6 +63,17 @@ export class AttendanceService {
 
     const turno = empleadoTurno.turno;
     const now = new Date();
+
+    // VALIDACIÓN DE DÍAS LABORALES
+    const diasSemanaMap: { [key: number]: string } = {
+      1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab', 0: 'Dom'
+    };
+    const hoyNombre = diasSemanaMap[now.getDay()];
+    const diasPermitidos = turno.dias ? turno.dias.split(',') : ['Lun','Mar','Mie','Jue','Vie'];
+
+    if (!diasPermitidos.includes(hoyNombre)) {
+      throw new BadRequestException(`Hoy (${hoyNombre}) no es un día laborable según tu turno (${turno.nombre}).`);
+    }
 
     const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
     const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
@@ -170,8 +186,13 @@ export class AttendanceService {
     }
 
     const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-      where: { empleadoId, activo: true },
+      where: {
+        empleadoId,
+        activo: true,
+        fechaInicio: LessThanOrEqual(today)
+      },
       relations: ['turno'],
+      order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
     });
 
     if (!empleadoTurno) {
@@ -234,8 +255,13 @@ export class AttendanceService {
     });
 
     const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-      where: { empleadoId, activo: true },
+      where: {
+        empleadoId,
+        activo: true,
+        fechaInicio: LessThanOrEqual(today)
+      },
       relations: ['turno'],
+      order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
     });
 
     const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
@@ -243,9 +269,17 @@ export class AttendanceService {
     const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
     const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
 
+    // Verificar si hoy es día laboral
+    const diasSemanaMap: { [key: number]: string } = {
+      1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab', 0: 'Dom'
+    };
+    const hoyNombre = diasSemanaMap[today.getDay()];
+    const diasPermitidos = empleadoTurno?.turno?.dias ? empleadoTurno.turno.dias.split(',') : ['Lun','Mar','Mie','Jue','Vie'];
+    const esDiaLaboral = empleadoTurno ? diasPermitidos.includes(hoyNombre) : false;
+
     if (!asistencia) {
       return {
-        estadoJornada: 'sin_registro',
+        estadoJornada: esDiaLaboral ? 'sin_registro' : 'no_laboral',
         fecha: today,
         tieneEntrada: false,
         tieneSalida: false,
@@ -253,6 +287,7 @@ export class AttendanceService {
         toleranciaMinutos,
         horaEntradaTurno,
         horaSalidaTurno,
+        mensajeEstado: esDiaLaboral ? '' : `Hoy (${hoyNombre}) no es un día laborable para tu turno.`
       };
     }
 
@@ -403,6 +438,87 @@ export class AttendanceService {
       console.error('Error in getTeamAttendance:', error);
       throw error;
     }
+  }
+
+  async getAllAttendance(fecha?: string) {
+    try {
+      const searchDate = fecha ? new Date(fecha) : new Date();
+      searchDate.setHours(0, 0, 0, 0);
+
+      const empleados = await this.empleadoRepository.find({
+        where: { activo: true },
+        relations: ['empleadoTurnos', 'empleadoTurnos.turno']
+      });
+
+      const asistencias = await this.asistenciaRepository.find({
+        where: {
+          fecha: searchDate as any
+        }
+      });
+
+      return empleados.map(emp => {
+        const asistencia = asistencias.find(a => a.empleadoId === emp.empleadoId);
+
+        // Determinar turno activo para la fecha
+        const turnoAsignado = emp.empleadoTurnos?.find(et => {
+          const inicio = new Date(et.fechaInicio);
+          const fin = et.fechaFin ? new Date(et.fechaFin) : null;
+          return searchDate >= inicio && (!fin || searchDate <= fin);
+        });
+
+        return {
+          empleadoId: emp.empleadoId,
+          nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+          codigoEmpleado: emp.codigoEmpleado,
+          departamento: this.sanitizeString(emp.departamento),
+          puesto: this.sanitizeString(emp.puesto),
+          turno: turnoAsignado?.turno?.nombre || 'Sin turno',
+          asistencia: asistencia ? {
+            asistenciaId: asistencia.asistenciaId,
+            horaEntradaReal: asistencia.horaEntradaReal,
+            horaSalidaReal: asistencia.horaSalidaReal,
+            minutosTardia: asistencia.minutosTardia,
+            horasTrabajadas: asistencia.horasTrabajadas,
+            estadoJornada: asistencia.estadoJornada,
+            observacion: asistencia.observacion
+          } : null
+        };
+      });
+    } catch (error) {
+      console.error('Error in getAllAttendance:', error);
+      throw error;
+    }
+  }
+
+  private sanitizeString(str: string | null | undefined): string {
+    if (!str) return '';
+
+    // 1. Limpieza de codificación y caracteres rotos
+    let res = str
+      .replace(/\?/g, (match, offset, original) => {
+        if (original.includes('Rodr')) return 'í';
+        if (original.includes('Mart')) return 'í';
+        if (original.includes('Garc')) return 'í';
+        if (original.includes('Fern')) return 'á';
+        return 'í';
+      })
+      .replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
+      .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+
+    // 2. Eliminar palabras duplicadas (ej: "María José María José")
+    const words = res.trim().split(/\s+/);
+    const finalWords: string[] = [];
+    const seenSet = new Set<string>();
+
+    for (const word of words) {
+        const normalized = word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (!seenSet.has(normalized)) {
+            finalWords.push(word);
+            seenSet.add(normalized);
+        }
+    }
+
+    return finalWords.join(' ');
   }
 
   private getTimeFromString(timeStr: string): Date {

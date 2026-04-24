@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const turno_entity_1 = require("../../entities/turno.entity");
+const empleado_turno_entity_1 = require("../../entities/empleado-turno.entity");
 const tipo_permiso_entity_1 = require("../../entities/tipo-permiso.entity");
 const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
@@ -30,8 +31,9 @@ const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
 const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity");
 let AdminService = class AdminService {
-    constructor(turnoRepository, tipoPermisoRepository, parametroRepository, auditRepository, rolRepository, reglaBonoRepository, usuarioRepository, empleadoRepository, solicitudPermisoRepository, registroAsistenciaRepository, kpiMensualRepository, vacacionMovimientoRepository, registroTiempoRepository) {
+    constructor(turnoRepository, empleadoTurnoRepository, tipoPermisoRepository, parametroRepository, auditRepository, rolRepository, reglaBonoRepository, usuarioRepository, empleadoRepository, solicitudPermisoRepository, registroAsistenciaRepository, kpiMensualRepository, vacacionMovimientoRepository, registroTiempoRepository) {
         this.turnoRepository = turnoRepository;
+        this.empleadoTurnoRepository = empleadoTurnoRepository;
         this.tipoPermisoRepository = tipoPermisoRepository;
         this.parametroRepository = parametroRepository;
         this.auditRepository = auditRepository;
@@ -47,7 +49,6 @@ let AdminService = class AdminService {
     }
     async getShifts() {
         const turnos = await this.turnoRepository.find({
-            where: { activo: true },
             order: { nombre: 'ASC' },
         });
         return turnos.map((t) => ({
@@ -57,10 +58,15 @@ let AdminService = class AdminService {
             horaSalida: t.horaSalida,
             toleranciaMinutos: t.toleranciaMinutos,
             horasEsperadasDia: t.horasEsperadasDia,
+            dias: t.dias,
+            activo: t.activo
         }));
     }
     async createShift(createDto, usuarioId) {
-        const turno = this.turnoRepository.create(createDto);
+        const turno = this.turnoRepository.create({
+            ...createDto,
+            dias: Array.isArray(createDto.dias) ? createDto.dias.join(',') : createDto.dias
+        });
         const saved = (await this.turnoRepository.save(turno));
         await this.auditRepository.save({
             usuarioId,
@@ -79,7 +85,11 @@ let AdminService = class AdminService {
         if (!turno) {
             throw new common_1.NotFoundException('Turno no encontrado');
         }
-        Object.assign(turno, updateDto);
+        const updateData = { ...updateDto };
+        if (updateData.dias && Array.isArray(updateData.dias)) {
+            updateData.dias = updateData.dias.join(',');
+        }
+        Object.assign(turno, updateData);
         await this.turnoRepository.save(turno);
         await this.auditRepository.save({
             usuarioId,
@@ -109,6 +119,77 @@ let AdminService = class AdminService {
             detalle: `Turno desactivado: ${turno.nombre}`,
         });
         return { message: 'Turno desactivado' };
+    }
+    async getAssignments() {
+        const query = this.empleadoTurnoRepository
+            .createQueryBuilder('et')
+            .innerJoinAndSelect('et.empleado', 'e')
+            .innerJoinAndSelect('et.turno', 't')
+            .where(qb => {
+            const subQuery = qb
+                .subQuery()
+                .select('MAX(st.empleadoTurnoId)')
+                .from(empleado_turno_entity_1.EmpleadoTurno, 'st')
+                .groupBy('st.empleadoId')
+                .getQuery();
+            return 'et.empleadoTurnoId IN ' + subQuery;
+        })
+            .orderBy('e.nombres', 'ASC');
+        const assignments = await query.getMany();
+        return assignments.map(a => ({
+            id: a.empleadoTurnoId,
+            empleadoId: a.empleadoId,
+            empleadoNombre: `${a.empleado?.nombres} ${a.empleado?.apellidos}`,
+            turnoId: a.turnoId,
+            turnoNombre: a.turno?.nombre,
+            fechaInicio: a.fechaInicio,
+            fechaFin: a.fechaFin,
+            activo: a.activo
+        }));
+    }
+    async assignShift(assignDto, usuarioId) {
+        if (assignDto.id) {
+            const existing = await this.empleadoTurnoRepository.findOne({ where: { empleadoTurnoId: assignDto.id } });
+            if (existing) {
+                existing.activo = assignDto.activo !== undefined ? assignDto.activo : false;
+                if (!existing.activo)
+                    existing.fechaFin = new Date();
+                else
+                    existing.fechaFin = null;
+                await this.empleadoTurnoRepository.save(existing);
+                return this.getAssignments();
+            }
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDate = new Date(assignDto.fechaInicio);
+        startDate.setHours(0, 0, 0, 0);
+        if (startDate <= today) {
+            await this.empleadoTurnoRepository.update({ empleadoId: assignDto.empleadoId }, { activo: false, fechaFin: new Date() });
+        }
+        else {
+            const futureAssignments = await this.empleadoTurnoRepository.find({
+                where: { empleadoId: assignDto.empleadoId, activo: true }
+            });
+            for (const fa of futureAssignments) {
+                const faDate = new Date(fa.fechaInicio);
+                faDate.setHours(0, 0, 0, 0);
+                if (faDate > today) {
+                    await this.empleadoTurnoRepository.delete(fa.empleadoTurnoId).catch(() => {
+                        this.empleadoTurnoRepository.update(fa.empleadoTurnoId, { activo: false });
+                    });
+                }
+            }
+        }
+        const assignment = this.empleadoTurnoRepository.create({
+            empleadoId: assignDto.empleadoId,
+            turnoId: assignDto.turnoId,
+            fechaInicio: assignDto.fechaInicio,
+            fechaFin: null,
+            activo: assignDto.activo !== undefined ? assignDto.activo : true
+        });
+        await this.empleadoTurnoRepository.save(assignment);
+        return this.getAssignments();
     }
     async getKpiParameters() {
         const parametros = await this.parametroRepository.find({
@@ -243,7 +324,7 @@ let AdminService = class AdminService {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const currentMonth = today.getMonth() + 1;
         const currentYear = today.getFullYear();
-        const [activeEmployees, pendingPermissions, tardiasToday, employeesAtRisk, activeVacations] = await Promise.all([
+        const [activeEmployees, pendingPermissions, tardiasToday, employeesAtRisk, activeVacations, employeesWithInactiveShifts] = await Promise.all([
             this.empleadoRepository.count({ where: { activo: true } }),
             this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
             this.registroAsistenciaRepository.count({
@@ -267,6 +348,12 @@ let AdminService = class AdminService {
                 .andWhere('tp.descuentaVacaciones = :descuenta', { descuenta: 1 })
                 .andWhere(':today BETWEEN sp.fechaInicio AND sp.fechaFin', { today })
                 .getCount(),
+            this.empleadoTurnoRepository
+                .createQueryBuilder('et')
+                .innerJoin('et.turno', 't')
+                .where('et.activo = :activeAssignment', { activeAssignment: true })
+                .andWhere('t.activo = :inactiveShift', { inactiveShift: false })
+                .getCount(),
         ]);
         return {
             empleadosActivos: activeEmployees,
@@ -274,6 +361,7 @@ let AdminService = class AdminService {
             permisosPendientes: pendingPermissions,
             vacacionesActivas: activeVacations,
             empleadosEnRiesgo: employeesAtRisk,
+            empleadosConTurnoInactivo: employeesWithInactiveShifts,
         };
     }
     async getSupervisorDashboardStats(supervisorId) {
@@ -326,19 +414,21 @@ exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(turno_entity_1.Turno)),
-    __param(1, (0, typeorm_1.InjectRepository)(tipo_permiso_entity_1.TipoPermiso)),
-    __param(2, (0, typeorm_1.InjectRepository)(parametro_sistema_entity_1.ParametroSistema)),
-    __param(3, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
-    __param(4, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
-    __param(5, (0, typeorm_1.InjectRepository)(regla_bono_entity_1.ReglaBono)),
-    __param(6, (0, typeorm_1.InjectRepository)(usuario_entity_1.Usuario)),
-    __param(7, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
-    __param(8, (0, typeorm_1.InjectRepository)(solicitud_permiso_entity_1.SolicitudPermiso)),
-    __param(9, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
-    __param(10, (0, typeorm_1.InjectRepository)(kpi_mensual_entity_1.KpiMensual)),
-    __param(11, (0, typeorm_1.InjectRepository)(vacacion_movimiento_entity_1.VacacionMovimiento)),
-    __param(12, (0, typeorm_1.InjectRepository)(registro_tiempo_entity_1.RegistroTiempo)),
+    __param(1, (0, typeorm_1.InjectRepository)(empleado_turno_entity_1.EmpleadoTurno)),
+    __param(2, (0, typeorm_1.InjectRepository)(tipo_permiso_entity_1.TipoPermiso)),
+    __param(3, (0, typeorm_1.InjectRepository)(parametro_sistema_entity_1.ParametroSistema)),
+    __param(4, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(5, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
+    __param(6, (0, typeorm_1.InjectRepository)(regla_bono_entity_1.ReglaBono)),
+    __param(7, (0, typeorm_1.InjectRepository)(usuario_entity_1.Usuario)),
+    __param(8, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
+    __param(9, (0, typeorm_1.InjectRepository)(solicitud_permiso_entity_1.SolicitudPermiso)),
+    __param(10, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
+    __param(11, (0, typeorm_1.InjectRepository)(kpi_mensual_entity_1.KpiMensual)),
+    __param(12, (0, typeorm_1.InjectRepository)(vacacion_movimiento_entity_1.VacacionMovimiento)),
+    __param(13, (0, typeorm_1.InjectRepository)(registro_tiempo_entity_1.RegistroTiempo)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

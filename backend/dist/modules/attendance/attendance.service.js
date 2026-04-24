@@ -44,14 +44,27 @@ let AttendanceService = class AttendanceService {
             throw new common_1.BadRequestException('Ya se registró la entrada hoy');
         }
         const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-            where: { empleadoId, activo: true },
+            where: {
+                empleadoId,
+                activo: true,
+                fechaInicio: (0, typeorm_2.LessThanOrEqual)(today)
+            },
             relations: ['turno'],
+            order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
         });
         if (!empleadoTurno) {
             throw new common_1.BadRequestException('No tiene turno asignado');
         }
         const turno = empleadoTurno.turno;
         const now = new Date();
+        const diasSemanaMap = {
+            1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab', 0: 'Dom'
+        };
+        const hoyNombre = diasSemanaMap[now.getDay()];
+        const diasPermitidos = turno.dias ? turno.dias.split(',') : ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
+        if (!diasPermitidos.includes(hoyNombre)) {
+            throw new common_1.BadRequestException(`Hoy (${hoyNombre}) no es un día laborable según tu turno (${turno.nombre}).`);
+        }
         const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
         const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
         const horaEntradaMin = new Date(now);
@@ -134,8 +147,13 @@ let AttendanceService = class AttendanceService {
             throw new common_1.BadRequestException('Ya se registró la salida hoy');
         }
         const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-            where: { empleadoId, activo: true },
+            where: {
+                empleadoId,
+                activo: true,
+                fechaInicio: (0, typeorm_2.LessThanOrEqual)(today)
+            },
             relations: ['turno'],
+            order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
         });
         if (!empleadoTurno) {
             throw new common_1.BadRequestException('No tiene turno asignado');
@@ -177,16 +195,27 @@ let AttendanceService = class AttendanceService {
             where: { empleadoId, fecha: today },
         });
         const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-            where: { empleadoId, activo: true },
+            where: {
+                empleadoId,
+                activo: true,
+                fechaInicio: (0, typeorm_2.LessThanOrEqual)(today)
+            },
             relations: ['turno'],
+            order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
         });
         const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
         const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
         const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
         const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
+        const diasSemanaMap = {
+            1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab', 0: 'Dom'
+        };
+        const hoyNombre = diasSemanaMap[today.getDay()];
+        const diasPermitidos = empleadoTurno?.turno?.dias ? empleadoTurno.turno.dias.split(',') : ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
+        const esDiaLaboral = empleadoTurno ? diasPermitidos.includes(hoyNombre) : false;
         if (!asistencia) {
             return {
-                estadoJornada: 'sin_registro',
+                estadoJornada: esDiaLaboral ? 'sin_registro' : 'no_laboral',
                 fecha: today,
                 tieneEntrada: false,
                 tieneSalida: false,
@@ -194,6 +223,7 @@ let AttendanceService = class AttendanceService {
                 toleranciaMinutos,
                 horaEntradaTurno,
                 horaSalidaTurno,
+                mensajeEstado: esDiaLaboral ? '' : `Hoy (${hoyNombre}) no es un día laborable para tu turno.`
             };
         }
         return {
@@ -325,6 +355,79 @@ let AttendanceService = class AttendanceService {
             console.error('Error in getTeamAttendance:', error);
             throw error;
         }
+    }
+    async getAllAttendance(fecha) {
+        try {
+            const searchDate = fecha ? new Date(fecha) : new Date();
+            searchDate.setHours(0, 0, 0, 0);
+            const empleados = await this.empleadoRepository.find({
+                where: { activo: true },
+                relations: ['empleadoTurnos', 'empleadoTurnos.turno']
+            });
+            const asistencias = await this.asistenciaRepository.find({
+                where: {
+                    fecha: searchDate
+                }
+            });
+            return empleados.map(emp => {
+                const asistencia = asistencias.find(a => a.empleadoId === emp.empleadoId);
+                const turnoAsignado = emp.empleadoTurnos?.find(et => {
+                    const inicio = new Date(et.fechaInicio);
+                    const fin = et.fechaFin ? new Date(et.fechaFin) : null;
+                    return searchDate >= inicio && (!fin || searchDate <= fin);
+                });
+                return {
+                    empleadoId: emp.empleadoId,
+                    nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+                    codigoEmpleado: emp.codigoEmpleado,
+                    departamento: this.sanitizeString(emp.departamento),
+                    puesto: this.sanitizeString(emp.puesto),
+                    turno: turnoAsignado?.turno?.nombre || 'Sin turno',
+                    asistencia: asistencia ? {
+                        asistenciaId: asistencia.asistenciaId,
+                        horaEntradaReal: asistencia.horaEntradaReal,
+                        horaSalidaReal: asistencia.horaSalidaReal,
+                        minutosTardia: asistencia.minutosTardia,
+                        horasTrabajadas: asistencia.horasTrabajadas,
+                        estadoJornada: asistencia.estadoJornada,
+                        observacion: asistencia.observacion
+                    } : null
+                };
+            });
+        }
+        catch (error) {
+            console.error('Error in getAllAttendance:', error);
+            throw error;
+        }
+    }
+    sanitizeString(str) {
+        if (!str)
+            return '';
+        let res = str
+            .replace(/\?/g, (match, offset, original) => {
+            if (original.includes('Rodr'))
+                return 'í';
+            if (original.includes('Mart'))
+                return 'í';
+            if (original.includes('Garc'))
+                return 'í';
+            if (original.includes('Fern'))
+                return 'á';
+            return 'í';
+        })
+            .replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
+            .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+        const words = res.trim().split(/\s+/);
+        const finalWords = [];
+        const seenSet = new Set();
+        for (const word of words) {
+            const normalized = word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (!seenSet.has(normalized)) {
+                finalWords.push(word);
+                seenSet.add(normalized);
+            }
+        }
+        return finalWords.join(' ');
     }
     getTimeFromString(timeStr) {
         const [hours, minutes, seconds] = timeStr.split(':').map(Number);

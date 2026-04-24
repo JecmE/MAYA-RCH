@@ -1,6 +1,5 @@
 <div class="turnos-page">
   <main class="turnos-main">
-
     @if (mostrarMensajeExito) {
       <div class="success-alert">
         <span class="success-alert__icon">✓</span>
@@ -9,126 +8,132 @@
     }
 
     <div class="page-header">
-      <button
-        type="button"
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
-
       <div class="page-header__content">
-        <h2 class="page-title">Configuración de Turnos</h2>
-        <p class="page-subtitle">
-          Administre los horarios de trabajo y parámetros de tolerancia para la empresa.
-        </p>
+        <h2 class="page-title">Gestión de Turnos</h2>
+        <p class="page-subtitle">Crea, edita y asigna turnos laborales.</p>
       </div>
 
-      <button
-        type="button"
-        class="new-turno-button"
-        (click)="abrirModalNuevoTurno()"
-      >
-        + Nuevo Turno
-      </button>
+      @if (tab === 'catalogo') {
+        <button type="button" class="new-turno-button" (click)="abrirModalNuevoTurno()">
+          <span>+</span> Crear Turno
+        </button>
+      } @else {
+        <button type="button" class="new-turno-button" (click)="abrirModalAsignacion()">
+          <span>+</span> Asignar Horario
+        </button>
+      }
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <p class="stat-card__label">Turnos Creados</p>
-        <p class="stat-card__value">{{ totalTurnos }}</p>
+    <div class="main-card">
+      <!-- Tabs de navegación superior -->
+      <div class="tabs-header">
+        <button class="tab-link" [class.active]="tab === 'catalogo'" (click)="setTab('catalogo')">Catálogo de Turnos</button>
+        <button class="tab-link" [class.active]="tab === 'asignaciones'" (click)="setTab('asignaciones')">Asignación de Turnos</button>
       </div>
 
-      <div class="stat-card">
-        <p class="stat-card__label">Turnos Activos</p>
-        <p class="stat-card__value text-green-600">{{ totalActivos }}</p>
-      </div>
-
-      <div class="stat-card">
-        <p class="stat-card__label">Promedio Tolerancia</p>
-        <p class="stat-card__value text-amber-600">{{ promedioTolerancia }}</p>
-      </div>
-    </div>
-
-    <div class="turnos-card">
-      <div class="turnos-card__filters">
-        <div class="search-box">
+      <div class="card-filters">
+        <div class="search-container">
+          <span class="search-icon">🔍</span>
           <input
             type="text"
-            placeholder="Buscar por nombre o código..."
-            class="form-control"
+            [placeholder]="tab === 'catalogo' ? 'Buscar por nombre de turno...' : 'Buscar colaborador...'"
+            class="filter-input"
             [(ngModel)]="filtroBusqueda"
           />
         </div>
 
-        <div class="filters-group">
-          <select
-            class="form-control form-control--auto"
-            [(ngModel)]="filtroEstado"
-          >
+        <div class="status-filter">
+          <select class="status-select" [(ngModel)]="filtroEstado">
             <option value="Todos los estados">Todos los estados</option>
             <option value="Activo">Activo</option>
             <option value="Inactivo">Inactivo</option>
           </select>
-
-          <button
-            type="button"
-            class="clear-filters-button"
-            (click)="limpiarFiltros()"
-          >
-            Limpiar filtros
-          </button>
         </div>
       </div>
 
-      <div class="table-wrapper">
-        <table class="turnos-table">
+      <div class="table-container">
+        <table class="custom-table">
           <thead>
-            <tr class="turnos-table__head-row">
-              <th class="table-head table-head--first">Código</th>
-              <th class="table-head">Nombre del Turno</th>
-              <th class="table-head">Entrada</th>
-              <th class="table-head">Salida</th>
-              <th class="table-head">Tolerancia</th>
-              <th class="table-head">H. Esperadas</th>
-              <th class="table-head table-head--center">Estado</th>
-              <th class="table-head table-head--last table-head--center">Acciones</th>
+            <tr *ngIf="tab === 'catalogo'">
+              <th>NOMBRE DEL TURNO</th>
+              <th>HORARIO</th>
+              <th>TOLERANCIA</th>
+              <th>DÍAS</th>
+              <th>ESTADO</th>
+              <th>ACCIONES</th>
+            </tr>
+            <tr *ngIf="tab === 'asignaciones'">
+              <th>COLABORADOR</th>
+              <th>TURNO ASIGNADO</th>
+              <th>DESDE</th>
+              <th>HASTA</th>
+              <th>ESTADO</th>
+              <th>ACCIONES</th>
             </tr>
           </thead>
-
-          <tbody class="turnos-table__body">
-            @if (turnosFiltrados.length > 0) {
-              @for (row of turnosFiltrados; track row.id) {
-                <tr class="turnos-table__row">
-                  <td class="table-cell table-cell--mono">{{ row.id }}</td>
-                  <td class="table-cell table-cell--strong">{{ row.nombre }}</td>
-                  <td class="table-cell">{{ row.entrada }}</td>
-                  <td class="table-cell">{{ row.salida }}</td>
-                  <td class="table-cell text-amber-700 font-bold">{{ row.tolerancia }}</td>
-                  <td class="table-cell">{{ row.horas }}</td>
-                  <td class="table-cell table-cell--center">
-                    <span class="estado-badge" [class]="getEstadoClass(row.estado)">
-                      {{ row.estado }}
+          <tbody>
+            @if (tab === 'catalogo') {
+              @for (row of dataFiltrada; track row.id) {
+                <tr class="table-row">
+                  <td>
+                    <div class="name-cell">
+                      <div class="icon-circle">🕒</div>
+                      <div class="name-info">
+                        <span class="main-name">{{ row.nombre }}</span>
+                        <span class="sub-code">{{ row.codigo }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-slate-600">{{ row.entrada }} - {{ row.salida }}</td>
+                  <td class="text-slate-600">{{ row.tolerancia }}</td>
+                  <td class="text-slate-600">{{ row.dias }}</td>
+                  <td>
+                    <span class="status-badge-v2" [class.active]="row.estado === 'Activo'">
+                      <span class="dot"></span> {{ row.estado }}
                     </span>
                   </td>
-                  <td class="table-cell table-cell--last table-cell--center">
-                    <div class="table-actions">
-                      <button
-                        type="button"
-                        class="table-button table-button--blue"
-                        (click)="editarTurno(row)"
-                      >
-                        Editar
-                      </button>
+                  <td>
+                    <div class="action-icons">
+                      <button class="btn-edit" (click)="editarTurno(row)">Editar</button>
                     </div>
                   </td>
                 </tr>
               }
             } @else {
+              @for (row of dataFiltrada; track row.id) {
+                <tr class="table-row">
+                  <td>
+                    <div class="name-cell">
+                      <div class="icon-circle icon-circle--blue">👤</div>
+                      <div class="name-info">
+                        <span class="main-name">{{ row.empleado }}</span>
+                        <span class="sub-code">ID: {{ row.id }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-slate-600">{{ row.turno }}</td>
+                  <td class="text-slate-600">{{ row.fechaInicio }}</td>
+                  <td class="text-slate-600">{{ row.fechaFin }}</td>
+                  <td>
+                    <span class="status-badge-v2" [class.active]="row.estado === 'Activo'">
+                      <span class="dot"></span> {{ row.estado }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="action-icons">
+                      @if (row.estado === 'Activo') {
+                        <button class="btn-finalize" (click)="finalizarAsignacion(row.id)">Finalizar</button>
+                      } @else {
+                        <span class="text-slate-400 font-bold text-xs uppercase">Concluida</span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+            @if (dataFiltrada.length === 0) {
               <tr>
-                <td colspan="8" class="empty-state-cell">
-                  No se encontraron turnos registrados.
-                </td>
+                <td colspan="6" class="empty-state">No se encontraron registros que coincidan.</td>
               </tr>
             }
           </tbody>
@@ -136,104 +141,133 @@
       </div>
     </div>
 
-    <!-- Modal Formulario -->
+    <!-- Modales (Mantienen lógica anterior pero estilizados) -->
     @if (modalNuevoTurno) {
       <div class="modal-backdrop">
-        <div class="turno-modal">
-          <div class="turno-modal__header">
-            <h3>{{ modoEdicion ? 'Editar Configuración de Turno' : 'Registrar Nuevo Turno' }}</h3>
-            <button
-              type="button"
-              class="turno-modal__close"
-              (click)="cerrarModalNuevoTurno()"
-            >
-              ✕
-            </button>
+        <div class="styled-modal">
+          <div class="modal-header">
+            <h3>{{ modoEdicion ? 'Editar Turno' : 'Nuevo Turno' }}</h3>
+            <button class="close-x" (click)="cerrarModales()">✕</button>
           </div>
 
-          <div class="turno-modal__body">
-            <div class="form-field">
-              <label>Nombre del Turno <span class="req">*</span></label>
-              <input
-                type="text"
-                class="form-control"
-                placeholder="Ej: Matutino Oficina"
-                [(ngModel)]="nuevoTurno.nombre"
-              />
+          <div class="modal-body">
+            <div class="modal-field">
+              <label>NOMBRE DEL TURNO</label>
+              <input type="text" class="modal-input" placeholder="Ej: Matutino, Vespertino, Nocturno" [(ngModel)]="nuevoTurno.nombre" />
             </div>
 
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Hora de Entrada <span class="req">*</span></label>
-                <input
-                  type="time"
-                  class="form-control"
-                  [(ngModel)]="nuevoTurno.entrada"
-                />
+            <div class="modal-row">
+              <div class="modal-field">
+                <label>HORA DE ENTRADA</label>
+                <div class="time-input-wrapper">
+                  <input type="time" class="modal-input" [(ngModel)]="nuevoTurno.entrada" />
+                  <span class="time-icon">🕒</span>
+                </div>
               </div>
-
-              <div class="form-field">
-                <label>Hora de Salida <span class="req">*</span></label>
-                <input
-                  type="time"
-                  class="form-control"
-                  [(ngModel)]="nuevoTurno.salida"
-                />
+              <div class="modal-field">
+                <label>HORA DE SALIDA</label>
+                <div class="time-input-wrapper">
+                  <input type="time" class="modal-input" [(ngModel)]="nuevoTurno.salida" />
+                  <span class="time-icon">🕒</span>
+                </div>
               </div>
             </div>
 
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Minutos de Tolerancia</label>
-                <input
-                  type="number"
-                  class="form-control"
-                  placeholder="Minutos"
-                  [(ngModel)]="nuevoTurno.tolerancia"
-                />
-                <small class="text-slate-400">Tiempo de gracia para entradas tarde.</small>
-              </div>
+            <div class="modal-field">
+              <label>TOLERANCIA (MINUTOS)</label>
+              <input type="number" class="modal-input" placeholder="Ej: 15" [(ngModel)]="nuevoTurno.tolerancia" />
+            </div>
 
-              <div class="form-field">
-                <label>Horas Esperadas Día</label>
-                <input
-                  type="number"
-                  class="form-control"
-                  placeholder="8"
-                  [(ngModel)]="nuevoTurno.horasEsperadas"
-                />
+            <div class="modal-field">
+              <label>DÍAS APLICABLES</label>
+              <div class="days-selector">
+                @for (dia of diasSemana; track dia.id) {
+                  <div class="day-check" [class.selected]="isDiaSelected(dia.id)" (click)="toggleDia(dia.id)">
+                    <div class="check-box">
+                      @if (isDiaSelected(dia.id)) { <span>✓</span> }
+                    </div>
+                    <span class="day-label">{{ dia.label }}</span>
+                  </div>
+                }
               </div>
             </div>
 
-            <div class="form-field">
-              <label>Estado del Turno</label>
-              <select class="form-control" [(ngModel)]="nuevoTurno.estado">
+            <div class="modal-field">
+              <label>ESTADO</label>
+              <select class="modal-input" [(ngModel)]="nuevoTurno.estado">
                 <option>Activo</option>
                 <option>Inactivo</option>
               </select>
             </div>
           </div>
 
-          <div class="turno-modal__footer">
-            <button
-              type="button"
-              class="modal-button modal-button--secondary"
-              (click)="cerrarModalNuevoTurno()"
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="button"
-              class="modal-button modal-button--primary"
-              (click)="guardarTurno()"
-            >
-              {{ modoEdicion ? 'Actualizar Turno' : 'Crear Turno' }}
+          <div class="modal-footer-v2">
+            <button class="btn-cancel" [disabled]="isSaving" (click)="cerrarModales()">Cancelar</button>
+            <button class="btn-save-orange" [disabled]="isSaving" (click)="guardarTurno()">
+              {{ isSaving ? 'Guardando...' : (modoEdicion ? 'Actualizar Turno' : 'Guardar Turno') }}
             </button>
           </div>
         </div>
       </div>
     }
 
+    @if (modalNuevaAsignacion) {
+      <div class="modal-backdrop">
+        <div class="styled-modal">
+          <div class="modal-header">
+            <h3>Asignar Turno a Empleado</h3>
+            <button class="close-x" [disabled]="isSaving" (click)="cerrarModales()">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-field">
+              <label>Colaborador</label>
+              <select class="modal-input" [(ngModel)]="nuevaAsignacion.empleadoId">
+                <option [ngValue]="null">Elija un empleado...</option>
+                @for (emp of empleadosDisponibles; track emp.empleadoId) {
+                  <option [ngValue]="emp.empleadoId">{{ emp.nombreCompleto }}</option>
+                }
+              </select>
+            </div>
+            <div class="modal-field">
+              <label>Turno</label>
+              <select class="modal-input" [(ngModel)]="nuevaAsignacion.turnoId">
+                <option [ngValue]="null">Elija un turno...</option>
+                @for (t of turnosSelect; track t.turnoId) {
+                  <option [ngValue]="t.turnoId">{{ t.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div class="modal-row">
+              <div class="modal-field">
+                <label>Fecha Inicio</label>
+                <div class="time-input-wrapper">
+                  <input type="date" class="modal-input" [(ngModel)]="nuevaAsignacion.fechaInicio" />
+                </div>
+              </div>
+              <div class="modal-field">
+                <label>Fecha Fin (Opcional)</label>
+                <div class="time-input-wrapper">
+                  <input type="date" class="modal-input" [(ngModel)]="nuevaAsignacion.fechaFin" />
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-field">
+              <label>ESTADO</label>
+              <select class="modal-input" [(ngModel)]="nuevaAsignacion.estado">
+                <option>Activo</option>
+                <option>Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer-v2">
+            <button type="button" class="btn-cancel" [disabled]="isSaving" (click)="cerrarModales()">Cancelar</button>
+            <button type="button" class="btn-save-orange" [disabled]="isSaving" (click)="guardarAsignacion()">
+              {{ isSaving ? 'Procesando...' : 'Asignar Turno' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   </main>
 </div>

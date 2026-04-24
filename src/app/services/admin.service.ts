@@ -10,6 +10,7 @@ export interface Turno {
   horaSalida: string;
   toleranciaMinutos: number;
   horasEsperadasDia: number;
+  dias?: string;
   activo: boolean;
 }
 
@@ -67,6 +68,15 @@ export class AdminService {
 
   deleteShift(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/shifts/${id}`);
+  }
+
+  // Asignación de Turnos
+  getAssignments(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/shifts/assignments`);
+  }
+
+  assignShift(data: any): Observable<any[]> {
+    return this.http.post<any[]>(`${this.apiUrl}/shifts/assignments`, data);
   }
 
   // Parámetros KPI

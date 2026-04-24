@@ -1,5 +1,6 @@
 import { Repository } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
+import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { TipoPermiso } from '../../entities/tipo-permiso.entity';
 import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
@@ -14,6 +15,7 @@ import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 export declare class AdminService {
     private turnoRepository;
+    private empleadoTurnoRepository;
     private tipoPermisoRepository;
     private parametroRepository;
     private auditRepository;
@@ -26,7 +28,7 @@ export declare class AdminService {
     private kpiMensualRepository;
     private vacacionMovimientoRepository;
     private registroTiempoRepository;
-    constructor(turnoRepository: Repository<Turno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>);
+    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>);
     getShifts(): Promise<{
         turnoId: number;
         nombre: string;
@@ -34,6 +36,8 @@ export declare class AdminService {
         horaSalida: string;
         toleranciaMinutos: number;
         horasEsperadasDia: number;
+        dias: string;
+        activo: boolean;
     }[]>;
     createShift(createDto: any, usuarioId: number): Promise<{
         turnoId: number;
@@ -42,6 +46,8 @@ export declare class AdminService {
         horaSalida: string;
         toleranciaMinutos: number;
         horasEsperadasDia: number;
+        dias: string;
+        activo: boolean;
     }[]>;
     updateShift(id: number, updateDto: any, usuarioId: number): Promise<{
         turnoId: number;
@@ -50,10 +56,32 @@ export declare class AdminService {
         horaSalida: string;
         toleranciaMinutos: number;
         horasEsperadasDia: number;
+        dias: string;
+        activo: boolean;
     }[]>;
     deactivateShift(id: number, usuarioId: number): Promise<{
         message: string;
     }>;
+    getAssignments(): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
+    assignShift(assignDto: any, usuarioId: number): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
     getKpiParameters(): Promise<any>;
     updateKpiParameters(updateDto: any, usuarioId: number): Promise<any>;
     getBonusRules(): Promise<{
@@ -105,6 +133,7 @@ export declare class AdminService {
         permisosPendientes: number;
         vacacionesActivas: number;
         empleadosEnRiesgo: number;
+        empleadosConTurnoInactivo: number;
     }>;
     getSupervisorDashboardStats(supervisorId: number): Promise<{
         empleadosACargo: number;

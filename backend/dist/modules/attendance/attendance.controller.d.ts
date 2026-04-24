@@ -20,6 +20,7 @@ export declare class AttendanceController {
         toleranciaMinutos: number;
         horaEntradaTurno: string;
         horaSalidaTurno: string;
+        mensajeEstado: string;
         asistenciaId?: undefined;
         horaEntradaReal?: undefined;
         horaSalidaReal?: undefined;
@@ -41,6 +42,7 @@ export declare class AttendanceController {
         toleranciaMinutos: number;
         horaEntradaTurno: string;
         horaSalidaTurno: string;
+        mensajeEstado?: undefined;
     }>;
     getHistory(req: any, fechaInicio?: string, fechaFin?: string): Promise<{
         asistenciaId: number;
@@ -72,6 +74,23 @@ export declare class AttendanceController {
         codigoEmpleado: string;
         departamento: string;
         puesto: string;
+        asistencia: {
+            asistenciaId: number;
+            horaEntradaReal: Date;
+            horaSalidaReal: Date;
+            minutosTardia: number;
+            horasTrabajadas: number;
+            estadoJornada: string;
+            observacion: string;
+        };
+    }[]>;
+    getAllAttendance(fecha?: string): Promise<{
+        empleadoId: number;
+        nombreCompleto: string;
+        codigoEmpleado: string;
+        departamento: string;
+        puesto: string;
+        turno: string;
         asistencia: {
             asistenciaId: number;
             horaEntradaReal: Date;

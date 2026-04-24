@@ -91,4 +91,10 @@ export class AttendanceService {
     if (fecha) params.fecha = fecha;
     return this.http.get<TeamAttendance[]>(`${this.apiUrl}/team`, { params });
   }
+
+  getAllAttendance(fecha?: string): Observable<any[]> {
+    let params: any = {};
+    if (fecha) params.fecha = fecha;
+    return this.http.get<any[]>(`${this.apiUrl}/all`, { params });
+  }
 }

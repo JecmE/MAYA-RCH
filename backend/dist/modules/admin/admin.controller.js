@@ -34,6 +34,12 @@ let AdminController = class AdminController {
     deactivateShift(id, req) {
         return this.adminService.deactivateShift(id, req.user.usuarioId);
     }
+    getAssignments() {
+        return this.adminService.getAssignments();
+    }
+    assignShift(assignDto, req) {
+        return this.adminService.assignShift(assignDto, req.user.usuarioId);
+    }
     getKpiParameters() {
         return this.adminService.getKpiParameters();
     }
@@ -98,6 +104,22 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "deactivateShift", null);
+__decorate([
+    (0, common_1.Get)('shifts/assignments'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAssignments", null);
+__decorate([
+    (0, common_1.Post)('shifts/assignments'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "assignShift", null);
 __decorate([
     (0, common_1.Get)('kpi-parameters'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),

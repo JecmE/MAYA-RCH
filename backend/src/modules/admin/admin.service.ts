@@ -10,6 +10,7 @@ import {
   Between,
 } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
+import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { TipoPermiso } from '../../entities/tipo-permiso.entity';
 import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
@@ -28,6 +29,8 @@ export class AdminService {
   constructor(
     @InjectRepository(Turno)
     private turnoRepository: Repository<Turno>,
+    @InjectRepository(EmpleadoTurno)
+    private empleadoTurnoRepository: Repository<EmpleadoTurno>,
     @InjectRepository(TipoPermiso)
     private tipoPermisoRepository: Repository<TipoPermiso>,
     @InjectRepository(ParametroSistema)
@@ -56,7 +59,6 @@ export class AdminService {
 
   async getShifts() {
     const turnos = await this.turnoRepository.find({
-      where: { activo: true },
       order: { nombre: 'ASC' },
     });
 
@@ -67,11 +69,16 @@ export class AdminService {
       horaSalida: t.horaSalida,
       toleranciaMinutos: t.toleranciaMinutos,
       horasEsperadasDia: t.horasEsperadasDia,
+      dias: t.dias,
+      activo: t.activo
     }));
   }
 
   async createShift(createDto: any, usuarioId: number) {
-    const turno = this.turnoRepository.create(createDto);
+    const turno = this.turnoRepository.create({
+      ...createDto,
+      dias: Array.isArray(createDto.dias) ? createDto.dias.join(',') : createDto.dias
+    });
     const saved = (await this.turnoRepository.save(turno)) as unknown as Turno;
 
     await this.auditRepository.save({
@@ -95,7 +102,12 @@ export class AdminService {
       throw new NotFoundException('Turno no encontrado');
     }
 
-    Object.assign(turno, updateDto);
+    const updateData = { ...updateDto };
+    if (updateData.dias && Array.isArray(updateData.dias)) {
+      updateData.dias = updateData.dias.join(',');
+    }
+
+    Object.assign(turno, updateData);
     await this.turnoRepository.save(turno);
 
     await this.auditRepository.save({
@@ -132,6 +144,93 @@ export class AdminService {
     });
 
     return { message: 'Turno desactivado' };
+  }
+
+  async getAssignments() {
+    // Usamos una consulta personalizada para obtener solo la asignación más reciente de cada empleado
+    // y evitar duplicados en la lista de RRHH.
+    const query = this.empleadoTurnoRepository
+      .createQueryBuilder('et')
+      .innerJoinAndSelect('et.empleado', 'e')
+      .innerJoinAndSelect('et.turno', 't')
+      .where(qb => {
+        const subQuery = qb
+          .subQuery()
+          .select('MAX(st.empleadoTurnoId)')
+          .from(EmpleadoTurno, 'st')
+          .groupBy('st.empleadoId')
+          .getQuery();
+        return 'et.empleadoTurnoId IN ' + subQuery;
+      })
+      .orderBy('e.nombres', 'ASC');
+
+    const assignments = await query.getMany();
+
+    return assignments.map(a => ({
+      id: a.empleadoTurnoId,
+      empleadoId: a.empleadoId,
+      empleadoNombre: `${a.empleado?.nombres} ${a.empleado?.apellidos}`,
+      turnoId: a.turnoId,
+      turnoNombre: a.turno?.nombre,
+      fechaInicio: a.fechaInicio,
+      fechaFin: a.fechaFin,
+      activo: a.activo
+    }));
+  }
+
+  async assignShift(assignDto: any, usuarioId: number) {
+    if (assignDto.id) {
+      const existing = await this.empleadoTurnoRepository.findOne({ where: { empleadoTurnoId: assignDto.id } });
+      if (existing) {
+        existing.activo = assignDto.activo !== undefined ? assignDto.activo : false;
+        if (!existing.activo) existing.fechaFin = new Date();
+        else existing.fechaFin = null;
+        await this.empleadoTurnoRepository.save(existing);
+        return this.getAssignments();
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(assignDto.fechaInicio);
+    startDate.setHours(0, 0, 0, 0);
+
+    if (startDate <= today) {
+      // REGLA 1: Cambio inmediato. Desactivamos TODO lo anterior.
+      await this.empleadoTurnoRepository.update(
+        { empleadoId: assignDto.empleadoId },
+        { activo: false, fechaFin: new Date() }
+      );
+    } else {
+      // REGLA 2: Cambio futuro. Borramos cualquier otra programación pendiente (mañana en adelante)
+      // para que este nuevo sea el único que "gane".
+      const futureAssignments = await this.empleadoTurnoRepository.find({
+        where: { empleadoId: assignDto.empleadoId, activo: true }
+      });
+
+      for (const fa of futureAssignments) {
+        const faDate = new Date(fa.fechaInicio);
+        faDate.setHours(0,0,0,0);
+        if (faDate > today) {
+           // Si no tiene asistencias vinculadas, lo borramos. Si tiene (raro), lo desactivamos.
+           await this.empleadoTurnoRepository.delete(fa.empleadoTurnoId).catch(() => {
+             this.empleadoTurnoRepository.update(fa.empleadoTurnoId, { activo: false });
+           });
+        }
+      }
+    }
+
+    // Insertamos el nuevo horario (El que "olvida" a los demás)
+    const assignment = this.empleadoTurnoRepository.create({
+      empleadoId: assignDto.empleadoId,
+      turnoId: assignDto.turnoId,
+      fechaInicio: assignDto.fechaInicio,
+      fechaFin: null,
+      activo: assignDto.activo !== undefined ? assignDto.activo : true
+    });
+
+    await this.empleadoTurnoRepository.save(assignment);
+    return this.getAssignments();
   }
 
   async getKpiParameters() {
@@ -290,7 +389,7 @@ export class AdminService {
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
 
-    const [activeEmployees, pendingPermissions, tardiasToday, employeesAtRisk, activeVacations] =
+    const [activeEmployees, pendingPermissions, tardiasToday, employeesAtRisk, activeVacations, employeesWithInactiveShifts] =
       await Promise.all([
         this.empleadoRepository.count({ where: { activo: true } }),
         this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
@@ -315,6 +414,12 @@ export class AdminService {
           .andWhere('tp.descuentaVacaciones = :descuenta', { descuenta: 1 })
           .andWhere(':today BETWEEN sp.fechaInicio AND sp.fechaFin', { today })
           .getCount(),
+        this.empleadoTurnoRepository
+          .createQueryBuilder('et')
+          .innerJoin('et.turno', 't')
+          .where('et.activo = :activeAssignment', { activeAssignment: true })
+          .andWhere('t.activo = :inactiveShift', { inactiveShift: false })
+          .getCount(),
       ]);
 
     return {
@@ -323,6 +428,7 @@ export class AdminService {
       permisosPendientes: pendingPermissions,
       vacacionesActivas: activeVacations,
       empleadosEnRiesgo: employeesAtRisk,
+      empleadosConTurnoInactivo: employeesWithInactiveShifts,
     };
   }
 

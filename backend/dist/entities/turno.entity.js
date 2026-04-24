@@ -40,6 +40,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Turno.prototype, "horasEsperadasDia", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true, default: 'Lun,Mar,Mie,Jue,Vie' }),
+    __metadata("design:type", String)
+], Turno.prototype, "dias", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: 1 }),
     __metadata("design:type", Boolean)
 ], Turno.prototype, "activo", void 0);

@@ -9,6 +9,8 @@ export declare class AdminController {
         horaSalida: string;
         toleranciaMinutos: number;
         horasEsperadasDia: number;
+        dias: string;
+        activo: boolean;
     }[]>;
     createShift(createDto: any, req: any): Promise<{
         turnoId: number;
@@ -17,6 +19,8 @@ export declare class AdminController {
         horaSalida: string;
         toleranciaMinutos: number;
         horasEsperadasDia: number;
+        dias: string;
+        activo: boolean;
     }[]>;
     updateShift(id: number, updateDto: any, req: any): Promise<{
         turnoId: number;
@@ -25,10 +29,32 @@ export declare class AdminController {
         horaSalida: string;
         toleranciaMinutos: number;
         horasEsperadasDia: number;
+        dias: string;
+        activo: boolean;
     }[]>;
     deactivateShift(id: number, req: any): Promise<{
         message: string;
     }>;
+    getAssignments(): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
+    assignShift(assignDto: any, req: any): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
     getKpiParameters(): Promise<any>;
     updateKpiParameters(updateDto: any, req: any): Promise<any>;
     getBonusRules(): Promise<{
@@ -80,6 +106,7 @@ export declare class AdminController {
         permisosPendientes: number;
         vacacionesActivas: number;
         empleadosEnRiesgo: number;
+        empleadosConTurnoInactivo: number;
     }>;
     getSupervisorDashboard(req: any): Promise<{
         empleadosACargo: number;

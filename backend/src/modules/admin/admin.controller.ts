@@ -45,6 +45,18 @@ export class AdminController {
     return this.adminService.deactivateShift(id, req.user.usuarioId);
   }
 
+  @Get('shifts/assignments')
+  @Roles('RRHH', 'Administrador')
+  getAssignments() {
+    return this.adminService.getAssignments();
+  }
+
+  @Post('shifts/assignments')
+  @Roles('RRHH', 'Administrador')
+  assignShift(@Body() assignDto: any, @Req() req: any) {
+    return this.adminService.assignShift(assignDto, req.user.usuarioId);
+  }
+
   @Get('kpi-parameters')
   @Roles('RRHH', 'Administrador')
   getKpiParameters() {

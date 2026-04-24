@@ -63,6 +63,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   private isCheckingIn = false;
   private isCheckingOut = false;
+  private esDiaLaboral = true;
 
   constructor(
     private router: Router,
@@ -189,6 +190,15 @@ export class Dashboard implements OnInit, OnDestroy {
         });
       }
 
+      if (this.rrhhStats.empleadosConTurnoInactivo > 0) {
+        this.notices.push({
+          title: 'Revisión de Horarios',
+          text: `Hay ${this.rrhhStats.empleadosConTurnoInactivo} colaboradores con turnos desactivados en el catálogo.`,
+          icon: '📅',
+          color: 'amber'
+        });
+      }
+
       if (now.getDate() >= 20) {
         this.notices.push({
           title: 'Procesamiento de Planilla',
@@ -245,12 +255,24 @@ export class Dashboard implements OnInit, OnDestroy {
   private loadUserProfile(): void {
     this.authService.getCurrentUser().subscribe({
       next: (user: any) => {
-        this.userName = user.nombreCompleto || user.username || '';
+        this.userName = this.sanitizeName(user.nombreCompleto || user.username || '');
       },
       error: () => {
         this.userName = '';
       },
     });
+  }
+
+  private sanitizeName(name: string): string {
+    if (!name) return '';
+    const words = name.split(' ');
+    const seen = new Set<string>();
+    return words.filter(w => {
+      const normalized = w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (seen.has(normalized) && w.length > 2) return false;
+      seen.add(normalized);
+      return true;
+    }).join(' ');
   }
 
   private loadTodayStatus(): void {
@@ -263,6 +285,7 @@ export class Dashboard implements OnInit, OnDestroy {
         } else {
           this.marcaEstado = 'Pendiente';
         }
+
         this.horaEntradaReal = status.horaEntradaReal
           ? this.formatTime(status.horaEntradaReal)
           : '--:--';
@@ -274,18 +297,24 @@ export class Dashboard implements OnInit, OnDestroy {
         this.horaEntradaTurno = status.horaEntradaTurno || '';
         this.horaSalidaTurno = status.horaSalidaTurno || '';
 
-        if (!status.tieneEntrada && !status.tieneSalida) {
-          this.calculateCheckInAvailability();
-          // No mostramos mensaje de salida si aún no se ha entrado
-          this.canCheckOut = false;
-          this.checkOutDisabledReason = '';
-        } else if (status.tieneEntrada && !status.tieneSalida) {
+        if (status.estadoJornada === 'no_laboral') {
+          this.esDiaLaboral = false;
           this.canCheckIn = false;
-          this.checkInDisabledReason = '';
-          this.calculateCheckOutAvailability();
+          this.checkInDisabledReason = status.mensajeEstado || 'Hoy no es un día laborable para tu turno.';
         } else {
-          this.canCheckIn = false;
-          this.canCheckOut = false;
+          this.esDiaLaboral = true;
+          if (!status.tieneEntrada && !status.tieneSalida) {
+            this.calculateCheckInAvailability();
+            this.canCheckOut = false;
+            this.checkOutDisabledReason = '';
+          } else if (status.tieneEntrada && !status.tieneSalida) {
+            this.canCheckIn = false;
+            this.checkInDisabledReason = '';
+            this.calculateCheckOutAvailability();
+          } else {
+            this.canCheckIn = false;
+            this.checkOutDisabledReason = '';
+          }
         }
 
         this.cdr.detectChanges();
@@ -307,6 +336,11 @@ export class Dashboard implements OnInit, OnDestroy {
     const now = new Date();
     this.canCheckIn = false;
     this.checkInDisabledReason = '';
+
+    if (!this.esDiaLaboral) {
+      this.checkInDisabledReason = 'Hoy no es un día laborable para tu turno.';
+      return;
+    }
 
     if (!this.horaEntradaTurno) {
       this.checkInDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';

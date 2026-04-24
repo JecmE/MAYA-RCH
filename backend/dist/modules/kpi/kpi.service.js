@@ -204,16 +204,28 @@ let KpiService = class KpiService {
         const hoy = new Date();
         const fechaActual = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
         const fechaCorte = fechaActual < fechaFin ? fechaActual : fechaFin;
+        const empleadoTurno = await this.dataSource.getRepository('EMPLEADO_TURNO').findOne({
+            where: { empleadoId, activo: true },
+            relations: ['turno'],
+            order: { fechaInicio: 'DESC' }
+        });
+        const diasLaboralesTurno = empleadoTurno?.turno?.dias
+            ? empleadoTurno.turno.dias.split(',')
+            : ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
+        const horasTurno = Number(empleadoTurno?.turno?.horasEsperadasDia) || 8;
+        const diasSemanaMap = {
+            1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab', 0: 'Dom'
+        };
         let diasTranscurridos = 0;
         const fechaTemp = new Date(fechaInicio);
         while (fechaTemp <= fechaCorte) {
-            const diaSemana = fechaTemp.getDay();
-            if (diaSemana !== 0 && diaSemana !== 6) {
+            const nombreDia = diasSemanaMap[fechaTemp.getDay()];
+            if (diasLaboralesTurno.includes(nombreDia)) {
                 diasTranscurridos++;
             }
             fechaTemp.setDate(fechaTemp.getDate() + 1);
         }
-        const horasEsperadas = diasTranscurridos * 8;
+        const horasEsperadas = diasTranscurridos * horasTurno;
         const asistencia = await this.asistenciaRepository.find({
             where: {
                 empleadoId,
