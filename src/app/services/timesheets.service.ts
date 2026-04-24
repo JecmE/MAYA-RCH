@@ -58,9 +58,9 @@ export class TimesheetsService {
     return this.http.put<void>(`${this.apiUrl}/${id}/reject`, {});
   }
 
-  getProjectSummary(proyectoId: number, fechaInicio: string, fechaFin: string): Observable<any> {
+  getProjectSummary(proyectoId: number, fecha_inicio: string, fecha_fin: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/report/project-summary`, {
-      params: { proyectoId, fechaInicio, fechaFin },
+      params: { proyectoId, fecha_inicio, fecha_fin },
     });
   }
 }

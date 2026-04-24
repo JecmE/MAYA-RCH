@@ -23,8 +23,8 @@ Write-Host "`n=== Testing PUT/DELETE/PATCH Endpoints ===" -ForegroundColor Cyan
 Write-Host "`n--- Creating test data ---" -ForegroundColor Gray
 $leaveBody = @{
     tipoPermisoId = 1
-    fechaInicio = "2026-04-20"
-    fechaFin = "2026-04-21"
+    fecha_inicio = "2026-04-20"
+    fecha_fin = "2026-04-21"
     motivo = "Test approval"
     diasLaborables = 2
 } | ConvertTo-Json
@@ -88,8 +88,8 @@ Write-Host "Created user ID: $userId" -ForegroundColor Yellow
 # Create a period
 $periodBody = @{
     nombre = "2026-06 Junio"
-    fechaInicio = "2026-06-01"
-    fechaFin = "2026-06-30"
+    fecha_inicio = "2026-06-01"
+    fecha_fin = "2026-06-30"
     tipo = "mensual"
 } | ConvertTo-Json
 $periodResult = Invoke-RestMethod -Uri "$baseUrl/payroll/periods" -Method Post -Headers $headers -Body $periodBody
@@ -168,8 +168,8 @@ try {
 Write-Host "`n--- Testing REJECT ---" -ForegroundColor Gray
 $leaveBody2 = @{
     tipoPermisoId = 1
-    fechaInicio = "2026-04-25"
-    fechaFin = "2026-04-26"
+    fecha_inicio = "2026-04-25"
+    fecha_fin = "2026-04-26"
     motivo = "Test rejection"
     diasLaborables = 2
 } | ConvertTo-Json

@@ -274,15 +274,15 @@ export class AttendanceService {
     };
   }
 
-  async getHistory(empleadoId: number, fechaInicio?: string, fechaFin?: string) {
+  async getHistory(empleadoId: number, fecha_inicio?: string, fecha_fin?: string) {
     const where: any = { empleadoId };
 
-    if (fechaInicio && fechaFin) {
-      where.fecha = Between(new Date(fechaInicio), new Date(fechaFin));
-    } else if (fechaInicio) {
-      where.fecha = MoreThanOrEqual(new Date(fechaInicio));
-    } else if (fechaFin) {
-      where.fecha = LessThanOrEqual(new Date(fechaFin));
+    if (fecha_inicio && fecha_fin) {
+      where.fecha = Between(new Date(fecha_inicio), new Date(fecha_fin));
+    } else if (fecha_inicio) {
+      where.fecha = MoreThanOrEqual(new Date(fecha_inicio));
+    } else if (fecha_fin) {
+      where.fecha = LessThanOrEqual(new Date(fecha_fin));
     }
 
     const registros = await this.asistenciaRepository.find({

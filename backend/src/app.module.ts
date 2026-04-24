@@ -16,7 +16,7 @@ import { PayrollModule } from './modules/payroll/payroll.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ['.env.', '.env.example'],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -28,8 +28,8 @@ import { PayrollModule } from './modules/payroll/payroll.module';
         username: configService.get('DB_USERNAME', 'testuser'),
         password: configService.get('DB_PASSWORD', 'Te5t!User_Abc123'),
         options: {
-          encrypt: true,
-          trustServerCertificate: false,
+          encrypt: false, //modificar para azure
+          trustServerCertificate: true,
           connectionTimeout: 30000,
         },
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
@@ -49,4 +49,6 @@ import { PayrollModule } from './modules/payroll/payroll.module';
     PayrollModule,
   ],
 })
+
+
 export class AppModule {}

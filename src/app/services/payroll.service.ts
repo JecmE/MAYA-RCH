@@ -6,8 +6,8 @@ import { environment } from '../../environments/environment';
 export interface PeriodoPlanilla {
   periodoId?: number;
   nombre: string;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha_inicio: string;
+  fecha_fin: string;
   tipo: string;
   estado: string;
 }
@@ -30,8 +30,8 @@ export interface MovimientoPlanilla {
 export interface PaycheckDetail {
   periodo: {
     nombre: string;
-    fechaInicio: string;
-    fechaFin: string;
+    fecha_inicio: string;
+    fecha_fin: string;
   };
   empleadoId: number;
   tarifaHora: number;

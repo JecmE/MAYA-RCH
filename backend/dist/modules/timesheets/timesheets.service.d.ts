@@ -11,7 +11,7 @@ export declare class TimesheetsService {
     private aprobacionRepository;
     private auditRepository;
     constructor(tiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, empleadoRepository: Repository<Empleado>, aprobacionRepository: Repository<AprobacionTiempo>, auditRepository: Repository<AuditLog>);
-    getMyTimesheets(empleadoId: number, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
+    getMyTimesheets(empleadoId: number, fecha_inicio?: string, fecha_fin?: string, proyectoId?: number): Promise<{
         tiempoId: number;
         empleadoId: number;
         fecha: string;
@@ -31,7 +31,7 @@ export declare class TimesheetsService {
         estado: string;
         mensaje: string;
     }>;
-    getTeamTimesheets(supervisorEmpleadoId: number, fechaInicio?: string, fechaFin?: string): Promise<{
+    getTeamTimesheets(supervisorEmpleadoId: number, fecha_inicio?: string, fecha_fin?: string): Promise<{
         tiempoId: number;
         empleado: {
             empleadoId: number;
@@ -54,7 +54,7 @@ export declare class TimesheetsService {
     reject(id: number, comentario: string, usuarioId: number): Promise<{
         message: string;
     }>;
-    getProjectSummary(fechaInicio: string, fechaFin: string): Promise<{
+    getProjectSummary(fecha_inicio: string, fecha_fin: string): Promise<{
         proyecto: any;
         totalHoras: any;
         empleados: unknown[];

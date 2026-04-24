@@ -61,18 +61,18 @@ export class LeavesService {
       throw new NotFoundException('Tipo de permiso no encontrado');
     }
 
-    const fechaInicio = new Date(createDto.fechaInicio);
-    const fechaFin = new Date(createDto.fechaFin);
+    const fecha_inicio = new Date(createDto.fecha_inicio);
+    const fecha_fin = new Date(createDto.fecha_fin);
 
-    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+    if (isNaN(fecha_inicio.getTime()) || isNaN(fecha_fin.getTime())) {
       throw new BadRequestException('Las fechas proporcionadas no son válidas');
     }
 
-    if (fechaFin < fechaInicio) {
+    if (fecha_fin < fecha_inicio) {
       throw new BadRequestException('La fecha fin no puede ser anterior a la fecha de inicio');
     }
 
-    const diasSolicitados = this.calculateDays(fechaInicio, fechaFin);
+    const diasSolicitados = this.calculateDays(fecha_inicio, fecha_fin);
 
     if (diasSolicitados <= 0) {
       throw new BadRequestException('El rango de fechas no es válido');
@@ -97,8 +97,8 @@ export class LeavesService {
     const solicitud = this.solicitudRepository.create({
       empleadoId,
       tipoPermisoId: createDto.tipoPermisoId,
-      fechaInicio,
-      fechaFin,
+      fecha_inicio,
+      fecha_fin,
       horasInicio: createDto.horasInicio || null,
       horasFin: createDto.horasFin || null,
       motivo: createDto.motivo,
@@ -181,8 +181,8 @@ export class LeavesService {
     return solicitudes.map((s) => ({
       solicitudId: s.solicitudId,
       tipoPermiso: s.tipoPermiso?.nombre,
-      fechaInicio: s.fechaInicio,
-      fechaFin: s.fechaFin,
+      fecha_inicio: s.fecha_inicio,
+      fecha_fin: s.fecha_fin,
       horasInicio: s.horasInicio,
       horasFin: s.horasFin,
       motivo: s.motivo,
@@ -226,8 +226,8 @@ export class LeavesService {
           codigoEmpleado: s.codigo_empleado,
         },
         tipoPermiso: s.tipo_permiso_nombre,
-        fechaInicio: s.fecha_inicio,
-        fechaFin: s.fecha_fin,
+        fecha_inicio: s.fecha_inicio,
+        fecha_fin: s.fecha_fin,
         horasInicio: s.horas_inicio,
         horasFin: s.horas_fin,
         motivo: s.motivo,
@@ -254,7 +254,7 @@ export class LeavesService {
       throw new BadRequestException('La solicitud ya no está pendiente');
     }
 
-    const diasSolicitados = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
+    const diasSolicitados = this.calculateDays(solicitud.fecha_inicio, solicitud.fecha_fin);
 
     if (solicitud.tipoPermiso?.descuentaVacaciones) {
       const saldo = await this.vacacionSaldoRepository.findOne({

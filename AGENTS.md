@@ -4,7 +4,7 @@
 
 **Hoy casi arruinamos todo** por hacer push directo a `main` sin probar primero. Reglas:
 
-1. **Trabajar SIEMPRE en branch `desarrollo`**
+1. **Trabajar SIEMPRE en branch `desarrollo 2`**
 2. **Testear localmente** antes de mergear a `main`
 3. **Solo mergear a main cuando todo esté verificado** en desarrollo
 
@@ -32,7 +32,7 @@ git push origin main  # ⚠️ Esto triggerea deploy a Azure
 
 ---
 
-## Problemas Conocidos y Soluciones
+## Problemas Conocidos y Soluciones 
 
 ### 1. Deploy Backend a Azure App Service
 
@@ -99,7 +99,7 @@ Verificar que estén configuradas en Azure Portal:
 
 ---
 
-## Workflows de GitHub Actions
+## Workflows de GitHub Actions 
 
 ### Backend: `deploy-backend.yml`
 

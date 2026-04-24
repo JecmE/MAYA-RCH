@@ -38,20 +38,20 @@ export class AttendanceController {
   @Get('history')
   async getHistory(
     @Req() req: any,
-    @Query('fechaInicio') fechaInicio?: string,
-    @Query('fechaFin') fechaFin?: string,
+    @Query('fecha_inicio') fecha_inicio?: string,
+    @Query('fecha_fin') fecha_fin?: string,
   ) {
-    return this.attendanceService.getHistory(req.user.empleadoId, fechaInicio, fechaFin);
+    return this.attendanceService.getHistory(req.user.empleadoId, fecha_inicio, fecha_fin);
   }
 
   @Get('employee/:id')
   @Roles('Supervisor', 'RRHH', 'Administrador')
   async getEmployeeHistory(
     @Param('id', ParseIntPipe) id: number,
-    @Query('fechaInicio') fechaInicio?: string,
-    @Query('fechaFin') fechaFin?: string,
+    @Query('fecha_inicio') fecha_inicio?: string,
+    @Query('fecha_fin') fecha_fin?: string,
   ) {
-    return this.attendanceService.getHistory(id, fechaInicio, fechaFin);
+    return this.attendanceService.getHistory(id, fecha_inicio, fecha_fin);
   }
 
   @Put('adjust/:id')

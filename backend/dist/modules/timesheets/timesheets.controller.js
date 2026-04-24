@@ -22,14 +22,14 @@ let TimesheetsController = class TimesheetsController {
     constructor(timesheetsService) {
         this.timesheetsService = timesheetsService;
     }
-    getMyTimesheets(req, fechaInicio, fechaFin, proyectoId) {
-        return this.timesheetsService.getMyTimesheets(req.user.empleadoId, fechaInicio, fechaFin, proyectoId);
+    getMyTimesheets(req, fecha_inicio, fecha_fin, proyectoId) {
+        return this.timesheetsService.getMyTimesheets(req.user.empleadoId, fecha_inicio, fecha_fin, proyectoId);
     }
     createEntry(createDto, req) {
         return this.timesheetsService.createEntry(createDto, req.user.empleadoId);
     }
-    getTeamTimesheets(req, fechaInicio, fechaFin) {
-        return this.timesheetsService.getTeamTimesheets(req.user.empleadoId, fechaInicio, fechaFin);
+    getTeamTimesheets(req, fecha_inicio, fecha_fin) {
+        return this.timesheetsService.getTeamTimesheets(req.user.empleadoId, fecha_inicio, fecha_fin);
     }
     approve(id, body, req) {
         return this.timesheetsService.approve(id, body.comentario || body.comentarios, req.user.usuarioId);
@@ -37,16 +37,16 @@ let TimesheetsController = class TimesheetsController {
     reject(id, body, req) {
         return this.timesheetsService.reject(id, body.comentario || body.comentarios, req.user.usuarioId);
     }
-    getProjectSummary(fechaInicio, fechaFin) {
-        return this.timesheetsService.getProjectSummary(fechaInicio, fechaFin);
+    getProjectSummary(fecha_inicio, fecha_fin) {
+        return this.timesheetsService.getProjectSummary(fecha_inicio, fecha_fin);
     }
 };
 exports.TimesheetsController = TimesheetsController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('fechaInicio')),
-    __param(2, (0, common_1.Query)('fechaFin')),
+    __param(1, (0, common_1.Query)('fecha_inicio')),
+    __param(2, (0, common_1.Query)('fecha_fin')),
     __param(3, (0, common_1.Query)('proyectoId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String, Number]),
@@ -64,8 +64,8 @@ __decorate([
     (0, common_1.Get)('team'),
     (0, roles_decorator_1.Roles)('Supervisor', 'RRHH', 'Administrador'),
     __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('fechaInicio')),
-    __param(2, (0, common_1.Query)('fechaFin')),
+    __param(1, (0, common_1.Query)('fecha_inicio')),
+    __param(2, (0, common_1.Query)('fecha_fin')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
@@ -93,8 +93,8 @@ __decorate([
 __decorate([
     (0, common_1.Get)('report/project-summary'),
     (0, roles_decorator_1.Roles)('Supervisor', 'RRHH', 'Administrador'),
-    __param(0, (0, common_1.Query)('fechaInicio')),
-    __param(1, (0, common_1.Query)('fechaFin')),
+    __param(0, (0, common_1.Query)('fecha_inicio')),
+    __param(1, (0, common_1.Query)('fecha_fin')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)

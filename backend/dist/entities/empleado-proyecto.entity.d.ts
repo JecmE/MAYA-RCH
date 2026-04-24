@@ -4,8 +4,8 @@ export declare class EmpleadoProyecto {
     empProyId: number;
     empleadoId: number;
     proyectoId: number;
-    fechaInicio: Date;
-    fechaFin: Date;
+    fecha_inicio: Date;
+    fecha_fin: Date;
     activo: boolean;
     empleado: Empleado;
     proyecto: Proyecto;

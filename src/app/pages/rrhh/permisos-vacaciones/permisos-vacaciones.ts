@@ -129,7 +129,7 @@ export class PermisosVacaciones implements OnInit {
       empleado: `Empleado ${s.empleadoId}`,
       tipo: s.tipoPermiso?.nombre || 'Permiso',
       fechaSolicitud: s.fechaSolicitud || new Date().toLocaleDateString(),
-      periodo: `${s.fechaInicio} - ${s.fechaFin}`,
+      periodo: `${s.fecha_inicio} - ${s.fecha_fin}`,
       saldo: '',
       estado: (s.estado as 'Pendiente' | 'Aprobado' | 'Rechazado') || 'Pendiente',
       comentario: s.motivo || '',

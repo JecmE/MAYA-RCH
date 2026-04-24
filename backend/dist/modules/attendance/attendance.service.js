@@ -213,16 +213,16 @@ let AttendanceService = class AttendanceService {
             horaSalidaTurno,
         };
     }
-    async getHistory(empleadoId, fechaInicio, fechaFin) {
+    async getHistory(empleadoId, fecha_inicio, fecha_fin) {
         const where = { empleadoId };
-        if (fechaInicio && fechaFin) {
-            where.fecha = (0, typeorm_2.Between)(new Date(fechaInicio), new Date(fechaFin));
+        if (fecha_inicio && fecha_fin) {
+            where.fecha = (0, typeorm_2.Between)(new Date(fecha_inicio), new Date(fecha_fin));
         }
-        else if (fechaInicio) {
-            where.fecha = (0, typeorm_2.MoreThanOrEqual)(new Date(fechaInicio));
+        else if (fecha_inicio) {
+            where.fecha = (0, typeorm_2.MoreThanOrEqual)(new Date(fecha_inicio));
         }
-        else if (fechaFin) {
-            where.fecha = (0, typeorm_2.LessThanOrEqual)(new Date(fechaFin));
+        else if (fecha_fin) {
+            where.fecha = (0, typeorm_2.LessThanOrEqual)(new Date(fecha_fin));
         }
         const registros = await this.asistenciaRepository.find({
             where,

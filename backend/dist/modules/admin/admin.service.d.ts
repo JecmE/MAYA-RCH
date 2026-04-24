@@ -76,7 +76,7 @@ export declare class AdminService {
         vigenciaInicio: Date;
         vigenciaFin: Date;
     }[]>;
-    getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<{
+    getAuditLogs(fecha_inicio?: string, fecha_fin?: string, usuarioId?: number, modulo?: string): Promise<{
         auditId: number;
         fechaHora: Date;
         usuario: string;

@@ -31,11 +31,11 @@ let AttendanceController = class AttendanceController {
     async getTodayStatus(req) {
         return this.attendanceService.getTodayStatus(req.user.empleadoId);
     }
-    async getHistory(req, fechaInicio, fechaFin) {
-        return this.attendanceService.getHistory(req.user.empleadoId, fechaInicio, fechaFin);
+    async getHistory(req, fecha_inicio, fecha_fin) {
+        return this.attendanceService.getHistory(req.user.empleadoId, fecha_inicio, fecha_fin);
     }
-    async getEmployeeHistory(id, fechaInicio, fechaFin) {
-        return this.attendanceService.getHistory(id, fechaInicio, fechaFin);
+    async getEmployeeHistory(id, fecha_inicio, fecha_fin) {
+        return this.attendanceService.getHistory(id, fecha_inicio, fecha_fin);
     }
     async adjustAttendance(id, adjustDto, req) {
         return this.attendanceService.adjustAttendance(id, adjustDto, req.user.usuarioId);
@@ -69,8 +69,8 @@ __decorate([
 __decorate([
     (0, common_1.Get)('history'),
     __param(0, (0, common_1.Req)()),
-    __param(1, (0, common_1.Query)('fechaInicio')),
-    __param(2, (0, common_1.Query)('fechaFin')),
+    __param(1, (0, common_1.Query)('fecha_inicio')),
+    __param(2, (0, common_1.Query)('fecha_fin')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
@@ -79,8 +79,8 @@ __decorate([
     (0, common_1.Get)('employee/:id'),
     (0, roles_decorator_1.Roles)('Supervisor', 'RRHH', 'Administrador'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
-    __param(1, (0, common_1.Query)('fechaInicio')),
-    __param(2, (0, common_1.Query)('fechaFin')),
+    __param(1, (0, common_1.Query)('fecha_inicio')),
+    __param(2, (0, common_1.Query)('fecha_fin')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String, String]),
     __metadata("design:returntype", Promise)

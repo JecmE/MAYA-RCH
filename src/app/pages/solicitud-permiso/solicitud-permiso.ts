@@ -16,8 +16,8 @@ interface SolicitudItem {
   period: string;
   status: string;
   comments: string;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha_inicio: string;
+  fecha_fin: string;
   motivo: string;
   decision?: {
     revisadoPor?: string;
@@ -47,8 +47,8 @@ export class SolicitudPermiso implements OnInit {
   backendErrorMessage = '';
 
   tipoPermiso = '';
-  fechaInicio = '';
-  fechaFin = '';
+  fecha_inicio = '';
+  fecha_fin = '';
   motivo = '';
   filtroEstado = 'Todas';
 
@@ -116,12 +116,12 @@ export class SolicitudPermiso implements OnInit {
       id: s.solicitudId || 0,
       date: s.fechaSolicitud ? new Date(s.fechaSolicitud).toLocaleDateString('en-US') : '',
       type: typeof s.tipoPermiso === 'string' ? s.tipoPermiso : s.tipoPermiso?.nombre || 'Permiso',
-      period: `${this.formatDate(s.fechaInicio)} - ${this.formatDate(s.fechaFin)}`,
+      period: `${this.formatDate(s.fecha_inicio)} - ${this.formatDate(s.fecha_fin)}`,
       status:
         s.estado === 'aprobado' ? 'Aprobada' : s.estado === 'rechazado' ? 'Rechazada' : 'Pendiente',
       comments: s.motivo || '',
-      fechaInicio: s.fechaInicio || '',
-      fechaFin: s.fechaFin || '',
+      fecha_inicio: s.fecha_inicio || '',
+      fecha_fin: s.fecha_fin || '',
       motivo: s.motivo || '',
       decision: decision
         ? {
@@ -203,9 +203,9 @@ export class SolicitudPermiso implements OnInit {
   }
 
   private calculateDaysRequested(): number {
-    if (!this.fechaInicio || !this.fechaFin) return 0;
-    const start = new Date(this.fechaInicio);
-    const end = new Date(this.fechaFin);
+    if (!this.fecha_inicio || !this.fecha_fin) return 0;
+    const start = new Date(this.fecha_inicio);
+    const end = new Date(this.fecha_fin);
     const diffTime = end.getTime() - start.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays > 0 ? diffDays : 0;
@@ -247,11 +247,11 @@ export class SolicitudPermiso implements OnInit {
   guardarSolicitud(): void {
     console.log('=== guardarSolicitud called ===');
     console.log('tipoPermiso:', this.tipoPermiso);
-    console.log('fechaInicio:', this.fechaInicio);
-    console.log('fechaFin:', this.fechaFin);
+    console.log('fecha_inicio:', this.fecha_inicio);
+    console.log('fecha_fin:', this.fecha_fin);
     console.log('vacationBalance:', this.vacationBalance);
 
-    if (!this.tipoPermiso || !this.fechaInicio || !this.fechaFin) {
+    if (!this.tipoPermiso || !this.fecha_inicio || !this.fecha_fin) {
       this.warningMessage =
         'Por favor completa todos los campos obligatorios: tipo, fecha inicio y fecha fin';
       this.warningModalOpen = true;
@@ -320,8 +320,8 @@ export class SolicitudPermiso implements OnInit {
 
     const requestData: any = {
       tipoPermisoId: tipo.tipoPermisoId,
-      fechaInicio: this.fechaInicio,
-      fechaFin: this.fechaFin,
+      fecha_inicio: this.fecha_inicio,
+      fecha_fin: this.fecha_fin,
       motivo: this.motivo,
     };
 
@@ -377,8 +377,8 @@ export class SolicitudPermiso implements OnInit {
 
   limpiarFormulario(): void {
     this.tipoPermiso = '';
-    this.fechaInicio = '';
-    this.fechaFin = '';
+    this.fecha_inicio = '';
+    this.fecha_fin = '';
     this.motivo = '';
     this.clearFile();
   }

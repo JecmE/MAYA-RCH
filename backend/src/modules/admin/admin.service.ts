@@ -211,13 +211,13 @@ export class AdminService {
     return this.getBonusRules();
   }
 
-  async getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string) {
+  async getAuditLogs(fecha_inicio?: string, fecha_fin?: string, usuarioId?: number, modulo?: string) {
     const where: any = {};
 
-    if (fechaInicio && fechaFin) {
-      where.fechaHora = new Date(fechaInicio);
-    } else if (fechaFin) {
-      where.fechaHora = new Date(fechaFin);
+    if (fecha_inicio && fecha_fin) {
+      where.fechaHora = new Date(fecha_inicio);
+    } else if (fecha_fin) {
+      where.fechaHora = new Date(fecha_fin);
     }
 
     if (usuarioId) {
@@ -305,13 +305,13 @@ export class AdminService {
             clasificaciones: ['En riesgo', 'En observacion'],
           })
           .getCount(),
-        this.vacacionMovimientoRepository
-          .createQueryBuilder('vm')
-          .innerJoin('vm.solicitud', 's')
-          .where('s.estado = :estado', { estado: 'aprobado' })
-          .andWhere('vm.fechaInicio <= :today', { today })
-          .andWhere('vm.fechaFin >= :today', { today })
-          .getCount(),
+this.vacacionMovimientoRepository
+  .createQueryBuilder('vm')
+  .innerJoin('vm.solicitud', 's')
+  .where('s.estado = :estado', { estado: 'aprobado' })
+  .andWhere('s.fecha_inicio <= :today', { today })
+  .andWhere('s.fecha_fin >= :today', { today })
+  .getCount()
       ]);
 
     return {

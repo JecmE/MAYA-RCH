@@ -23,14 +23,14 @@ export class TimesheetsController {
   @Get()
   getMyTimesheets(
     @Req() req: any,
-    @Query('fechaInicio') fechaInicio?: string,
-    @Query('fechaFin') fechaFin?: string,
+    @Query('fecha_inicio') fecha_inicio?: string,
+    @Query('fecha_fin') fecha_fin?: string,
     @Query('proyectoId') proyectoId?: number,
   ) {
     return this.timesheetsService.getMyTimesheets(
       req.user.empleadoId,
-      fechaInicio,
-      fechaFin,
+      fecha_inicio,
+      fecha_fin,
       proyectoId,
     );
   }
@@ -44,10 +44,10 @@ export class TimesheetsController {
   @Roles('Supervisor', 'RRHH', 'Administrador')
   getTeamTimesheets(
     @Req() req: any,
-    @Query('fechaInicio') fechaInicio?: string,
-    @Query('fechaFin') fechaFin?: string,
+    @Query('fecha_inicio') fecha_inicio?: string,
+    @Query('fecha_fin') fecha_fin?: string,
   ) {
-    return this.timesheetsService.getTeamTimesheets(req.user.empleadoId, fechaInicio, fechaFin);
+    return this.timesheetsService.getTeamTimesheets(req.user.empleadoId, fecha_inicio, fecha_fin);
   }
 
   @Put(':id/approve')
@@ -73,9 +73,9 @@ export class TimesheetsController {
   @Get('report/project-summary')
   @Roles('Supervisor', 'RRHH', 'Administrador')
   getProjectSummary(
-    @Query('fechaInicio') fechaInicio: string,
-    @Query('fechaFin') fechaFin: string,
+    @Query('fecha_inicio') fecha_inicio: string,
+    @Query('fecha_fin') fecha_fin: string,
   ) {
-    return this.timesheetsService.getProjectSummary(fechaInicio, fechaFin);
+    return this.timesheetsService.getProjectSummary(fecha_inicio, fecha_fin);
   }
 }

@@ -132,9 +132,24 @@ let UsersService = class UsersService {
         if (existing) {
             throw new common_1.BadRequestException('Ya existe un empleado con ese email o código');
         }
+        if (createEmpleadoDto.supervisorId) {
+            const supervisor = await this.empleadoRepository.findOne({
+                where: { empleadoId: createEmpleadoDto.supervisorId },
+            });
+            if (!supervisor) {
+                throw new common_1.BadRequestException('El supervisor seleccionado no existe');
+            }
+        }
         const empleado = this.empleadoRepository.create({
             ...createEmpleadoDto,
-            activo: true,
+            telefono: createEmpleadoDto.telefono || null,
+            puesto: createEmpleadoDto.puesto || null,
+            departamento: createEmpleadoDto.departamento || null,
+            supervisorId: createEmpleadoDto.supervisorId || null,
+            tarifaHora: createEmpleadoDto.tarifaHora !== undefined && createEmpleadoDto.tarifaHora !== null
+                ? Number(createEmpleadoDto.tarifaHora)
+                : null,
+            activo: createEmpleadoDto.activo ?? true,
         });
         const saved = (await this.empleadoRepository.save(empleado));
         await this.auditRepository.save({
@@ -154,7 +169,54 @@ let UsersService = class UsersService {
         if (!empleado) {
             throw new common_1.NotFoundException('Empleado no encontrado');
         }
-        Object.assign(empleado, updateEmpleadoDto);
+        if (updateEmpleadoDto.email && updateEmpleadoDto.email !== empleado.email) {
+            const existingEmail = await this.empleadoRepository.findOne({
+                where: { email: updateEmpleadoDto.email },
+            });
+            if (existingEmail && existingEmail.empleadoId !== id) {
+                throw new common_1.BadRequestException('Ya existe otro empleado con ese email');
+            }
+        }
+        if (updateEmpleadoDto.codigoEmpleado &&
+            updateEmpleadoDto.codigoEmpleado !== empleado.codigoEmpleado) {
+            const existingCodigo = await this.empleadoRepository.findOne({
+                where: { codigoEmpleado: updateEmpleadoDto.codigoEmpleado },
+            });
+            if (existingCodigo && existingCodigo.empleadoId !== id) {
+                throw new common_1.BadRequestException('Ya existe otro empleado con ese código');
+            }
+        }
+        if (updateEmpleadoDto.supervisorId === id) {
+            throw new common_1.BadRequestException('Un empleado no puede ser su propio supervisor');
+        }
+        if (updateEmpleadoDto.supervisorId) {
+            const supervisor = await this.empleadoRepository.findOne({
+                where: { empleadoId: updateEmpleadoDto.supervisorId },
+            });
+            if (!supervisor) {
+                throw new common_1.BadRequestException('El supervisor seleccionado no existe');
+            }
+        }
+        Object.assign(empleado, {
+            ...updateEmpleadoDto,
+            telefono: updateEmpleadoDto.telefono !== undefined
+                ? updateEmpleadoDto.telefono || null
+                : empleado.telefono,
+            puesto: updateEmpleadoDto.puesto !== undefined
+                ? updateEmpleadoDto.puesto || null
+                : empleado.puesto,
+            departamento: updateEmpleadoDto.departamento !== undefined
+                ? updateEmpleadoDto.departamento || null
+                : empleado.departamento,
+            supervisorId: updateEmpleadoDto.supervisorId !== undefined
+                ? updateEmpleadoDto.supervisorId || null
+                : empleado.supervisorId,
+            tarifaHora: updateEmpleadoDto.tarifaHora !== undefined
+                ? updateEmpleadoDto.tarifaHora !== null
+                    ? Number(updateEmpleadoDto.tarifaHora)
+                    : null
+                : empleado.tarifaHora,
+        });
         await this.empleadoRepository.save(empleado);
         await this.auditRepository.save({
             usuarioId,

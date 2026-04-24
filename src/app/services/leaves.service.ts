@@ -15,8 +15,8 @@ export interface SolicitudPermiso {
   solicitudId?: number;
   empleadoId: number;
   tipoPermisoId: number;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha_inicio: string;
+  fecha_fin: string;
   horasInicio?: string;
   horasFin?: string;
   motivo: string;

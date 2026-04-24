@@ -338,7 +338,7 @@
                 <input
                   type="date"
                   class="form-control"
-                  [(ngModel)]="nuevaAsignacion.fechaInicio"
+                  [(ngModel)]="nuevaAsignacion.fecha_inicio"
                 />
               </div>
 
@@ -347,7 +347,7 @@
                 <input
                   type="date"
                   class="form-control"
-                  [(ngModel)]="nuevaAsignacion.fechaFin"
+                  [(ngModel)]="nuevaAsignacion.fecha_fin"
                 />
               </div>
             </div>
@@ -371,7 +371,7 @@
                     <div>
                       <p class="assigned-item__name">{{ item.empleado }}</p>
                       <p class="assigned-item__meta">
-                        {{ item.fechaInicio || 'Sin inicio' }} - {{ item.fechaFin || 'Sin fin' }}
+                        {{ item.fecha_inicio || 'Sin inicio' }} - {{ item.fecha_fin || 'Sin fin' }}
                       </p>
                     </div>
 
@@ -482,7 +482,7 @@
                   <div>
                     <p class="assigned-item__name">{{ item.empleado }}</p>
                     <p class="assigned-item__meta">
-                      {{ item.fechaInicio || 'Sin inicio' }} - {{ item.fechaFin || 'Sin fin' }}
+                      {{ item.fecha_inicio || 'Sin inicio' }} - {{ item.fecha_fin || 'Sin fin' }}
                     </p>
                   </div>
                 </div>

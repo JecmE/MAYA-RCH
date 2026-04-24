@@ -28,8 +28,8 @@ let ReportsController = class ReportsController {
     getBonusEligibility(mes, anio) {
         return this.reportsService.getBonusEligibility(mes, anio);
     }
-    getProjectHours(fechaInicio, fechaFin) {
-        return this.reportsService.getProjectHours(fechaInicio, fechaFin);
+    getProjectHours(fecha_inicio, fecha_fin) {
+        return this.reportsService.getProjectHours(fecha_inicio, fecha_fin);
     }
 };
 exports.ReportsController = ReportsController;
@@ -54,8 +54,8 @@ __decorate([
 __decorate([
     (0, common_1.Get)('project-hours'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
-    __param(0, (0, common_1.Query)('fechaInicio')),
-    __param(1, (0, common_1.Query)('fechaFin')),
+    __param(0, (0, common_1.Query)('fecha_inicio')),
+    __param(1, (0, common_1.Query)('fecha_fin')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)

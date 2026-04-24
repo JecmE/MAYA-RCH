@@ -42,7 +42,7 @@ export declare class AttendanceController {
         horaEntradaTurno: string;
         horaSalidaTurno: string;
     }>;
-    getHistory(req: any, fechaInicio?: string, fechaFin?: string): Promise<{
+    getHistory(req: any, fecha_inicio?: string, fecha_fin?: string): Promise<{
         asistenciaId: number;
         fecha: Date;
         horaEntradaReal: Date;
@@ -52,7 +52,7 @@ export declare class AttendanceController {
         estadoJornada: string;
         observacion: string;
     }[]>;
-    getEmployeeHistory(id: number, fechaInicio?: string, fechaFin?: string): Promise<{
+    getEmployeeHistory(id: number, fecha_inicio?: string, fecha_fin?: string): Promise<{
         asistenciaId: number;
         fecha: Date;
         horaEntradaReal: Date;

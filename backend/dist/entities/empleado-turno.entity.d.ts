@@ -5,8 +5,8 @@ export declare class EmpleadoTurno {
     empleadoTurnoId: number;
     empleadoId: number;
     turnoId: number;
-    fechaInicio: Date;
-    fechaFin: Date;
+    fecha_inicio: Date;
+    fecha_fin: Date;
     activo: boolean;
     empleado: Empleado;
     turno: Turno;

@@ -1,80 +1,60 @@
-import { IsString, IsEmail, IsOptional, IsNumber, IsDateString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEmail,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateEmpleadoDto {
   @IsString()
+  @MaxLength(20)
   codigoEmpleado: string;
 
   @IsString()
+  @MaxLength(100)
   nombres: string;
 
   @IsString()
+  @MaxLength(100)
   apellidos: string;
 
   @IsEmail()
+  @MaxLength(150)
   email: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(20)
   telefono?: string;
 
   @IsDateString()
   fechaIngreso: string;
 
-  @IsNumber()
   @IsOptional()
+  @IsInt()
   supervisorId?: number;
 
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  puesto?: string;
-
-  @IsNumber()
-  @IsOptional()
-  tarifaHora?: number;
-
-  @IsString()
-  @IsOptional()
-  departamento?: string;
-}
-
-export class UpdateEmpleadoDto {
-  @IsString()
-  @IsOptional()
-  codigoEmpleado?: string;
-
-  @IsString()
-  @IsOptional()
-  nombres?: string;
-
-  @IsString()
-  @IsOptional()
-  apellidos?: string;
-
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsOptional()
-  telefono?: string;
-
-  @IsDateString()
-  @IsOptional()
-  fechaIngreso?: string;
-
-  @IsNumber()
-  @IsOptional()
-  supervisorId?: number;
-
-  @IsString()
-  @IsOptional()
+  @MaxLength(100)
   departamento?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
   puesto?: string;
 
-  @IsNumber()
   @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   tarifaHora?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
 }

@@ -176,13 +176,13 @@ let KpiService = class KpiService {
         ];
     }
     async calculateKpi(empleadoId, mes, anio) {
-        const fechaInicio = new Date(anio, mes - 1, 1);
-        const fechaFin = new Date(anio, mes, 0);
+        const fecha_inicio = new Date(anio, mes - 1, 1);
+        const fecha_fin = new Date(anio, mes, 0);
         const hoy = new Date();
         const fechaActual = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-        const fechaCorte = fechaActual < fechaFin ? fechaActual : fechaFin;
+        const fechaCorte = fechaActual < fecha_fin ? fechaActual : fecha_fin;
         let diasTranscurridos = 0;
-        const fechaTemp = new Date(fechaInicio);
+        const fechaTemp = new Date(fecha_inicio);
         while (fechaTemp <= fechaCorte) {
             const diaSemana = fechaTemp.getDay();
             if (diaSemana !== 0 && diaSemana !== 6) {
@@ -194,7 +194,7 @@ let KpiService = class KpiService {
         const asistencia = await this.asistenciaRepository.find({
             where: {
                 empleadoId,
-                fecha: (0, typeorm_2.Between)(fechaInicio, fechaCorte),
+                fecha: (0, typeorm_2.Between)(fecha_inicio, fechaCorte),
             },
         });
         const diasTrabajados = asistencia.filter((a) => a.estadoJornada === 'completada' || a.estadoJornada === 'incompleta').length;
@@ -312,8 +312,8 @@ let KpiService = class KpiService {
             })),
             solicitudesRecientes: recentRequests.map((s) => ({
                 tipo: s.tipoPermiso?.nombre || 'Permiso',
-                fechaInicio: s.fechaInicio,
-                fechaFin: s.fechaFin,
+                fecha_inicio: s.fecha_inicio,
+                fecha_fin: s.fecha_fin,
                 estado: s.estado,
             })),
             kpiActual: currentKpi

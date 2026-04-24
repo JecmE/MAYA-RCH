@@ -58,8 +58,8 @@ export class AuditoriaLogs implements OnInit {
 
   filtroModulo = '';
   filtroUsuario = '';
-  filtroFechaInicio = '';
-  filtroFechaFin = '';
+  filtrofecha_inicio = '';
+  filtrofecha_fin = '';
   filtroTipoEvento = '';
   filtroSeveridad = '';
 
@@ -171,10 +171,10 @@ export class AuditoriaLogs implements OnInit {
 
       const coincideSeveridad = !this.filtroSeveridad || row.severidad === this.filtroSeveridad;
 
-      const coincideFechaInicio = !this.filtroFechaInicio || row.fecha >= this.filtroFechaInicio;
+      const coincidefecha_inicio = !this.filtrofecha_inicio || row.fecha >= this.filtrofecha_inicio;
 
-      const coincideFechaFin =
-        !this.filtroFechaFin || row.fecha <= `${this.filtroFechaFin} 23:59:59`;
+      const coincidefecha_fin =
+        !this.filtrofecha_fin || row.fecha <= `${this.filtrofecha_fin} 23:59:59`;
 
       return (
         coincideBusqueda &&
@@ -184,8 +184,8 @@ export class AuditoriaLogs implements OnInit {
         coincideUsuario &&
         coincideTipoEvento &&
         coincideSeveridad &&
-        coincideFechaInicio &&
-        coincideFechaFin
+        coincidefecha_inicio &&
+        coincidefecha_fin
       );
     });
   }
@@ -284,8 +284,8 @@ export class AuditoriaLogs implements OnInit {
   limpiarFiltrosAvanzados(): void {
     this.filtroModulo = '';
     this.filtroUsuario = '';
-    this.filtroFechaInicio = '';
-    this.filtroFechaFin = '';
+    this.filtrofecha_inicio = '';
+    this.filtrofecha_fin = '';
     this.filtroTipoEvento = '';
     this.filtroSeveridad = '';
   }

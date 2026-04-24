@@ -79,10 +79,10 @@ export class Reportes implements OnInit {
 
   private loadProjects(): void {
     const hoy = new Date();
-    const fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-    const fechaFin = hoy.toISOString().split('T')[0];
+    const fecha_inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    const fecha_fin = hoy.toISOString().split('T')[0];
 
-    this.reportsService.getProjectHours(1, fechaInicio, fechaFin).subscribe({
+    this.reportsService.getProjectHours(1, fecha_inicio, fecha_fin).subscribe({
       next: (data: ProjectHoursReport[]) => {
         this.projectHoursData = data;
         const projectNames = [...new Set(data.map((p) => p.proyectoNombre))];

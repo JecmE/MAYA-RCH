@@ -89,14 +89,14 @@ export class AdminService {
 
   // Audit Logs
   getAuditLogs(
-    fechaInicio?: string,
-    fechaFin?: string,
+    fecha_inicio?: string,
+    fecha_fin?: string,
     usuarioId?: number,
     modulo?: string,
   ): Observable<AuditLog[]> {
     let params: any = {};
-    if (fechaInicio) params.fechaInicio = fechaInicio;
-    if (fechaFin) params.fechaFin = fechaFin;
+    if (fecha_inicio) params.fecha_inicio = fecha_inicio;
+    if (fecha_fin) params.fecha_fin = fecha_fin;
     if (usuarioId) params.usuarioId = usuarioId;
     if (modulo) params.modulo = modulo;
     return this.http.get<AuditLog[]>(`${this.apiUrl}/audit-logs`, { params });

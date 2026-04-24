@@ -16,8 +16,8 @@ export declare class LeavesController {
     getMyRequests(req: any): Promise<{
         solicitudId: number;
         tipoPermiso: string;
-        fechaInicio: Date;
-        fechaFin: Date;
+        fecha_inicio: Date;
+        fecha_fin: Date;
         horasInicio: string;
         horasFin: string;
         motivo: string;

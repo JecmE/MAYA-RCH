@@ -25,10 +25,10 @@ export class SolicitudPermiso {
   tipoPermisoId: number;
 
   @Column({ name: 'fecha_inicio', type: 'date' })
-  fechaInicio: Date;
+  fecha_inicio: Date;
 
   @Column({ name: 'fecha_fin', type: 'date' })
-  fechaFin: Date;
+  fecha_fin: Date;
 
   @Column({ name: 'horas_inicio', type: 'time', nullable: true })
   horasInicio: string;

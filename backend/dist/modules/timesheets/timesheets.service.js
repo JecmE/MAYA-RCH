@@ -29,16 +29,16 @@ let TimesheetsService = class TimesheetsService {
         this.aprobacionRepository = aprobacionRepository;
         this.auditRepository = auditRepository;
     }
-    async getMyTimesheets(empleadoId, fechaInicio, fechaFin, proyectoId) {
+    async getMyTimesheets(empleadoId, fecha_inicio, fecha_fin, proyectoId) {
         const where = { empleadoId };
-        if (fechaInicio && fechaFin) {
-            where.fecha = (0, typeorm_2.Between)(fechaInicio, fechaFin);
+        if (fecha_inicio && fecha_fin) {
+            where.fecha = (0, typeorm_2.Between)(fecha_inicio, fecha_fin);
         }
-        else if (fechaInicio) {
-            where.fecha = (0, typeorm_2.MoreThanOrEqual)(fechaInicio);
+        else if (fecha_inicio) {
+            where.fecha = (0, typeorm_2.MoreThanOrEqual)(fecha_inicio);
         }
-        else if (fechaFin) {
-            where.fecha = (0, typeorm_2.LessThanOrEqual)(fechaFin);
+        else if (fecha_fin) {
+            where.fecha = (0, typeorm_2.LessThanOrEqual)(fecha_fin);
         }
         if (proyectoId) {
             where.proyectoId = proyectoId;
@@ -132,7 +132,7 @@ let TimesheetsService = class TimesheetsService {
             mensaje: 'Registro creado exitosamente',
         };
     }
-    async getTeamTimesheets(supervisorEmpleadoId, fechaInicio, fechaFin) {
+    async getTeamTimesheets(supervisorEmpleadoId, fecha_inicio, fecha_fin) {
         const equipo = await this.empleadoRepository.find({
             where: { supervisorId: supervisorEmpleadoId, activo: true },
         });
@@ -141,8 +141,8 @@ let TimesheetsService = class TimesheetsService {
             return [];
         }
         const where = { empleadoId: empleadoIds };
-        if (fechaInicio && fechaFin) {
-            where.fecha = (0, typeorm_2.Between)(new Date(fechaInicio), new Date(fechaFin));
+        if (fecha_inicio && fecha_fin) {
+            where.fecha = (0, typeorm_2.Between)(new Date(fecha_inicio), new Date(fecha_fin));
         }
         const registros = await this.tiempoRepository.find({
             where,
@@ -226,14 +226,14 @@ let TimesheetsService = class TimesheetsService {
         });
         return { message: 'Registro rechazado' };
     }
-    async getProjectSummary(fechaInicio, fechaFin) {
+    async getProjectSummary(fecha_inicio, fecha_fin) {
         const registros = await this.tiempoRepository
             .createQueryBuilder('rt')
             .leftJoinAndSelect('rt.proyecto', 'proyecto')
             .leftJoinAndSelect('rt.empleado', 'empleado')
-            .where('rt.fecha BETWEEN :fechaInicio AND :fechaFin', {
-            fechaInicio: new Date(fechaInicio),
-            fechaFin: new Date(fechaFin),
+            .where('rt.fecha BETWEEN :fecha_inicio AND :fecha_fin', {
+            fecha_inicio: new Date(fecha_inicio),
+            fecha_fin: new Date(fecha_fin),
         })
             .andWhere('rt.estado = :estado', { estado: registro_tiempo_entity_1.RegistroTiempo.ESTADO_APROBADO })
             .getMany();

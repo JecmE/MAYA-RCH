@@ -133,60 +133,140 @@ export class UsersService {
     };
   }
 
-  async createEmpleado(createEmpleadoDto: CreateEmpleadoDto, usuarioId: number) {
-    const existing = await this.empleadoRepository.findOne({
-      where: [
-        { email: createEmpleadoDto.email },
-        { codigoEmpleado: createEmpleadoDto.codigoEmpleado },
-      ],
-    });
+async createEmpleado(createEmpleadoDto: CreateEmpleadoDto, usuarioId: number) {
+  const existing = await this.empleadoRepository.findOne({
+    where: [
+      { email: createEmpleadoDto.email },
+      { codigoEmpleado: createEmpleadoDto.codigoEmpleado },
+    ],
+  });
 
-    if (existing) {
-      throw new BadRequestException('Ya existe un empleado con ese email o código');
-    }
-
-    const empleado = this.empleadoRepository.create({
-      ...createEmpleadoDto,
-      activo: true,
-    });
-
-    const saved = (await this.empleadoRepository.save(empleado)) as unknown as Empleado;
-
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'EMPLEADOS',
-      accion: 'CREATE',
-      entidad: 'EMPLEADO',
-      entidadId: saved.empleadoId,
-      detalle: `Empleado creado: ${saved.nombres} ${saved.apellidos}`,
-    });
-
-    return this.findEmpleadoById(saved.empleadoId);
+  if (existing) {
+    throw new BadRequestException('Ya existe un empleado con ese email o código');
   }
 
-  async updateEmpleado(id: number, updateEmpleadoDto: UpdateEmpleadoDto, usuarioId: number) {
-    const empleado = await this.empleadoRepository.findOne({
-      where: { empleadoId: id },
+  if (createEmpleadoDto.supervisorId) {
+    const supervisor = await this.empleadoRepository.findOne({
+      where: { empleadoId: createEmpleadoDto.supervisorId },
     });
 
-    if (!empleado) {
-      throw new NotFoundException('Empleado no encontrado');
+    if (!supervisor) {
+      throw new BadRequestException('El supervisor seleccionado no existe');
     }
+  }
 
-    Object.assign(empleado, updateEmpleadoDto);
-    await this.empleadoRepository.save(empleado);
+  const empleado = this.empleadoRepository.create({
+    ...createEmpleadoDto,
+    telefono: createEmpleadoDto.telefono || null,
+    puesto: createEmpleadoDto.puesto || null,
+    departamento: createEmpleadoDto.departamento || null,
+    supervisorId: createEmpleadoDto.supervisorId || null,
+    tarifaHora:
+      createEmpleadoDto.tarifaHora !== undefined && createEmpleadoDto.tarifaHora !== null
+        ? Number(createEmpleadoDto.tarifaHora)
+        : null,
+    activo: createEmpleadoDto.activo ?? true,
+  });
 
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'EMPLEADOS',
-      accion: 'UPDATE',
-      entidad: 'EMPLEADO',
-      entidadId: id,
-      detalle: `Empleado actualizado`,
+  const saved = (await this.empleadoRepository.save(empleado)) as unknown as Empleado;
+
+  await this.auditRepository.save({
+    usuarioId,
+    modulo: 'EMPLEADOS',
+    accion: 'CREATE',
+    entidad: 'EMPLEADO',
+    entidadId: saved.empleadoId,
+    detalle: `Empleado creado: ${saved.nombres} ${saved.apellidos}`,
+  });
+
+  return this.findEmpleadoById(saved.empleadoId);
+}
+
+async updateEmpleado(id: number, updateEmpleadoDto: UpdateEmpleadoDto, usuarioId: number) {
+  const empleado = await this.empleadoRepository.findOne({
+    where: { empleadoId: id },
+  });
+
+  if (!empleado) {
+    throw new NotFoundException('Empleado no encontrado');
+  }
+
+  if (updateEmpleadoDto.email && updateEmpleadoDto.email !== empleado.email) {
+    const existingEmail = await this.empleadoRepository.findOne({
+      where: { email: updateEmpleadoDto.email },
     });
 
-    return this.findEmpleadoById(id);
+    if (existingEmail && existingEmail.empleadoId !== id) {
+      throw new BadRequestException('Ya existe otro empleado con ese email');
+    }
   }
+
+  if (
+    updateEmpleadoDto.codigoEmpleado &&
+    updateEmpleadoDto.codigoEmpleado !== empleado.codigoEmpleado
+  ) {
+    const existingCodigo = await this.empleadoRepository.findOne({
+      where: { codigoEmpleado: updateEmpleadoDto.codigoEmpleado },
+    });
+
+    if (existingCodigo && existingCodigo.empleadoId !== id) {
+      throw new BadRequestException('Ya existe otro empleado con ese código');
+    }
+  }
+
+  if (updateEmpleadoDto.supervisorId === id) {
+    throw new BadRequestException('Un empleado no puede ser su propio supervisor');
+  }
+
+  if (updateEmpleadoDto.supervisorId) {
+    const supervisor = await this.empleadoRepository.findOne({
+      where: { empleadoId: updateEmpleadoDto.supervisorId },
+    });
+
+    if (!supervisor) {
+      throw new BadRequestException('El supervisor seleccionado no existe');
+    }
+  }
+
+  Object.assign(empleado, {
+    ...updateEmpleadoDto,
+    telefono:
+      updateEmpleadoDto.telefono !== undefined
+        ? updateEmpleadoDto.telefono || null
+        : empleado.telefono,
+    puesto:
+      updateEmpleadoDto.puesto !== undefined
+        ? updateEmpleadoDto.puesto || null
+        : empleado.puesto,
+    departamento:
+      updateEmpleadoDto.departamento !== undefined
+        ? updateEmpleadoDto.departamento || null
+        : empleado.departamento,
+    supervisorId:
+      updateEmpleadoDto.supervisorId !== undefined
+        ? updateEmpleadoDto.supervisorId || null
+        : empleado.supervisorId,
+    tarifaHora:
+      updateEmpleadoDto.tarifaHora !== undefined
+        ? updateEmpleadoDto.tarifaHora !== null
+          ? Number(updateEmpleadoDto.tarifaHora)
+          : null
+        : empleado.tarifaHora,
+  });
+
+  await this.empleadoRepository.save(empleado);
+
+  await this.auditRepository.save({
+    usuarioId,
+    modulo: 'EMPLEADOS',
+    accion: 'UPDATE',
+    entidad: 'EMPLEADO',
+    entidadId: id,
+    detalle: `Empleado actualizado`,
+  });
+
+  return this.findEmpleadoById(id);
+}
 
   async deactivateEmpleado(id: number, usuarioId: number) {
     const empleado = await this.empleadoRepository.findOne({

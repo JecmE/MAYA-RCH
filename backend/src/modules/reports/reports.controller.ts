@@ -23,7 +23,7 @@ export class ReportsController {
 
   @Get('project-hours')
   @Roles('RRHH', 'Administrador')
-  getProjectHours(@Query('fechaInicio') fechaInicio: string, @Query('fechaFin') fechaFin: string) {
-    return this.reportsService.getProjectHours(fechaInicio, fechaFin);
+  getProjectHours(@Query('fecha_inicio') fecha_inicio: string, @Query('fecha_fin') fecha_fin: string) {
+    return this.reportsService.getProjectHours(fecha_inicio, fecha_fin);
   }
 }

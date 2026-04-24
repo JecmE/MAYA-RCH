@@ -31,8 +31,8 @@ interface ReglaItem {
 
 interface NuevaReglaForm {
   nombre: string;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha_inicio: string;
+  fecha_fin: string;
   minAsistencia: number | null;
   maxTardias: number | null;
   condiciones: string;
@@ -285,8 +285,8 @@ export class BonosIncentivos implements OnInit {
   private crearFormularioReglaVacio(): NuevaReglaForm {
     return {
       nombre: '',
-      fechaInicio: '',
-      fechaFin: '',
+      fecha_inicio: '',
+      fecha_fin: '',
       minAsistencia: null,
       maxTardias: null,
       condiciones: '',
@@ -304,16 +304,16 @@ export class BonosIncentivos implements OnInit {
   }
 
   private obtenerVigenciaTexto(): string {
-    if (!this.nuevaRegla.fechaInicio && !this.nuevaRegla.fechaFin) {
+    if (!this.nuevaRegla.fecha_inicio && !this.nuevaRegla.fecha_fin) {
       return 'Indefinida';
     }
 
-    if (this.nuevaRegla.fechaInicio && !this.nuevaRegla.fechaFin) {
-      return `Desde ${this.formatearFecha(this.nuevaRegla.fechaInicio)}`;
+    if (this.nuevaRegla.fecha_inicio && !this.nuevaRegla.fecha_fin) {
+      return `Desde ${this.formatearFecha(this.nuevaRegla.fecha_inicio)}`;
     }
 
-    if (this.nuevaRegla.fechaInicio && this.nuevaRegla.fechaFin) {
-      return `${this.formatearFecha(this.nuevaRegla.fechaInicio)} - ${this.formatearFecha(this.nuevaRegla.fechaFin)}`;
+    if (this.nuevaRegla.fecha_inicio && this.nuevaRegla.fecha_fin) {
+      return `${this.formatearFecha(this.nuevaRegla.fecha_inicio)} - ${this.formatearFecha(this.nuevaRegla.fecha_fin)}`;
     }
 
     return 'Indefinida';

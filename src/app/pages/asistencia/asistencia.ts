@@ -21,8 +21,8 @@ interface HistorialAsistencia {
   styleUrl: './asistencia.css',
 })
 export class Asistencia implements OnInit {
-  fechaInicio = '';
-  fechaFin = '';
+  fecha_inicio = '';
+  fecha_fin = '';
 
   historyData: HistorialAsistencia[] = [];
   filteredData: HistorialAsistencia[] = [];
@@ -118,7 +118,7 @@ export class Asistencia implements OnInit {
   }
 
   filtrar(): void {
-    if (!this.fechaInicio && !this.fechaFin) {
+    if (!this.fecha_inicio && !this.fecha_fin) {
       this.filteredData = [];
       this.updatePagination();
       this.cdr.detectChanges();
@@ -127,8 +127,8 @@ export class Asistencia implements OnInit {
 
     this.filteredData = this.historyData.filter((item) => {
       const itemDate = new Date(item.date);
-      const start = this.fechaInicio ? new Date(this.fechaInicio) : null;
-      const end = this.fechaFin ? new Date(this.fechaFin) : null;
+      const start = this.fecha_inicio ? new Date(this.fecha_inicio) : null;
+      const end = this.fecha_fin ? new Date(this.fecha_fin) : null;
 
       if (start && itemDate < start) return false;
       if (end && itemDate > end) return false;
@@ -140,8 +140,8 @@ export class Asistencia implements OnInit {
   }
 
   limpiar(): void {
-    this.fechaInicio = '';
-    this.fechaFin = '';
+    this.fecha_inicio = '';
+    this.fecha_fin = '';
     this.filteredData = [];
     this.currentPage = 1;
     this.updatePagination();

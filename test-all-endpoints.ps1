@@ -116,8 +116,8 @@ Write-Host "[$($result.Status)] GET /leaves/types: $($result.Error)" -Foreground
 $leaveTypes = if ($result.Response) { $result.Response[0].id } else { 1 }
 $result = Test-Endpoint -Method "POST" -Endpoint "/leaves/request" -Token $token -Body @{
     tipoPermisoId = $leaveTypes
-    fechaInicio = "2026-04-15"
-    fechaFin = "2026-04-16"
+    fecha_inicio = "2026-04-15"
+    fecha_fin = "2026-04-16"
     observaciones = "Test leave request"
     diasLaborables = 2
 } -Description "Create leave request"
@@ -259,8 +259,8 @@ $result = Test-Endpoint -Method "POST" -Endpoint "/payroll/periods" -Token $toke
     codigo = "2026-05"
     mes = 5
     anio = 2026
-    fechaInicio = "2026-05-01"
-    fechaFin = "2026-05-31"
+    fecha_inicio = "2026-05-01"
+    fecha_fin = "2026-05-31"
     estado = "Abierto"
 } -Description "Create payroll period"
 $results += $result

@@ -67,10 +67,10 @@ export class AttendanceService {
     return this.http.get<TodayStatus>(`${this.apiUrl}/today`);
   }
 
-  getHistory(fechaInicio?: string, fechaFin?: string): Observable<AttendanceRecord[]> {
+  getHistory(fecha_inicio?: string, fecha_fin?: string): Observable<AttendanceRecord[]> {
     let params: any = {};
-    if (fechaInicio) params.fechaInicio = fechaInicio;
-    if (fechaFin) params.fechaFin = fechaFin;
+    if (fecha_inicio) params.fecha_inicio = fecha_inicio;
+    if (fecha_fin) params.fecha_fin = fecha_fin;
     return this.http.get<AttendanceRecord[]>(`${this.apiUrl}/history`, { params });
   }
 

@@ -24,18 +24,18 @@ export class TimesheetsService {
 
   async getMyTimesheets(
     empleadoId: number,
-    fechaInicio?: string,
-    fechaFin?: string,
+    fecha_inicio?: string,
+    fecha_fin?: string,
     proyectoId?: number,
   ) {
     const where: any = { empleadoId };
 
-    if (fechaInicio && fechaFin) {
-      where.fecha = Between(fechaInicio, fechaFin);
-    } else if (fechaInicio) {
-      where.fecha = MoreThanOrEqual(fechaInicio);
-    } else if (fechaFin) {
-      where.fecha = LessThanOrEqual(fechaFin);
+    if (fecha_inicio && fecha_fin) {
+      where.fecha = Between(fecha_inicio, fecha_fin);
+    } else if (fecha_inicio) {
+      where.fecha = MoreThanOrEqual(fecha_inicio);
+    } else if (fecha_fin) {
+      where.fecha = LessThanOrEqual(fecha_fin);
     }
 
     if (proyectoId) {
@@ -154,7 +154,7 @@ export class TimesheetsService {
     };
   }
 
-  async getTeamTimesheets(supervisorEmpleadoId: number, fechaInicio?: string, fechaFin?: string) {
+  async getTeamTimesheets(supervisorEmpleadoId: number, fecha_inicio?: string, fecha_fin?: string) {
     const equipo = await this.empleadoRepository.find({
       where: { supervisorId: supervisorEmpleadoId, activo: true },
     });
@@ -167,8 +167,8 @@ export class TimesheetsService {
 
     const where: any = { empleadoId: empleadoIds as any };
 
-    if (fechaInicio && fechaFin) {
-      where.fecha = Between(new Date(fechaInicio), new Date(fechaFin));
+    if (fecha_inicio && fecha_fin) {
+      where.fecha = Between(new Date(fecha_inicio), new Date(fecha_fin));
     }
 
     const registros = await this.tiempoRepository.find({
@@ -269,14 +269,14 @@ export class TimesheetsService {
     return { message: 'Registro rechazado' };
   }
 
-  async getProjectSummary(fechaInicio: string, fechaFin: string) {
+  async getProjectSummary(fecha_inicio: string, fecha_fin: string) {
     const registros = await this.tiempoRepository
       .createQueryBuilder('rt')
       .leftJoinAndSelect('rt.proyecto', 'proyecto')
       .leftJoinAndSelect('rt.empleado', 'empleado')
-      .where('rt.fecha BETWEEN :fechaInicio AND :fechaFin', {
-        fechaInicio: new Date(fechaInicio),
-        fechaFin: new Date(fechaFin),
+      .where('rt.fecha BETWEEN :fecha_inicio AND :fecha_fin', {
+        fecha_inicio: new Date(fecha_inicio),
+        fecha_fin: new Date(fecha_fin),
       })
       .andWhere('rt.estado = :estado', { estado: RegistroTiempo.ESTADO_APROBADO })
       .getMany();

@@ -176,13 +176,13 @@ let AdminService = class AdminService {
         });
         return this.getBonusRules();
     }
-    async getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo) {
+    async getAuditLogs(fecha_inicio, fecha_fin, usuarioId, modulo) {
         const where = {};
-        if (fechaInicio && fechaFin) {
-            where.fechaHora = new Date(fechaInicio);
+        if (fecha_inicio && fecha_fin) {
+            where.fechaHora = new Date(fecha_inicio);
         }
-        else if (fechaFin) {
-            where.fechaHora = new Date(fechaFin);
+        else if (fecha_fin) {
+            where.fechaHora = new Date(fecha_fin);
         }
         if (usuarioId) {
             where.usuarioId = usuarioId;
@@ -262,9 +262,9 @@ let AdminService = class AdminService {
                 .createQueryBuilder('vm')
                 .innerJoin('vm.solicitud', 's')
                 .where('s.estado = :estado', { estado: 'aprobado' })
-                .andWhere('vm.fechaInicio <= :today', { today })
-                .andWhere('vm.fechaFin >= :today', { today })
-                .getCount(),
+                .andWhere('s.fecha_inicio <= :today', { today })
+                .andWhere('s.fecha_fin >= :today', { today })
+                .getCount()
         ]);
         return {
             empleadosActivos: activeEmployees,

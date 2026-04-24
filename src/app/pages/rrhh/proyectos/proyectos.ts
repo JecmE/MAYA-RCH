@@ -7,8 +7,8 @@ import { ProjectsService, Proyecto } from '../../../services/projects.service';
 interface AsignacionProyecto {
   id: number;
   empleado: string;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha_inicio: string;
+  fecha_fin: string;
 }
 
 interface ProyectoItem {
@@ -35,8 +35,8 @@ interface ProyectoForm {
 
 interface NuevaAsignacionForm {
   empleado: string;
-  fechaInicio: string;
-  fechaFin: string;
+  fecha_inicio: string;
+  fecha_fin: string;
 }
 
 @Component({
@@ -227,8 +227,8 @@ export class Proyectos implements OnInit {
     this.asignacionesTemporales.push({
       id: Date.now(),
       empleado: this.nuevaAsignacion.empleado,
-      fechaInicio: this.nuevaAsignacion.fechaInicio,
-      fechaFin: this.nuevaAsignacion.fechaFin,
+      fecha_inicio: this.nuevaAsignacion.fecha_inicio,
+      fecha_fin: this.nuevaAsignacion.fecha_fin,
     });
 
     this.nuevoProyecto.empleados = this.asignacionesTemporales.length;
@@ -365,8 +365,8 @@ export class Proyectos implements OnInit {
   private getAsignacionVacia(): NuevaAsignacionForm {
     return {
       empleado: '',
-      fechaInicio: '',
-      fechaFin: '',
+      fecha_inicio: '',
+      fecha_fin: '',
     };
   }
 

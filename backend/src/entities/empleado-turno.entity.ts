@@ -15,10 +15,10 @@ export class EmpleadoTurno {
   turnoId: number;
 
   @Column({ name: 'fecha_inicio', type: 'date' })
-  fechaInicio: Date;
+  fecha_inicio: Date;
 
   @Column({ name: 'fecha_fin', type: 'date', nullable: true })
-  fechaFin: Date;
+  fecha_fin: Date;
 
   @Column({ default: 1 })
   activo: boolean;

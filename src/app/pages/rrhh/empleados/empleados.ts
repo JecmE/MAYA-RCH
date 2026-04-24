@@ -1,8 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { UsersService, Empleado } from '../../../services/users.service';
+import {
+  CreateEmpleadoDto,
+  Empleado,
+  UsersService,
+} from '../../../services/users.service';
 
 interface EmpleadoItem {
   id: number;
@@ -11,21 +15,21 @@ interface EmpleadoItem {
   puesto: string;
   departamento: string;
   correo: string;
-  estado: string;
+  estado: 'Activo' | 'Inactivo';
+  activo: boolean;
 }
 
 interface NuevoEmpleadoForm {
   nombres: string;
   apellidos: string;
-  documento: string;
   correo: string;
   telefono: string;
   puesto: string;
   departamento: string;
-  supervisor: string;
-  turno: string;
+  supervisorId: number | null;
   fechaIngreso: string;
-  estado: string;
+  tarifaHora: number | null;
+  estado: 'Activo' | 'Inactivo';
 }
 
 @Component({
@@ -42,7 +46,13 @@ export class Empleados implements OnInit {
   mostrarMensajeExito = false;
   mensajeExito = '';
 
+  mostrarMensajeError = false;
+  mensajeError = '';
+
   modoEdicion = false;
+  guardando = false;
+  cargandoEdicion = false;
+
   empleadoEditandoId: number | null = null;
   empleadoSeleccionado: EmpleadoItem | null = null;
 
@@ -51,31 +61,40 @@ export class Empleados implements OnInit {
   filtroEstado = 'Todos los estados';
 
   empleadosData: EmpleadoItem[] = [];
-
   nuevoEmpleado: NuevoEmpleadoForm = this.crearFormularioVacio();
 
   constructor(
-    private router: Router,
-    private usersService: UsersService,
+  private router: Router,
+  private usersService: UsersService,
+  private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
-    this.loadEmpleados();
+  this.loadEmpleados();
   }
 
-  private loadEmpleados(): void {
-    this.usersService.getAll().subscribe({
-      next: (empleados) => {
-        this.empleadosData = empleados.map((e) => this.mapToItem(e));
-      },
-      error: (err) => {
-        console.error('Error cargando empleados:', err);
-        this.empleadosData = [];
-      },
-    });
-  }
+private loadEmpleados(): void {
+  this.usersService.getAll().subscribe({
+    next: (empleados) => {
+      this.empleadosData = empleados.map((e) => this.mapToItem(e));
+      this.cdr.detectChanges();
+    },
+error: (err) => {
+  this.cargandoEdicion = false;
+  console.error('Error cargando empleado para edición:', err);
+  this.mostrarNotificacionError(
+    this.obtenerMensajeError(err, 'No se pudo cargar la información del empleado.')
+  );
+  this.modalNuevoEmpleado = false;
+  this.modoEdicion = false;
+  this.empleadoEditandoId = null;
+},
+  });
+}
 
   private mapToItem(e: Empleado): EmpleadoItem {
+    const activo = !!e.activo;
+
     return {
       id: e.empleadoId || 0,
       codigo: e.codigoEmpleado || '',
@@ -83,7 +102,8 @@ export class Empleados implements OnInit {
       puesto: e.puesto || 'Sin puesto',
       departamento: e.departamento || 'Sin departamento',
       correo: e.email || '',
-      estado: e.activo ? 'Activo' : 'Inactivo',
+      estado: activo ? 'Activo' : 'Inactivo',
+      activo,
     };
   }
 
@@ -92,6 +112,7 @@ export class Empleados implements OnInit {
   }
 
   abrirModalNuevoEmpleado(): void {
+    this.limpiarMensajes();
     this.modoEdicion = false;
     this.empleadoEditandoId = null;
     this.nuevoEmpleado = this.crearFormularioVacio();
@@ -99,68 +120,92 @@ export class Empleados implements OnInit {
   }
 
   cerrarModalNuevoEmpleado(): void {
-    this.modalNuevoEmpleado = false;
-    this.modoEdicion = false;
-    this.empleadoEditandoId = null;
+    if (this.guardando || this.cargandoEdicion) return;
+    this.resetModalFormulario();
   }
 
   cancelarNuevoEmpleado(): void {
-    this.nuevoEmpleado = this.crearFormularioVacio();
-    this.modalNuevoEmpleado = false;
-    this.modoEdicion = false;
-    this.empleadoEditandoId = null;
+    if (this.guardando || this.cargandoEdicion) return;
+    this.resetModalFormulario();
   }
 
   guardarEmpleado(): void {
-    const nombreCompleto = `${this.nuevoEmpleado.nombres} ${this.nuevoEmpleado.apellidos}`.trim();
+    if (this.guardando || this.cargandoEdicion) return;
 
-    if (this.modoEdicion && this.empleadoEditandoId !== null) {
-      this.usersService
-        .update(this.empleadoEditandoId, {
-          nombres: this.nuevoEmpleado.nombres,
-          apellidos: this.nuevoEmpleado.apellidos,
-          email: this.nuevoEmpleado.correo,
-          telefono: this.nuevoEmpleado.telefono,
-          puesto: this.nuevoEmpleado.puesto,
-          departamento: this.nuevoEmpleado.departamento,
-        })
-        .subscribe({
-          next: () => {
-            this.mostrarNotificacionExito('Empleado actualizado correctamente.');
-            this.loadEmpleados();
-          },
-          error: (err) => {
-            console.error('Error actualizando empleado:', err);
-          },
-        });
-    } else {
-      this.usersService
-        .create({
-          codigoEmpleado: this.generarCodigoEmpleado(),
-          nombres: this.nuevoEmpleado.nombres,
-          apellidos: this.nuevoEmpleado.apellidos,
-          email: this.nuevoEmpleado.correo,
-          telefono: this.nuevoEmpleado.telefono,
-          puesto: this.nuevoEmpleado.puesto,
-          departamento: this.nuevoEmpleado.departamento,
-          fechaIngreso: this.nuevoEmpleado.fechaIngreso || new Date().toISOString().split('T')[0],
-          activo: true,
-        })
-        .subscribe({
-          next: () => {
-            this.mostrarNotificacionExito('Empleado guardado correctamente.');
-            this.loadEmpleados();
-          },
-          error: (err) => {
-            console.error('Error guardando empleado:', err);
-          },
-        });
+    this.limpiarMensajes();
+
+    const errorValidacion = this.validarFormulario();
+    if (errorValidacion) {
+      this.mostrarNotificacionError(errorValidacion);
+      return;
     }
 
-    this.nuevoEmpleado = this.crearFormularioVacio();
-    this.modalNuevoEmpleado = false;
-    this.modoEdicion = false;
-    this.empleadoEditandoId = null;
+    this.guardando = true;
+
+    const payloadBase: Partial<CreateEmpleadoDto> = {
+      nombres: this.normalizarTexto(this.nuevoEmpleado.nombres),
+      apellidos: this.normalizarTexto(this.nuevoEmpleado.apellidos),
+      email: this.normalizarTexto(this.nuevoEmpleado.correo),
+      telefono: this.normalizarTexto(this.nuevoEmpleado.telefono) || undefined,
+      puesto: this.normalizarTexto(this.nuevoEmpleado.puesto) || undefined,
+      departamento: this.normalizarTexto(this.nuevoEmpleado.departamento) || undefined,
+      fechaIngreso: this.nuevoEmpleado.fechaIngreso,
+      supervisorId: this.nuevoEmpleado.supervisorId ?? undefined,
+      tarifaHora:
+        this.nuevoEmpleado.tarifaHora !== null && this.nuevoEmpleado.tarifaHora !== undefined
+          ? Number(this.nuevoEmpleado.tarifaHora)
+          : undefined,
+      activo: this.nuevoEmpleado.estado === 'Activo',
+    };
+
+    if (this.modoEdicion && this.empleadoEditandoId !== null) {
+      this.usersService.update(this.empleadoEditandoId, payloadBase).subscribe({
+        next: () => {
+          this.guardando = false;
+          this.mostrarNotificacionExito('Empleado actualizado correctamente.');
+          this.loadEmpleados();
+          this.resetModalFormulario();
+        },
+        error: (err) => {
+          this.guardando = false;
+          console.error('Error actualizando empleado:', err);
+          this.mostrarNotificacionError(
+            this.obtenerMensajeError(err, 'No se pudo actualizar el empleado.'),
+          );
+        },
+      });
+      return;
+    }
+
+    const payloadCreate: CreateEmpleadoDto = {
+      codigoEmpleado: this.generarCodigoEmpleado(),
+      nombres: payloadBase.nombres!,
+      apellidos: payloadBase.apellidos!,
+      email: payloadBase.email!,
+      telefono: payloadBase.telefono,
+      fechaIngreso: payloadBase.fechaIngreso!,
+      supervisorId: payloadBase.supervisorId,
+      departamento: payloadBase.departamento,
+      puesto: payloadBase.puesto,
+      tarifaHora: payloadBase.tarifaHora,
+      activo: payloadBase.activo,
+    };
+
+    this.usersService.create(payloadCreate).subscribe({
+      next: () => {
+        this.guardando = false;
+        this.mostrarNotificacionExito('Empleado guardado correctamente.');
+        this.loadEmpleados();
+        this.resetModalFormulario();
+      },
+      error: (err) => {
+        this.guardando = false;
+        console.error('Error guardando empleado:', err);
+        this.mostrarNotificacionError(
+          this.obtenerMensajeError(err, 'No se pudo guardar el empleado.'),
+        );
+      },
+    });
   }
 
   verEmpleado(empleado: EmpleadoItem): void {
@@ -173,32 +218,48 @@ export class Empleados implements OnInit {
     this.empleadoSeleccionado = null;
   }
 
-  editarEmpleado(empleado: EmpleadoItem): void {
-    const partesNombre = empleado.nombre.trim().split(' ');
-    const nombres = partesNombre
-      .slice(0, Math.max(1, Math.floor(partesNombre.length / 2)))
-      .join(' ');
-    const apellidos = partesNombre.slice(Math.floor(partesNombre.length / 2)).join(' ');
+editarEmpleado(empleadoId: number): void {
+  this.limpiarMensajes();
 
-    this.modoEdicion = true;
-    this.empleadoEditandoId = empleado.id;
+  this.modoEdicion = true;
+  this.empleadoEditandoId = empleadoId;
+  this.modalNuevoEmpleado = true;
+  this.cargandoEdicion = true;
+  this.cdr.detectChanges();
 
-    this.nuevoEmpleado = {
-      nombres: nombres || '',
-      apellidos: apellidos || '',
-      documento: '',
-      correo: empleado.correo || '',
-      telefono: '',
-      puesto: empleado.puesto || '',
-      departamento: empleado.departamento || '',
-      supervisor: '',
-      turno: '',
-      fechaIngreso: '',
-      estado: empleado.estado || 'Activo',
-    };
+  this.usersService.getById(empleadoId).subscribe({
+    next: (empleado) => {
+      this.nuevoEmpleado = {
+        nombres: empleado.nombres || '',
+        apellidos: empleado.apellidos || '',
+        correo: empleado.email || '',
+        telefono: empleado.telefono || '',
+        puesto: empleado.puesto || '',
+        departamento: empleado.departamento || '',
+        supervisorId: empleado.supervisorId ?? null,
+        fechaIngreso: this.formatearFechaParaInput(empleado.fechaIngreso),
+        tarifaHora:
+          empleado.tarifaHora !== null && empleado.tarifaHora !== undefined
+            ? Number(empleado.tarifaHora)
+            : null,
+        estado: empleado.activo ? 'Activo' : 'Inactivo',
+      };
 
-    this.modalNuevoEmpleado = true;
-  }
+      this.cargandoEdicion = false;
+      this.cdr.detectChanges();
+    },
+    error: (err) => {
+      this.cargandoEdicion = false;
+      this.cdr.detectChanges();
+
+      console.error('Error cargando empleado para edición:', err);
+      this.mostrarNotificacionError(
+        this.obtenerMensajeError(err, 'No se pudo cargar la información del empleado.'),
+      );
+      this.resetModalFormulario();
+    },
+  });
+}
 
   limpiarFiltros(): void {
     this.filtroBusqueda = '';
@@ -259,6 +320,18 @@ export class Empleados implements OnInit {
     ).sort((a, b) => a.localeCompare(b));
   }
 
+  get supervisoresDisponibles(): EmpleadoItem[] {
+    return this.empleadosData
+      .filter((empleado) => {
+        if (!empleado.activo) return false;
+        if (this.empleadoEditandoId !== null && empleado.id === this.empleadoEditandoId) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
   getEstadoClass(estado: string): string {
     switch (estado) {
       case 'Activo':
@@ -274,16 +347,78 @@ export class Empleados implements OnInit {
     return {
       nombres: '',
       apellidos: '',
-      documento: '',
       correo: '',
       telefono: '',
       puesto: '',
       departamento: '',
-      supervisor: '',
-      turno: '',
+      supervisorId: null,
       fechaIngreso: '',
+      tarifaHora: null,
       estado: 'Activo',
     };
+  }
+
+  private validarFormulario(): string | null {
+    if (!this.normalizarTexto(this.nuevoEmpleado.nombres)) {
+      return 'Los nombres son obligatorios.';
+    }
+
+    if (!this.normalizarTexto(this.nuevoEmpleado.apellidos)) {
+      return 'Los apellidos son obligatorios.';
+    }
+
+    if (!this.normalizarTexto(this.nuevoEmpleado.correo)) {
+      return 'El correo electrónico es obligatorio.';
+    }
+
+    const email = this.normalizarTexto(this.nuevoEmpleado.correo);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Ingresa un correo electrónico válido.';
+    }
+
+    if (!this.nuevoEmpleado.fechaIngreso) {
+      return 'La fecha de ingreso es obligatoria.';
+    }
+
+    if (
+      this.nuevoEmpleado.tarifaHora !== null &&
+      this.nuevoEmpleado.tarifaHora !== undefined &&
+      Number(this.nuevoEmpleado.tarifaHora) < 0
+    ) {
+      return 'La tarifa por hora no puede ser negativa.';
+    }
+
+    return null;
+  }
+
+  private formatearFechaParaInput(valor: string | Date | undefined): string {
+    if (!valor) return '';
+
+    const fecha = new Date(valor);
+    if (!isNaN(fecha.getTime())) {
+      return fecha.toISOString().split('T')[0];
+    }
+
+    return String(valor).slice(0, 10);
+  }
+
+  private normalizarTexto(valor: string | null | undefined): string {
+    return (valor || '').trim();
+  }
+
+  private limpiarMensajes(): void {
+    this.mostrarMensajeError = false;
+    this.mensajeError = '';
+  }
+
+  private resetModalFormulario(): void {
+    this.modalNuevoEmpleado = false;
+    this.modoEdicion = false;
+    this.guardando = false;
+    this.cargandoEdicion = false;
+    this.empleadoEditandoId = null;
+    this.nuevoEmpleado = this.crearFormularioVacio();
   }
 
   private mostrarNotificacionExito(mensaje: string): void {
@@ -294,6 +429,30 @@ export class Empleados implements OnInit {
       this.mostrarMensajeExito = false;
       this.mensajeExito = '';
     }, 3000);
+  }
+
+  private mostrarNotificacionError(mensaje: string): void {
+    this.mensajeError = mensaje;
+    this.mostrarMensajeError = true;
+
+    setTimeout(() => {
+      this.mostrarMensajeError = false;
+      this.mensajeError = '';
+    }, 4000);
+  }
+
+  private obtenerMensajeError(err: any, fallback: string): string {
+    const message = err?.error?.message;
+
+    if (Array.isArray(message)) {
+      return message.join(' ');
+    }
+
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+
+    return fallback;
   }
 
   private generarCodigoEmpleado(): string {

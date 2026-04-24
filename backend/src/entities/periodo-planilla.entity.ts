@@ -10,10 +10,10 @@ export class PeriodoPlanilla {
   nombre: string;
 
   @Column({ name: 'fecha_inicio', type: 'date' })
-  fechaInicio: Date;
+  fecha_inicio: Date;
 
   @Column({ name: 'fecha_fin', type: 'date' })
-  fechaFin: Date;
+  fecha_fin: Date;
 
   @Column({ length: 20, default: 'mensual' })
   tipo: string;

@@ -34,8 +34,8 @@ let ReportsService = class ReportsService {
         this.dataSource = dataSource;
     }
     async getMonthlyAttendance(mes, anio) {
-        const fechaInicio = new Date(anio, mes - 1, 1);
-        const fechaFin = new Date(anio, mes, 0);
+        const fecha_inicio = new Date(anio, mes - 1, 1);
+        const fecha_fin = new Date(anio, mes, 0);
         const asistenciaRaw = await this.dataSource.query(`
       SELECT 
         ra.empleado_id,
@@ -48,7 +48,7 @@ let ReportsService = class ReportsService {
       FROM REGISTRO_ASISTENCIA ra
       INNER JOIN EMPLEADO e ON ra.empleado_id = e.empleado_id
       WHERE ra.fecha >= @0 AND ra.fecha <= @1
-    `, [fechaInicio, fechaFin]);
+    `, [fecha_inicio, fecha_fin]);
         const solicitudesRaw = await this.dataSource.query(`
       SELECT 
         sp.empleado_id,
@@ -59,7 +59,7 @@ let ReportsService = class ReportsService {
       FROM SOLICITUD_PERMISO sp
       INNER JOIN TIPO_PERMISO tp ON sp.tipo_permiso_id = tp.tipo_permiso_id
       WHERE sp.fecha_inicio >= @0 AND sp.fecha_inicio <= @1
-    `, [fechaInicio, fechaFin]);
+    `, [fecha_inicio, fecha_fin]);
         const empleadoMap = {};
         for (const a of asistenciaRaw) {
             const empId = a.empleado_id;
@@ -92,8 +92,8 @@ let ReportsService = class ReportsService {
             if (s.estado === 'aprobado') {
                 empleadoMap[empId].permisos.push({
                     tipo: s.tipo_permiso_nombre,
-                    fechaInicio: s.fecha_inicio,
-                    fechaFin: s.fecha_fin,
+                    fecha_inicio: s.fecha_inicio,
+                    fecha_fin: s.fecha_fin,
                     estado: s.estado,
                 });
             }
@@ -125,7 +125,7 @@ let ReportsService = class ReportsService {
             fechaCalculo: r.fecha_calculo,
         }));
     }
-    async getProjectHours(fechaInicio, fechaFin) {
+    async getProjectHours(fecha_inicio, fecha_fin) {
         const registros = await this.dataSource.query(`
       SELECT 
         rt.empleado_id,
@@ -142,7 +142,7 @@ let ReportsService = class ReportsService {
       INNER JOIN PROYECTO p ON rt.proyecto_id = p.proyecto_id
       WHERE rt.estado = 'aprobado'
         AND rt.fecha >= @0 AND rt.fecha <= @1
-    `, [fechaInicio, fechaFin]);
+    `, [fecha_inicio, fecha_fin]);
         const resumen = {};
         for (const r of registros) {
             const proyectoNombre = r.proyecto_nombre || 'Sin proyecto';

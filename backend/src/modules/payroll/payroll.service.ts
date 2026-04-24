@@ -36,14 +36,14 @@ export class PayrollService {
 
   async getPeriods() {
     const periodos = await this.periodoRepository.find({
-      order: { fechaInicio: 'DESC' },
+      order: { fecha_inicio: 'DESC' },
     });
 
     return periodos.map((p) => ({
       periodoId: p.periodoId,
       nombre: p.nombre,
-      fechaInicio: p.fechaInicio,
-      fechaFin: p.fechaFin,
+      fecha_inicio: p.fecha_inicio,
+      fecha_fin: p.fecha_fin,
       tipo: p.tipo,
       estado: p.estado,
     }));
@@ -91,7 +91,7 @@ export class PayrollService {
       where: { activo: true },
     });
 
-    const year = new Date(periodo.fechaFin).getFullYear();
+    const year = new Date(periodo.fecha_fin).getFullYear();
     const conceptos = await this.conceptoRepository.find({
       where: { activo: true },
     });
@@ -111,7 +111,7 @@ export class PayrollService {
       });
 
       const filteredAsistencia = asistencia.filter(
-        (a) => a.fecha >= periodo.fechaInicio && a.fecha <= periodo.fechaFin,
+        (a) => a.fecha >= periodo.fecha_inicio && a.fecha <= periodo.fecha_fin,
       );
 
       const horasTrabajadas = filteredAsistencia.reduce(
@@ -273,8 +273,8 @@ export class PayrollService {
     return {
       periodo: {
         nombre: planilla.periodo?.nombre,
-        fechaInicio: planilla.periodo?.fechaInicio,
-        fechaFin: planilla.periodo?.fechaFin,
+        fecha_inicio: planilla.periodo?.fecha_inicio,
+        fecha_fin: planilla.periodo?.fecha_fin,
       },
       empleadoId: planilla.empleadoId,
       tarifaHora: planilla.tarifaHoraUsada,
@@ -303,8 +303,8 @@ export class PayrollService {
       .map((p) => ({
         periodoId: p.periodo.periodoId,
         nombre: p.periodo.nombre,
-        fechaInicio: p.periodo.fechaInicio,
-        fechaFin: p.periodo.fechaFin,
+        fecha_inicio: p.periodo.fecha_inicio,
+        fecha_fin: p.periodo.fecha_fin,
         tipo: p.periodo.tipo,
         estado: p.periodo.estado,
       }));

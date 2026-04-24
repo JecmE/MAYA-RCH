@@ -93,12 +93,12 @@ export class BandejaPendientes implements OnInit {
   }
 
   private mapPermisoToItem(s: SolicitudPermiso): PermisoItem {
-    const daysDiff = this.calculateDays(s.fechaInicio, s.fechaFin);
+    const daysDiff = this.calculateDays(s.fecha_inicio, s.fecha_fin);
     return {
       id: s.solicitudId ?? 0,
       empleado: `Empleado ${s.empleadoId}`,
       tipo: s.tipoPermiso?.nombre || 'Permiso',
-      fecha: `${s.fechaInicio} - ${s.fechaFin}`,
+      fecha: `${s.fecha_inicio} - ${s.fecha_fin}`,
       estado: s.estado || 'Pendiente',
       urgencia: daysDiff > 3 ? 'Alta' : 'Media',
       dias: daysDiff,

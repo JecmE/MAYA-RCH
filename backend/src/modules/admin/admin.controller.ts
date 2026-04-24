@@ -72,12 +72,12 @@ export class AdminController {
   @Get('audit-logs')
   @Roles('RRHH', 'Administrador')
   getAuditLogs(
-    @Query('fechaInicio') fechaInicio?: string,
-    @Query('fechaFin') fechaFin?: string,
+    @Query('fecha_inicio') fecha_inicio?: string,
+    @Query('fecha_fin') fecha_fin?: string,
     @Query('usuarioId') usuarioId?: number,
     @Query('modulo') modulo?: string,
   ) {
-    return this.adminService.getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo);
+    return this.adminService.getAuditLogs(fecha_inicio, fecha_fin, usuarioId, modulo);
   }
 
   @Get('roles')

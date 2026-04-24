@@ -8,6 +8,13 @@
       </div>
     }
 
+    @if (mostrarMensajeError) {
+      <div class="error-alert">
+        <span>⚠</span>
+        <span>{{ mensajeError }}</span>
+      </div>
+    }
+
     <div class="page-header">
       <button
         type="button"
@@ -137,7 +144,7 @@
                       <button
                         type="button"
                         class="table-button table-button--blue"
-                        (click)="editarEmpleado(row)"
+                        (click)="editarEmpleado(row.id)"
                       >
                         Editar
                       </button>
@@ -178,143 +185,138 @@
               type="button"
               class="employee-modal__close"
               (click)="cerrarModalNuevoEmpleado()"
+              [disabled]="guardando || cargandoEdicion"
             >
               ✕
             </button>
           </div>
 
           <div class="employee-modal__body">
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Nombres</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  placeholder="Ingrese los nombres"
-                  [(ngModel)]="nuevoEmpleado.nombres"
-                />
+            @if (cargandoEdicion) {
+              <p>Cargando información del empleado...</p>
+            } @else {
+              <div class="form-grid form-grid--2">
+                <div class="form-field">
+                  <label>Nombres</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    placeholder="Ingrese los nombres"
+                    [(ngModel)]="nuevoEmpleado.nombres"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>Apellidos</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    placeholder="Ingrese los apellidos"
+                    [(ngModel)]="nuevoEmpleado.apellidos"
+                  />
+                </div>
               </div>
 
-              <div class="form-field">
-                <label>Apellidos</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  placeholder="Ingrese los apellidos"
-                  [(ngModel)]="nuevoEmpleado.apellidos"
-                />
-              </div>
-            </div>
+              <div class="form-grid form-grid--2">
+                <div class="form-field">
+                  <label>Correo Electrónico</label>
+                  <input
+                    type="email"
+                    class="form-control"
+                    placeholder="correo@ejemplo.com"
+                    [(ngModel)]="nuevoEmpleado.correo"
+                  />
+                </div>
 
-            <div class="form-field">
-              <label>Documento o Identificación</label>
-              <input
-                type="text"
-                class="form-control"
-                placeholder="Ej: 1234567890123"
-                [(ngModel)]="nuevoEmpleado.documento"
-              />
-            </div>
-
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Correo Electrónico</label>
-                <input
-                  type="email"
-                  class="form-control"
-                  placeholder="correo@ejemplo.com"
-                  [(ngModel)]="nuevoEmpleado.correo"
-                />
+                <div class="form-field">
+                  <label>Teléfono</label>
+                  <input
+                    type="tel"
+                    class="form-control"
+                    placeholder="5555-5555"
+                    [(ngModel)]="nuevoEmpleado.telefono"
+                  />
+                </div>
               </div>
 
-              <div class="form-field">
-                <label>Teléfono</label>
-                <input
-                  type="tel"
-                  class="form-control"
-                  placeholder="5555-5555"
-                  [(ngModel)]="nuevoEmpleado.telefono"
-                />
-              </div>
-            </div>
+              <div class="form-grid form-grid--2">
+                <div class="form-field">
+                  <label>Puesto</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    placeholder="Ingrese el puesto"
+                    [(ngModel)]="nuevoEmpleado.puesto"
+                  />
+                </div>
 
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Puesto</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevoEmpleado.puesto"
-                >
-                  <option value="">Seleccione un puesto</option>
-                  <option>Desarrollador Sr.</option>
-                  <option>Analista QA</option>
-                  <option>Diseñador UI/UX</option>
-                  <option>Especialista MKT</option>
-                </select>
-              </div>
-
-              <div class="form-field">
-                <label>Departamento</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevoEmpleado.departamento"
-                >
-                  <option value="">Seleccione un departamento</option>
-                  <option>Tecnología</option>
-                  <option>Marketing</option>
-                  <option>RRHH</option>
-                  <option>Administración</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label>Supervisor</label>
-              <select
-                class="form-control"
-                [(ngModel)]="nuevoEmpleado.supervisor"
-              >
-                <option value="">Seleccione un supervisor</option>
-                <option>Ana López</option>
-                <option>José Ruiz</option>
-                <option>Carlos Martínez</option>
-              </select>
-            </div>
-
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Turno Asignado</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevoEmpleado.turno"
-                >
-                  <option value="">Seleccione un turno</option>
-                  <option>Matutino (8:00 - 17:00)</option>
-                  <option>Vespertino (14:00 - 22:00)</option>
-                  <option>Nocturno (22:00 - 6:00)</option>
-                </select>
+                <div class="form-field">
+                  <label>Departamento</label>
+                  <select
+                    class="form-control"
+                    [(ngModel)]="nuevoEmpleado.departamento"
+                  >
+                    <option value="">Seleccione un departamento</option>
+                    <option>Tecnología</option>
+                    <option>Recursos Humanos</option>
+                    <option>Ventas</option>
+                    <option>Administración</option>
+                    <option>Operaciones</option>
+                  </select>
+                </div>
               </div>
 
-              <div class="form-field">
-                <label>Fecha de Ingreso</label>
-                <input
-                  type="date"
-                  class="form-control"
-                  [(ngModel)]="nuevoEmpleado.fechaIngreso"
-                />
-              </div>
-            </div>
+              <div class="form-grid form-grid--2">
+                <div class="form-field">
+                  <label>Supervisor</label>
+                  <select
+                    class="form-control"
+                    [(ngModel)]="nuevoEmpleado.supervisorId"
+                  >
+                    <option [ngValue]="null">Sin supervisor</option>
+                    @for (supervisor of supervisoresDisponibles; track supervisor.id) {
+                      <option [ngValue]="supervisor.id">
+                        {{ supervisor.nombre }}
+                      </option>
+                    }
+                  </select>
+                </div>
 
-            <div class="form-field">
-              <label>Estado</label>
-              <select
-                class="form-control"
-                [(ngModel)]="nuevoEmpleado.estado"
-              >
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
-            </div>
+                <div class="form-field">
+                  <label>Fecha de Ingreso</label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    [(ngModel)]="nuevoEmpleado.fechaIngreso"
+                  />
+                </div>
+              </div>
+
+              <div class="form-grid form-grid--2">
+                <div class="form-field">
+                  <label>Tarifa por hora</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="form-control"
+                    placeholder="0.00"
+                    [(ngModel)]="nuevoEmpleado.tarifaHora"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>Estado</label>
+                  <select
+                    class="form-control"
+                    [(ngModel)]="nuevoEmpleado.estado"
+                  >
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+              </div>
+            }
           </div>
 
           <div class="employee-modal__footer">
@@ -322,6 +324,7 @@
               type="button"
               class="modal-button modal-button--secondary"
               (click)="cancelarNuevoEmpleado()"
+              [disabled]="guardando || cargandoEdicion"
             >
               Cancelar
             </button>
@@ -330,8 +333,13 @@
               type="button"
               class="modal-button modal-button--primary"
               (click)="guardarEmpleado()"
+              [disabled]="guardando || cargandoEdicion"
             >
-              {{ modoEdicion ? 'Guardar Cambios' : 'Guardar Empleado' }}
+              @if (guardando) {
+                Guardando...
+              } @else {
+                {{ modoEdicion ? 'Guardar Cambios' : 'Guardar Empleado' }}
+              }
             </button>
           </div>
         </div>

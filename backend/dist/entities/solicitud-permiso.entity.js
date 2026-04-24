@@ -38,11 +38,11 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ name: 'fecha_inicio', type: 'date' }),
     __metadata("design:type", Date)
-], SolicitudPermiso.prototype, "fechaInicio", void 0);
+], SolicitudPermiso.prototype, "fecha_inicio", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'fecha_fin', type: 'date' }),
     __metadata("design:type", Date)
-], SolicitudPermiso.prototype, "fechaFin", void 0);
+], SolicitudPermiso.prototype, "fecha_fin", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'horas_inicio', type: 'time', nullable: true }),
     __metadata("design:type", String)

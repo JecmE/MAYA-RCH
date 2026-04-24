@@ -5,8 +5,8 @@ export declare class PayrollController {
     getPeriods(): Promise<{
         periodoId: number;
         nombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
+        fecha_inicio: Date;
+        fecha_fin: Date;
         tipo: string;
         estado: string;
     }[]>;
@@ -38,8 +38,8 @@ export declare class PayrollController {
     } | {
         periodo: {
             nombre: any;
-            fechaInicio: any;
-            fechaFin: any;
+            fecha_inicio: any;
+            fecha_fin: any;
         };
         empleadoId: any;
         tarifaHora: any;
@@ -58,8 +58,8 @@ export declare class PayrollController {
     getMyPeriods(req: any): Promise<{
         periodoId: number;
         nombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
+        fecha_inicio: Date;
+        fecha_fin: Date;
         tipo: string;
         estado: string;
     }[]>;

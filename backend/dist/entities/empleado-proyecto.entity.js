@@ -31,11 +31,11 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ name: 'fecha_inicio', type: 'date' }),
     __metadata("design:type", Date)
-], EmpleadoProyecto.prototype, "fechaInicio", void 0);
+], EmpleadoProyecto.prototype, "fecha_inicio", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'fecha_fin', type: 'date', nullable: true }),
     __metadata("design:type", Date)
-], EmpleadoProyecto.prototype, "fechaFin", void 0);
+], EmpleadoProyecto.prototype, "fecha_fin", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 1 }),
     __metadata("design:type", Boolean)

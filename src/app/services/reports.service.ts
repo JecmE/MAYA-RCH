@@ -52,11 +52,11 @@ export class ReportsService {
 
   getProjectHours(
     proyectoId: number,
-    fechaInicio: string,
-    fechaFin: string,
+    fecha_inicio: string,
+    fecha_fin: string,
   ): Observable<ProjectHoursReport[]> {
     return this.http.get<ProjectHoursReport[]>(`${this.apiUrl}/project-hours`, {
-      params: { proyectoId, fechaInicio, fechaFin },
+      params: { proyectoId, fecha_inicio, fecha_fin },
     });
   }
 }

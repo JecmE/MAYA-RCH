@@ -260,14 +260,14 @@
               @if (empleadoProfileData?.solicitudesRecientes?.length) {
                 @for (
                   solicitud of empleadoProfileData!.solicitudesRecientes;
-                  track solicitud.fechaInicio
+                  track solicitud.fecha_inicio
                 ) {
                   <div class="list-row">
                     <div>
                       <strong>{{ solicitud.tipo }}</strong>
                       <p>
-                        {{ formatDate(solicitud.fechaInicio) }} -
-                        {{ formatDate(solicitud.fechaFin) }}
+                        {{ formatDate(solicitud.fecha_inicio) }} -
+                        {{ formatDate(solicitud.fecha_fin) }}
                       </p>
                     </div>
                     <span

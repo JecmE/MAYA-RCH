@@ -28,8 +28,8 @@ export class ReportsService {
   ) {}
 
   async getMonthlyAttendance(mes: number, anio: number) {
-    const fechaInicio = new Date(anio, mes - 1, 1);
-    const fechaFin = new Date(anio, mes, 0);
+    const fecha_inicio = new Date(anio, mes - 1, 1);
+    const fecha_fin = new Date(anio, mes, 0);
 
     const asistenciaRaw = await this.dataSource.query(
       `
@@ -45,7 +45,7 @@ export class ReportsService {
       INNER JOIN EMPLEADO e ON ra.empleado_id = e.empleado_id
       WHERE ra.fecha >= @0 AND ra.fecha <= @1
     `,
-      [fechaInicio, fechaFin],
+      [fecha_inicio, fecha_fin],
     );
 
     const solicitudesRaw = await this.dataSource.query(
@@ -60,7 +60,7 @@ export class ReportsService {
       INNER JOIN TIPO_PERMISO tp ON sp.tipo_permiso_id = tp.tipo_permiso_id
       WHERE sp.fecha_inicio >= @0 AND sp.fecha_inicio <= @1
     `,
-      [fechaInicio, fechaFin],
+      [fecha_inicio, fecha_fin],
     );
 
     const empleadoMap: any = {};
@@ -99,8 +99,8 @@ export class ReportsService {
       if (s.estado === 'aprobado') {
         empleadoMap[empId].permisos.push({
           tipo: s.tipo_permiso_nombre,
-          fechaInicio: s.fecha_inicio,
-          fechaFin: s.fecha_fin,
+          fecha_inicio: s.fecha_inicio,
+          fecha_fin: s.fecha_fin,
           estado: s.estado,
         });
       }
@@ -139,7 +139,7 @@ export class ReportsService {
     }));
   }
 
-  async getProjectHours(fechaInicio: string, fechaFin: string) {
+  async getProjectHours(fecha_inicio: string, fecha_fin: string) {
     const registros = await this.dataSource.query(
       `
       SELECT 
@@ -158,7 +158,7 @@ export class ReportsService {
       WHERE rt.estado = 'aprobado'
         AND rt.fecha >= @0 AND rt.fecha <= @1
     `,
-      [fechaInicio, fechaFin],
+      [fecha_inicio, fecha_fin],
     );
 
     const resumen: any = {};

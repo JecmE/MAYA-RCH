@@ -46,8 +46,8 @@ let AdminController = class AdminController {
     createBonusRule(createDto, req) {
         return this.adminService.createBonusRule(createDto, req.user.usuarioId);
     }
-    getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo) {
-        return this.adminService.getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo);
+    getAuditLogs(fecha_inicio, fecha_fin, usuarioId, modulo) {
+        return this.adminService.getAuditLogs(fecha_inicio, fecha_fin, usuarioId, modulo);
     }
     getRoles() {
         return this.adminService.getRoles();
@@ -133,8 +133,8 @@ __decorate([
 __decorate([
     (0, common_1.Get)('audit-logs'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
-    __param(0, (0, common_1.Query)('fechaInicio')),
-    __param(1, (0, common_1.Query)('fechaFin')),
+    __param(0, (0, common_1.Query)('fecha_inicio')),
+    __param(1, (0, common_1.Query)('fecha_fin')),
     __param(2, (0, common_1.Query)('usuarioId')),
     __param(3, (0, common_1.Query)('modulo')),
     __metadata("design:type", Function),

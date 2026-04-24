@@ -32,11 +32,11 @@ __decorate([
 __decorate([
     (0, typeorm_1.Column)({ name: 'fecha_inicio', type: 'date' }),
     __metadata("design:type", Date)
-], PeriodoPlanilla.prototype, "fechaInicio", void 0);
+], PeriodoPlanilla.prototype, "fecha_inicio", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'fecha_fin', type: 'date' }),
     __metadata("design:type", Date)
-], PeriodoPlanilla.prototype, "fechaFin", void 0);
+], PeriodoPlanilla.prototype, "fecha_fin", void 0);
 __decorate([
     (0, typeorm_1.Column)({ length: 20, default: 'mensual' }),
     __metadata("design:type", String)

@@ -93,8 +93,8 @@ export declare class KpiService {
         }[];
         solicitudesRecientes: {
             tipo: string;
-            fechaInicio: Date;
-            fechaFin: Date;
+            fecha_inicio: Date;
+            fecha_fin: Date;
             estado: string;
         }[];
         kpiActual: {

@@ -52,8 +52,8 @@ try {
 Write-Host "`n=== LEAVES: CREATE REQUEST ===" -ForegroundColor Cyan
 $leaveBody = @{
     tipoPermisoId = $leaveTypeId
-    fechaInicio = "2026-04-15"
-    fechaFin = "2026-04-16"
+    fecha_inicio = "2026-04-15"
+    fecha_fin = "2026-04-16"
     observaciones = "Test leave request"
     diasLaborables = 2
 } | ConvertTo-Json
@@ -248,8 +248,8 @@ $periodBody = @{
     codigo = "2026-05"
     mes = 5
     anio = 2026
-    fechaInicio = "2026-05-01"
-    fechaFin = "2026-05-31"
+    fecha_inicio = "2026-05-01"
+    fecha_fin = "2026-05-31"
     estado = "Abierto"
 } | ConvertTo-Json
 try {

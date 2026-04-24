@@ -36,8 +36,8 @@ export declare class LeavesService {
     getMyRequests(empleadoId: number): Promise<{
         solicitudId: number;
         tipoPermiso: string;
-        fechaInicio: Date;
-        fechaFin: Date;
+        fecha_inicio: Date;
+        fecha_fin: Date;
         horasInicio: string;
         horasFin: string;
         motivo: string;

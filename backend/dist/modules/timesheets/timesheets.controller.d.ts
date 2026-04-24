@@ -2,7 +2,7 @@ import { TimesheetsService } from './timesheets.service';
 export declare class TimesheetsController {
     private readonly timesheetsService;
     constructor(timesheetsService: TimesheetsService);
-    getMyTimesheets(req: any, fechaInicio?: string, fechaFin?: string, proyectoId?: number): Promise<{
+    getMyTimesheets(req: any, fecha_inicio?: string, fecha_fin?: string, proyectoId?: number): Promise<{
         tiempoId: number;
         empleadoId: number;
         fecha: string;
@@ -22,7 +22,7 @@ export declare class TimesheetsController {
         estado: string;
         mensaje: string;
     }>;
-    getTeamTimesheets(req: any, fechaInicio?: string, fechaFin?: string): Promise<{
+    getTeamTimesheets(req: any, fecha_inicio?: string, fecha_fin?: string): Promise<{
         tiempoId: number;
         empleado: {
             empleadoId: number;
@@ -45,7 +45,7 @@ export declare class TimesheetsController {
     reject(id: number, body: any, req: any): Promise<{
         message: string;
     }>;
-    getProjectSummary(fechaInicio: string, fechaFin: string): Promise<{
+    getProjectSummary(fecha_inicio: string, fecha_fin: string): Promise<{
         proyecto: any;
         totalHoras: any;
         empleados: unknown[];

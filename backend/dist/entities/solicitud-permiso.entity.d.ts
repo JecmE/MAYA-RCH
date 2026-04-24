@@ -7,8 +7,8 @@ export declare class SolicitudPermiso {
     solicitudId: number;
     empleadoId: number;
     tipoPermisoId: number;
-    fechaInicio: Date;
-    fechaFin: Date;
+    fecha_inicio: Date;
+    fecha_fin: Date;
     horasInicio: string;
     horasFin: string;
     motivo: string;

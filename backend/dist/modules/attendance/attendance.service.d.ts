@@ -56,7 +56,7 @@ export declare class AttendanceService {
         horaEntradaTurno: string;
         horaSalidaTurno: string;
     }>;
-    getHistory(empleadoId: number, fechaInicio?: string, fechaFin?: string): Promise<{
+    getHistory(empleadoId: number, fecha_inicio?: string, fecha_fin?: string): Promise<{
         asistenciaId: number;
         fecha: Date;
         horaEntradaReal: Date;

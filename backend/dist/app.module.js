@@ -28,7 +28,7 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
-                envFilePath: '.env',
+                envFilePath: ['.env.', '.env.example'],
             }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
@@ -40,8 +40,8 @@ exports.AppModule = AppModule = __decorate([
                     username: configService.get('DB_USERNAME', 'testuser'),
                     password: configService.get('DB_PASSWORD', 'Te5t!User_Abc123'),
                     options: {
-                        encrypt: true,
-                        trustServerCertificate: false,
+                        encrypt: false,
+                        trustServerCertificate: true,
                         connectionTimeout: 30000,
                     },
                     entities: [__dirname + '/**/*.entity{.ts,.js}'],

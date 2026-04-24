@@ -67,8 +67,8 @@ export interface EmployeeProfile {
   }[];
   solicitudesRecientes: {
     tipo: string;
-    fechaInicio: string;
-    fechaFin: string;
+    fecha_inicio: string;
+    fecha_fin: string;
     estado: string;
   }[];
   kpiActual: {
