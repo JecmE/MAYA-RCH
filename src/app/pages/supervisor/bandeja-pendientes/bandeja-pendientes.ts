@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { LeavesService, SolicitudPermiso } from '../../../services/leaves.service';
+import { LeavesService } from '../../../services/leaves.service';
 import { TimesheetsService, TeamTimesheetEntry } from '../../../services/timesheets.service';
 
 type TabType = 'permisos' | 'horas';
@@ -42,7 +42,7 @@ interface HoraItem {
 export class BandejaPendientes implements OnInit {
   tab: TabType = 'permisos';
   modalOpen = false;
-  selectedItem: PermisoItem | HoraItem | null = null;
+  selectedItem: any = null;
   filtroEstado = 'Pendiente';
   comentario = '';
 
@@ -78,9 +78,9 @@ export class BandejaPendientes implements OnInit {
       next: (data: any[]) => {
         this.permisosData = data.map((s) => ({
           id: s.solicitudId,
-          empleado: s.empleado?.nombreCompleto || `ID: ${s.empleadoId}`,
+          empleado: this.sanitizeName(s.empleado?.nombres && s.empleado?.apellidos ? `${s.empleado.nombres} ${s.empleado.apellidos}` : `ID: ${s.empleadoId}`),
           empleadoId: s.empleadoId,
-          tipo: s.tipoPermiso || 'Permiso',
+          tipo: s.tipoPermiso?.nombre || s.tipoPermiso || 'Permiso',
           fecha: `${this.formatDate(s.fechaInicio)} - ${this.formatDate(s.fechaFin)}`,
           rawDate: s.fechaInicio,
           estado: this.capitalize(s.estado),
@@ -103,7 +103,7 @@ export class BandejaPendientes implements OnInit {
       next: (data: TeamTimesheetEntry[]) => {
         this.horasData = data.map((entry) => ({
           id: entry.tiempoId,
-          empleado: entry.nombreCompleto || `ID: ${entry.empleadoId}`,
+          empleado: this.sanitizeName(entry.nombreCompleto || `ID: ${entry.empleadoId}`),
           empleadoId: entry.empleadoId,
           proyecto: entry.nombreProyecto || `Proyecto ${entry.proyectoId}`,
           fecha: this.formatDate(entry.fecha),
@@ -118,6 +118,11 @@ export class BandejaPendientes implements OnInit {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  private sanitizeName(name: string): string {
+    return name.replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez')
+               .replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López');
   }
 
   private capitalize(str: string): string {
@@ -157,7 +162,7 @@ export class BandejaPendientes implements OnInit {
     this.filtroEstado = 'Pendiente';
   }
 
-  handleVerDetalle(item: PermisoItem | HoraItem): void {
+  handleVerDetalle(item: any): void {
     this.selectedItem = item;
     this.comentario = '';
     this.errorMessage = '';
@@ -226,15 +231,14 @@ export class BandejaPendientes implements OnInit {
   }
 
   downloadAttachment(): void {
-    if (this.tab === 'permisos' && (this.selectedItem as PermisoItem).adjunto) {
-      const url = (this.selectedItem as PermisoItem).adjunto!;
+    if (this.tab === 'permisos' && this.selectedItem?.adjunto) {
+      const url = this.selectedItem.adjunto;
       this.leavesService.downloadAttachment(url).subscribe({
         next: (blob) => {
           const downloadUrl = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = downloadUrl;
-          const fileName = 'adjunto_permiso';
-          a.download = fileName;
+          a.download = 'adjunto_permiso';
           a.click();
           window.URL.revokeObjectURL(downloadUrl);
         },
@@ -254,7 +258,7 @@ export class BandejaPendientes implements OnInit {
     return this.horasData.filter(h => h.estado === 'Pendiente').length;
   }
 
-  get datosFiltrados(): (PermisoItem | HoraItem)[] {
+  get datosFiltrados(): any[] {
     const data = this.tab === 'permisos' ? this.permisosData : this.horasData;
     return data.filter(
       (item) => this.filtroEstado === 'Todos' || item.estado === this.filtroEstado,
@@ -264,8 +268,8 @@ export class BandejaPendientes implements OnInit {
   getEstadoClass(estado: string): string {
     const e = estado.toLowerCase();
     if (e.includes('pendiente')) return 'estado estado-pendiente';
-    if (e.includes('aprobado') || e.includes('aprobada')) return 'estado estado-aprobado';
-    if (e.includes('rechazado') || e.includes('rechazada')) return 'estado estado-rechazado';
+    if (e.includes('aprobado') || e.includes('aprobada')) return 'estado estado-approved';
+    if (e.includes('rechazado') || e.includes('rechazada')) return 'estado estado-rejected';
     return 'estado';
   }
 

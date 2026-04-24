@@ -38,6 +38,10 @@ __decorate([
     __metadata("design:type", String)
 ], Proyecto.prototype, "descripcion", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true }),
+    __metadata("design:type", String)
+], Proyecto.prototype, "responsable", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: 1 }),
     __metadata("design:type", Boolean)
 ], Proyecto.prototype, "activo", void 0);

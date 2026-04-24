@@ -1,581 +1,228 @@
 <div class="projects-page">
   <main class="projects-main">
 
-    <div class="success-alert" *ngIf="mostrarMensajeExito">
-      <span class="success-alert__icon">✓</span>
-      <span>{{ mensajeExito }}</span>
-    </div>
+    @if (mostrarMensajeExito) {
+      <div class="success-alert">
+        <span class="success-alert__icon">✓</span>
+        <span>{{ mensajeExito }}</span>
+      </div>
+    }
 
     <div class="page-header">
-      <button
-        type="button"
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
-
+      <button type="button" (click)="goBack()" class="back-button">←</button>
       <div class="page-header__content">
-        <h2 class="page-title">Proyectos</h2>
-        <p class="page-subtitle">
-          Administra los proyectos usados en el registro de horas.
-        </p>
+        <h2 class="page-title">Gestión de Proyectos</h2>
+        <p class="page-subtitle">Administra los proyectos operativos y las asignaciones de personal.</p>
       </div>
-
-      <button
-        type="button"
-        class="new-project-button"
-        (click)="abrirModalNuevoProyecto()"
-      >
-        + Nuevo proyecto
-      </button>
+      <button class="new-btn" (click)="abrirNuevo()">+ Nuevo Proyecto</button>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <p class="stat-card__label">Total proyectos</p>
-        <p class="stat-card__value stat-card__value--default">{{ totalProyectos }}</p>
-      </div>
-
-      <div class="stat-card">
-        <p class="stat-card__label">Activos</p>
-        <p class="stat-card__value stat-card__value--green">{{ totalActivos }}</p>
-      </div>
-
-      <div class="stat-card">
-        <p class="stat-card__label">En pausa</p>
-        <p class="stat-card__value stat-card__value--amber">{{ totalPausados }}</p>
-      </div>
-
-      <div class="stat-card">
-        <p class="stat-card__label">Horas asignadas</p>
-        <p class="stat-card__value stat-card__value--blue">{{ totalHorasAsignadas }}</p>
-      </div>
-    </div>
-
-    <div class="projects-card">
-      <div class="projects-card__filters">
-        <div class="search-box">
-          <input
-            type="text"
-            placeholder="Buscar proyecto..."
-            class="form-control"
-            [(ngModel)]="filtroBusqueda"
-          />
+    <!-- Filtros -->
+    <div class="main-card">
+      <div class="card-filters">
+        <div class="filter-group flex-1">
+          <label class="filter-label">BUSCAR PROYECTO</label>
+          <input type="text" class="filter-input" placeholder="Nombre o código..." [(ngModel)]="filtroBusqueda" />
         </div>
 
-        <div class="filters-group">
-          <select
-            class="form-control form-control--auto"
-            [(ngModel)]="filtroEstado"
-          >
-            <option value="Todos los estados">Todos los estados</option>
+        <div class="filter-group">
+          <label class="filter-label">ESTADO</label>
+          <select class="filter-select" [(ngModel)]="filtroEstado">
+            <option value="Todos">Todos los estados</option>
             <option value="Activo">Activo</option>
-            <option value="Pausado">Pausado</option>
             <option value="Cerrado">Cerrado</option>
           </select>
-
-          <button
-            type="button"
-            class="table-button table-button--neutral"
-            (click)="limpiarFiltros()"
-          >
-            Limpiar filtros
-          </button>
         </div>
       </div>
 
-      <div class="table-wrapper">
-        <table class="projects-table">
+      <div class="table-container">
+        <table class="custom-table">
           <thead>
-            <tr class="projects-table__head-row">
-              <th class="table-head table-head--first">Código</th>
-              <th class="table-head">Proyecto</th>
-              <th class="table-head">Responsable</th>
-              <th class="table-head">Empleados asignados</th>
-              <th class="table-head">Horas asignadas</th>
-              <th class="table-head table-head--center">Estado</th>
-              <th class="table-head table-head--last table-head--center">Acciones</th>
+            <tr>
+              <th>CÓDIGO</th>
+              <th>PROYECTO</th>
+              <th>RESPONSABLE</th>
+              <th class="text-center">EMPLEADOS</th>
+              <th class="text-center">HORAS ACUM.</th>
+              <th>ESTADO</th>
+              <th class="text-center">ACCIONES</th>
             </tr>
           </thead>
-
-          <tbody class="projects-table__body">
-            <ng-container *ngIf="proyectosFiltrados.length > 0; else sinProyectos">
-              @for (row of proyectosFiltrados; track row.id) {
-                <tr class="projects-table__row">
-                  <td class="table-cell table-cell--first table-cell--mono">
-                    {{ row.codigo }}
-                  </td>
-
-                  <td class="table-cell table-cell--strong">
-                    <div class="project-name-wrap">
-                      <span class="project-icon">📁</span>
-                      <span>{{ row.nombre }}</span>
-                    </div>
-                  </td>
-
-                  <td class="table-cell">{{ row.responsable }}</td>
-
-                  <td class="table-cell">
-                    <span class="employees-chip">{{ row.empleados }}</span>
-                  </td>
-
-                  <td class="table-cell">{{ row.horasAsignadas }}</td>
-
-                  <td class="table-cell table-cell--center">
-                    <span class="status-badge" [class]="getEstadoClass(row.estado)">
-                      {{ row.estado }}
-                    </span>
-                  </td>
-
-                  <td class="table-cell table-cell--last table-cell--center">
-                    <div class="action-menu-wrapper" (click)="detenerPropagacion($event)">
-                      <button
-                        type="button"
-                        class="menu-trigger"
-                        (click)="toggleMenu(row.id, $event)"
-                      >
-                        ⋮
-                      </button>
-
-                      <div class="action-menu" *ngIf="menuAbiertoId === row.id">
-                        <button
-                          type="button"
-                          class="action-menu__item"
-                          (click)="verProyecto(row)"
-                        >
-                          Ver detalles
-                        </button>
-
-                        <button
-                          type="button"
-                          class="action-menu__item"
-                          (click)="editarProyecto(row)"
-                        >
-                          Editar proyecto
-                        </button>
-
-                        <button
-                          type="button"
-                          class="action-menu__item"
-                          (click)="asignarProyecto(row)"
-                        >
-                          Asignar empleado
-                        </button>
-
-                        <button
-                          type="button"
-                          class="action-menu__item action-menu__item--danger"
-                          (click)="abrirEliminarProyecto(row)"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </ng-container>
+          <tbody>
+            @for (row of proyectosFiltrados; track row.id) {
+              <tr class="table-row">
+                <td class="font-mono text-xs font-bold text-slate-500">{{ row.codigo }}</td>
+                <td>
+                  <div class="proj-cell">
+                    <span class="font-bold">{{ row.nombre }}</span>
+                    <span class="text-xs text-slate-400 truncate max-w-xs">{{ row.descripcion }}</span>
+                  </div>
+                </td>
+                <td>{{ row.responsable }}</td>
+                <td class="text-center"><span class="badge-count">{{ row.totalEmpleados }}</span></td>
+                <td class="text-center font-bold text-blue-700">{{ row.horasAcumuladas }}h</td>
+                <td><span class="status-badge" [class.badge--green]="row.activo" [class.badge--grey]="!row.activo">{{ row.estado }}</span></td>
+                <td class="text-center">
+                  <div class="actions-row">
+                    <button class="btn-icon-blue" (click)="verDetalle(row)" title="Ver Detalle / Asignaciones">👁️</button>
+                    <button class="btn-icon-orange" (click)="abrirAsignar(row)" title="Asignar Personal">👤+</button>
+                    <button class="btn-icon-grey" (click)="editarProyecto(row)" title="Editar">✏️</button>
+                    @if (row.activo) {
+                      <button class="btn-icon-red" (click)="desactivarProyecto(row)" title="Cerrar Proyecto">🚫</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty-msg">No se encontraron proyectos.</td></tr>
+            }
           </tbody>
         </table>
-
-        <ng-template #sinProyectos>
-          <div class="empty-state-cell">
-            No se encontraron proyectos con los filtros seleccionados.
-          </div>
-        </ng-template>
-      </div>
-
-      <div class="projects-card__footer">
-        <span>Mostrando {{ proyectosFiltrados.length }} de {{ totalProyectos }} proyectos</span>
-
-        <div class="pagination-actions">
-          <button type="button" class="pagination-button pagination-button--disabled">
-            Anterior
-          </button>
-          <button type="button" class="pagination-button">
-            Siguiente
-          </button>
-        </div>
       </div>
     </div>
 
-    <!-- MODAL NUEVO PROYECTO -->
-    <div class="modal-backdrop" *ngIf="modalNuevoProyecto">
-      <div class="project-modal">
-        <div class="project-modal__header">
-          <h3>{{ modoEdicion ? 'Editar Proyecto' : 'Nuevo Proyecto' }}</h3>
-          <button
-            type="button"
-            class="project-modal__close"
-            (click)="cerrarModalNuevoProyecto()"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="project-modal__body">
-          <div>
-            <h4 class="section-title-small">Información del Proyecto</h4>
-
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Nombre</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  placeholder="Nombre del proyecto"
-                  [(ngModel)]="nuevoProyecto.nombre"
-                />
-              </div>
-
-              <div class="form-field">
-                <label>Código</label>
-                <input
-                  type="text"
-                  class="form-control form-control--mono"
-                  placeholder="Ej: WEB-2024"
-                  [(ngModel)]="nuevoProyecto.codigo"
-                />
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label>Descripción</label>
-              <textarea
-                class="form-control form-control--textarea"
-                rows="3"
-                placeholder="Descripción breve del proyecto"
-                [(ngModel)]="nuevoProyecto.descripcion"
-              ></textarea>
-            </div>
-
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Responsable</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevoProyecto.responsable"
-                >
-                  <option value="">Seleccione un responsable</option>
-                  <option>Carlos Mérida</option>
-                  <option>Lucía Torres</option>
-                  <option>Ana Gómez</option>
-                  <option>Mario Paz</option>
-                  <option>Ana López</option>
-                </select>
-              </div>
-
-              <div class="form-field">
-                <label>Estado</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevoProyecto.estado"
-                >
-                  <option value="Activo">Activo</option>
-                  <option value="Pausado">Pausado</option>
-                  <option value="Cerrado">Cerrado</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Empleados asignados estimados</label>
-                <input
-                  type="number"
-                  min="0"
-                  class="form-control"
-                  placeholder="Ej: 5"
-                  [(ngModel)]="nuevoProyecto.empleados"
-                />
-              </div>
-
-              <div class="form-field">
-                <label>Horas asignadas</label>
-                <input
-                  type="number"
-                  min="0"
-                  class="form-control"
-                  placeholder="Ej: 120"
-                  [(ngModel)]="nuevoProyecto.horasAsignadas"
-                />
-              </div>
-            </div>
+    <!-- Modal Nuevo/Editar Proyecto -->
+    @if (modalNuevo) {
+      <div class="modal-backdrop">
+        <div class="styled-modal">
+          <div class="modal-header">
+            <h3>{{ modoEdicion ? 'Editar Proyecto' : 'Nuevo Proyecto' }}</h3>
+            <button class="close-x" (click)="modalNuevo = false">✕</button>
           </div>
-
-          <div>
-            <h4 class="section-title-small">Asignación de Empleados</h4>
-
-            <div class="form-grid form-grid--2">
+          <div class="modal-body">
+            <div class="form-grid">
               <div class="form-field">
-                <label>Empleado</label>
-                <select
-                  class="form-control"
-                  [(ngModel)]="nuevaAsignacion.empleado"
-                >
-                  <option value="">Seleccione un empleado</option>
-                  @for (empleado of empleadosDisponibles; track empleado) {
-                    <option [value]="empleado">{{ empleado }}</option>
+                <label>Código del Proyecto</label>
+                <input type="text" class="modal-input" [(ngModel)]="proyectoForm.codigo" placeholder="Ej: PRY-001" />
+              </div>
+              <div class="form-field">
+                <label>Nombre del Proyecto</label>
+                <input type="text" class="modal-input" [(ngModel)]="proyectoForm.nombre" />
+              </div>
+              <div class="form-field form-field--full">
+                <label>Responsable</label>
+                <select class="modal-input" [(ngModel)]="proyectoForm.responsable">
+                  <option value="Sin asignar" disabled>Seleccione un responsable...</option>
+                  @for (staff of adminStaff; track staff.empleadoId) {
+                    <option [value]="staff.nombreCompleto">{{ staff.nombreCompleto }}</option>
                   }
                 </select>
               </div>
-
+              <div class="form-field form-field--full">
+                <label>Descripción</label>
+                <textarea class="modal-input" rows="3" [(ngModel)]="proyectoForm.descripcion"></textarea>
+              </div>
               <div class="form-field">
-                <label>Proyecto</label>
-                <input
-                  type="text"
-                  class="form-control form-control--disabled"
-                  [value]="nuevoProyecto.nombre || 'Se asignará automáticamente'"
-                  disabled
-                />
+                <label>Estado</label>
+                <select class="modal-input" [(ngModel)]="proyectoForm.activo">
+                  <option [ngValue]="true">Activo</option>
+                  <option [ngValue]="false">Cerrado</option>
+                </select>
               </div>
             </div>
+          </div>
+          <div class="modal-footer-v2">
+            <button class="btn-cancel" (click)="modalNuevo = false">Cancelar</button>
+            <button class="btn-save-orange" (click)="guardarProyecto()">Guardar Proyecto</button>
+          </div>
+        </div>
+      </div>
+    }
 
-            <div class="form-grid form-grid--2">
-              <div class="form-field">
-                <label>Fecha Inicio</label>
-                <input
-                  type="date"
-                  class="form-control"
-                  [(ngModel)]="nuevaAsignacion.fechaInicio"
-                />
-              </div>
-
-              <div class="form-field">
-                <label>Fecha Fin</label>
-                <input
-                  type="date"
-                  class="form-control"
-                  [(ngModel)]="nuevaAsignacion.fechaFin"
-                />
-              </div>
+    <!-- Modal Detalle y Asignaciones -->
+    @if (modalDetalle && proyectoSeleccionado) {
+      <div class="modal-backdrop">
+        <div class="styled-modal styled-modal--large">
+          <div class="modal-header">
+            <h3>{{ proyectoSeleccionado.nombre }}</h3>
+            <button class="close-x" (click)="modalDetalle = false">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="proj-summary">
+              <div class="summary-item"><label>CÓDIGO</label><span>{{ proyectoSeleccionado.codigo }}</span></div>
+              <div class="summary-item"><label>RESPONSABLE</label><span>{{ proyectoSeleccionado.responsable }}</span></div>
+              <div class="summary-item"><label>HORAS TOTALES</label><span class="text-blue-600">{{ proyectoSeleccionado.horasAcumuladas }} h</span></div>
             </div>
 
-            <button
-              type="button"
-              class="assign-add-button"
-              (click)="agregarAsignacionTemporal()"
-            >
-              + Agregar Empleado
-            </button>
+            <div class="asignaciones-section">
+              <h4 class="section-title">Personal Asignado</h4>
+              <div class="table-container mini-table">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>EMPLEADO</th>
+                      <th>DESDE</th>
+                      <th>HASTA</th>
+                      <th>ESTADO</th>
+                      <th class="text-center">ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (asig of proyectoSeleccionado.asignaciones; track asig.empProyId) {
+                      <tr class="table-row">
+                        <td><span class="font-bold">{{ asig.nombreCompleto }}</span></td>
+                        <td class="text-xs">{{ asig.fechaInicio | date:'dd/MM/yyyy' }}</td>
+                        <td class="text-xs">{{ asig.fechaFin ? (asig.fechaFin | date:'dd/MM/yyyy') : 'Indefinido' }}</td>
+                        <td><span class="status-badge" [class.badge--green]="asig.activo" [class.badge--grey]="!asig.activo">{{ asig.activo ? 'Activo' : 'Inactivo' }}</span></td>
+                        <td class="text-center">
+                          @if (asig.activo) {
+                            <button class="btn-icon-red" (click)="desvincular(asig.empProyId)">Desvincular</button>
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr><td colspan="5" class="empty-msg">No hay empleados asignados a este proyecto.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer-v2">
+            <button class="btn-cancel" (click)="modalDetalle = false">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    }
 
-            <div class="assigned-list">
-              <p class="assigned-list__title">
-                Empleados Asignados ({{ asignacionesTemporales.length }})
-              </p>
+    <!-- Modal Asignar Empleado -->
+    @if (modalAsignar) {
+      <div class="modal-backdrop">
+        <div class="styled-modal styled-modal--small">
+          <div class="modal-header">
+            <h3>Asignar Personal</h3>
+            <button class="close-x" (click)="modalAsignar = false">✕</button>
+          </div>
+          <div class="modal-body">
+            <p class="text-sm text-slate-500">Proyecto: <strong>{{ proyectoSeleccionado.nombre }}</strong></p>
 
-              <div class="assigned-items" *ngIf="asignacionesTemporales.length > 0; else sinAsignaciones">
-                @for (item of asignacionesTemporales; track item.id) {
-                  <div class="assigned-item">
-                    <div>
-                      <p class="assigned-item__name">{{ item.empleado }}</p>
-                      <p class="assigned-item__meta">
-                        {{ item.fechaInicio || 'Sin inicio' }} - {{ item.fechaFin || 'Sin fin' }}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      class="assigned-item__remove"
-                      (click)="eliminarAsignacionTemporal(item.id)"
-                    >
-                      Quitar
-                    </button>
-                  </div>
+            <div class="form-field">
+              <label>Seleccionar Empleado</label>
+              <select class="modal-input" [(ngModel)]="asignacionForm.empleadoId">
+                <option [ngValue]="0" disabled>Seleccione un colaborador...</option>
+                @for (emp of empleados; track emp.empleadoId) {
+                  <option [ngValue]="emp.empleadoId">{{ emp.nombreCompleto }} ({{ emp.departamento }})</option>
                 }
-              </div>
+              </select>
+            </div>
 
-              <ng-template #sinAsignaciones>
-                <div class="assigned-empty">
-                  No hay empleados asignados aún
-                </div>
-              </ng-template>
+            <div class="form-field">
+              <label>Fecha de Inicio</label>
+              <input type="date" class="modal-input" [(ngModel)]="asignacionForm.fechaInicio" />
+            </div>
+
+            <div class="form-field">
+              <label>Fecha de Fin (Opcional)</label>
+              <input type="date" class="modal-input" [(ngModel)]="asignacionForm.fechaFin" />
             </div>
           </div>
-        </div>
-
-        <div class="project-modal__footer">
-          <button
-            type="button"
-            class="modal-button modal-button--secondary"
-            (click)="cancelarProyecto()"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            class="modal-button modal-button--primary"
-            (click)="guardarProyecto()"
-          >
-            {{ modoEdicion ? 'Guardar Cambios' : 'Guardar Proyecto' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL DETALLE -->
-    <div class="modal-backdrop" *ngIf="modalDetalleProyecto && proyectoSeleccionado">
-      <div class="project-modal project-modal--detail">
-        <div class="project-modal__header">
-          <h3>Detalle del Proyecto</h3>
-          <button
-            type="button"
-            class="project-modal__close"
-            (click)="cerrarDetalleProyecto()"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="project-modal__body">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">Código</span>
-              <span class="detail-value">{{ proyectoSeleccionado.codigo }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Proyecto</span>
-              <span class="detail-value">{{ proyectoSeleccionado.nombre }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Responsable</span>
-              <span class="detail-value">{{ proyectoSeleccionado.responsable }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Estado</span>
-              <span class="detail-value">
-                <span class="status-badge" [class]="getEstadoClass(proyectoSeleccionado.estado)">
-                  {{ proyectoSeleccionado.estado }}
-                </span>
-              </span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Empleados asignados</span>
-              <span class="detail-value">{{ proyectoSeleccionado.empleados }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Horas asignadas</span>
-              <span class="detail-value">{{ proyectoSeleccionado.horasAsignadas }}</span>
-            </div>
-
-            <div class="detail-item detail-item--full">
-              <span class="detail-label">Descripción</span>
-              <span class="detail-value">{{ proyectoSeleccionado.descripcion }}</span>
-            </div>
-          </div>
-
-          <div class="assigned-list assigned-list--detail">
-            <p class="assigned-list__title">
-              Empleados Asignados ({{ proyectoSeleccionado.asignaciones.length }})
-            </p>
-
-            <div class="assigned-items" *ngIf="proyectoSeleccionado.asignaciones.length > 0; else sinDetalleAsignaciones">
-              @for (item of proyectoSeleccionado.asignaciones; track item.id) {
-                <div class="assigned-item">
-                  <div>
-                    <p class="assigned-item__name">{{ item.empleado }}</p>
-                    <p class="assigned-item__meta">
-                      {{ item.fechaInicio || 'Sin inicio' }} - {{ item.fechaFin || 'Sin fin' }}
-                    </p>
-                  </div>
-                </div>
-              }
-            </div>
-
-            <ng-template #sinDetalleAsignaciones>
-              <div class="assigned-empty">
-                No hay empleados asignados aún
-              </div>
-            </ng-template>
+          <div class="modal-footer-v2">
+            <button class="btn-cancel" (click)="modalAsignar = false">Cancelar</button>
+            <button class="btn-save-orange" (click)="guardarAsignacion()">Confirmar Asignación</button>
           </div>
         </div>
-
-<div class="project-modal__footer">
-  <button
-    type="button"
-    class="modal-button modal-button--secondary"
-    (click)="exportarProyecto()"
-  >
-    Exportar
-  </button>
-
-  <button
-    type="button"
-    class="modal-button modal-button--secondary"
-    (click)="regenerarProyecto()"
-  >
-    Regenerar
-  </button>
-
-  <button
-    type="button"
-    class="modal-button modal-button--secondary"
-    (click)="cerrarDetalleProyecto()"
-  >
-    Cerrar
-  </button>
-
-  <button
-    type="button"
-    class="modal-button modal-button--primary"
-    (click)="cerrarDetalleProyecto(); editarProyecto(proyectoSeleccionado)"
-  >
-    Editar proyecto
-  </button>
-</div>
       </div>
-    </div>
-
-    <!-- MODAL ELIMINAR -->
-    <div class="modal-backdrop" *ngIf="modalEliminarProyecto && proyectoAEliminar">
-      <div class="delete-modal">
-        <div class="delete-modal__header">
-          <h3>Eliminar Proyecto</h3>
-          <button
-            type="button"
-            class="project-modal__close project-modal__close--dark"
-            (click)="cerrarEliminarProyecto()"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="delete-modal__body">
-          <p>
-            ¿Deseas eliminar el proyecto
-            <strong>{{ proyectoAEliminar.nombre }}</strong>?
-          </p>
-          <p class="delete-modal__note">
-            Esta acción quitará el proyecto de la lista actual.
-          </p>
-        </div>
-
-        <div class="project-modal__footer">
-          <button
-            type="button"
-            class="modal-button modal-button--secondary"
-            (click)="cerrarEliminarProyecto()"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            class="modal-button modal-button--danger"
-            (click)="confirmarEliminarProyecto()"
-          >
-            Eliminar
-          </button>
-        </div>
-      </div>
-    </div>
+    }
 
   </main>
 </div>

@@ -22,8 +22,16 @@ let ProjectsController = class ProjectsController {
     constructor(projectsService) {
         this.projectsService = projectsService;
     }
-    findAll() {
+    findAll(req) {
+        const roles = req.user.roles || [];
+        const isAdmin = roles.includes('Administrador') || roles.includes('RRHH');
+        if (!isAdmin) {
+            return this.projectsService.findMyProjects(req.user.empleadoId);
+        }
         return this.projectsService.findAll();
+    }
+    getAdminStaff() {
+        return this.projectsService.getAdminStaff();
     }
     findOne(id) {
         return this.projectsService.findOne(id);
@@ -34,6 +42,12 @@ let ProjectsController = class ProjectsController {
     update(id, updateDto, req) {
         return this.projectsService.update(id, updateDto, req.user.usuarioId);
     }
+    assignEmployee(dto, req) {
+        return this.projectsService.assignEmployee(dto, req.user.usuarioId);
+    }
+    unassignEmployee(empProyId, req) {
+        return this.projectsService.unassignEmployee(empProyId, req.user.usuarioId);
+    }
     deactivate(id, req) {
         return this.projectsService.deactivate(id, req.user.usuarioId);
     }
@@ -41,10 +55,18 @@ let ProjectsController = class ProjectsController {
 exports.ProjectsController = ProjectsController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('staff'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], ProjectsController.prototype, "findAll", null);
+], ProjectsController.prototype, "getAdminStaff", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -71,6 +93,24 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object, Object]),
     __metadata("design:returntype", void 0)
 ], ProjectsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Post)('assign'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "assignEmployee", null);
+__decorate([
+    (0, common_1.Delete)('unassign/:empProyId'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('empProyId', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], ProjectsController.prototype, "unassignEmployee", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
