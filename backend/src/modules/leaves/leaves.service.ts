@@ -9,6 +9,7 @@ import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { AdjuntoSolicitud } from '../../entities/adjunto-solicitud.entity';
+import { NoticesService } from '../notices/notices.service';
 import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -32,6 +33,7 @@ export class LeavesService {
     private auditRepository: Repository<AuditLog>,
     @InjectRepository(AdjuntoSolicitud)
     private adjuntoRepository: Repository<AdjuntoSolicitud>,
+    private noticesService: NoticesService,
     private dataSource: DataSource,
   ) {}
 
@@ -191,7 +193,7 @@ export class LeavesService {
       );
     }
 
-    return { solicitudId: saved.solicitudId, estado: saved.estado, mensaje: 'Solicitud creada exitosamente' };
+    return { solicitudId: saved.solicitudId, estado: saved.estado };
   }
 
   private async saveAttachment(
@@ -245,7 +247,7 @@ export class LeavesService {
   }
 
   async approveRequest(solicitudId: number, comentario: string, usuarioId: number) {
-    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso'] });
+    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso', 'empleado', 'empleado.usuario'] });
     if (!solicitud) throw new NotFoundException('Solicitud no encontrada');
 
     if (solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) {
@@ -270,12 +272,24 @@ export class LeavesService {
 
     solicitud.estado = SolicitudPermiso.ESTADO_APROBADO;
     await this.solicitudRepository.save(solicitud);
-    await this.decisionRepository.save({ solicitudId, usuarioId, decision: DecisionPermiso.DECISION_APROBADO, comentario, fechaHora: new Date() });
+    await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'aprobado', comentario, fechaHora: new Date() });
+
+    try {
+      if (solicitud.empleado?.usuario) {
+        await this.noticesService.createNotice(
+          solicitud.empleado.usuario.usuarioId,
+          'Solicitud Aprobada',
+          `Tu solicitud de ${solicitud.tipoPermiso?.nombre || 'permiso'} ha sido aprobada.`,
+          'success'
+        );
+      }
+    } catch (e) { console.warn('Aviso no enviado pero solicitud procesada.'); }
+
     return { message: 'Solicitud aprobada' };
   }
 
   async rejectRequest(solicitudId: number, comentario: string, usuarioId: number) {
-    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId } });
+    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso', 'empleado', 'empleado.usuario'] });
     if (!solicitud) throw new NotFoundException('Solicitud no encontrada');
 
     if (solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) {
@@ -284,7 +298,19 @@ export class LeavesService {
 
     solicitud.estado = SolicitudPermiso.ESTADO_RECHAZADO;
     await this.solicitudRepository.save(solicitud);
-    await this.decisionRepository.save({ solicitudId, usuarioId, decision: DecisionPermiso.DECISION_RECHAZADO, comentario, fechaHora: new Date() });
+    await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'rechazado', comentario, fechaHora: new Date() });
+
+    try {
+      if (solicitud.empleado?.usuario) {
+        await this.noticesService.createNotice(
+          solicitud.empleado.usuario.usuarioId,
+          'Solicitud Rechazada',
+          `Tu solicitud de ${solicitud.tipoPermiso?.nombre || 'permiso'} ha sido rechazada.`,
+          'error'
+        );
+      }
+    } catch (e) { console.warn('Aviso no enviado pero solicitud procesada.'); }
+
     return { message: 'Solicitud rechazada' };
   }
 

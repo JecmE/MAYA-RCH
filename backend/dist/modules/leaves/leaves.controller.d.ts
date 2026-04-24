@@ -59,7 +59,6 @@ export declare class LeavesController {
     createRequest(createDto: any, req: any): Promise<{
         solicitudId: number;
         estado: string;
-        mensaje: string;
     }>;
     getMyRequests(req: any): Promise<import("../../entities").SolicitudPermiso[]>;
     getPending(req: any): Promise<import("../../entities").SolicitudPermiso[]>;

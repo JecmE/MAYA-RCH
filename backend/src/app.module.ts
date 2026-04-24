@@ -11,6 +11,7 @@ import { KpiModule } from './modules/kpi/kpi.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
+import { NoticesModule } from './modules/notices/notices.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { PayrollModule } from './modules/payroll/payroll.module';
     ReportsModule,
     AdminModule,
     PayrollModule,
+    NoticesModule,
   ],
 })
 export class AppModule {}

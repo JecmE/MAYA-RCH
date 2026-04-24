@@ -47,4 +47,5 @@ __exportStar(require("./acumulacion.entity"), exports);
 __exportStar(require("./solicitud-validaciones.entity"), exports);
 __exportStar(require("./calendario-laboral.entity"), exports);
 __exportStar(require("./saldo-cortes.entity"), exports);
+__exportStar(require("./aviso.entity"), exports);
 //# sourceMappingURL=index.js.map

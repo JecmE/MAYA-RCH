@@ -7,6 +7,7 @@ import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { AdjuntoSolicitud } from '../../entities/adjunto-solicitud.entity';
+import { NoticesService } from '../notices/notices.service';
 import { DataSource } from 'typeorm';
 export declare class LeavesService {
     private solicitudRepository;
@@ -17,8 +18,9 @@ export declare class LeavesService {
     private empleadoRepository;
     private auditRepository;
     private adjuntoRepository;
+    private noticesService;
     private dataSource;
-    constructor(solicitudRepository: Repository<SolicitudPermiso>, tipoPermisoRepository: Repository<TipoPermiso>, decisionRepository: Repository<DecisionPermiso>, vacacionSaldoRepository: Repository<VacacionSaldo>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, empleadoRepository: Repository<Empleado>, auditRepository: Repository<AuditLog>, adjuntoRepository: Repository<AdjuntoSolicitud>, dataSource: DataSource);
+    constructor(solicitudRepository: Repository<SolicitudPermiso>, tipoPermisoRepository: Repository<TipoPermiso>, decisionRepository: Repository<DecisionPermiso>, vacacionSaldoRepository: Repository<VacacionSaldo>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, empleadoRepository: Repository<Empleado>, auditRepository: Repository<AuditLog>, adjuntoRepository: Repository<AdjuntoSolicitud>, noticesService: NoticesService, dataSource: DataSource);
     getTiposPermiso(todos?: boolean): Promise<{
         nombre: string;
         tipoPermisoId: number;
@@ -81,7 +83,6 @@ export declare class LeavesService {
     createRequest(createDto: any, empleadoId: number): Promise<{
         solicitudId: number;
         estado: string;
-        mensaje: string;
     }>;
     private saveAttachment;
     getMyRequests(empleadoId: number): Promise<SolicitudPermiso[]>;

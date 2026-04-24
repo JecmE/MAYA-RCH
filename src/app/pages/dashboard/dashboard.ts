@@ -15,6 +15,7 @@ import { AttendanceService } from '../../services/attendance.service';
 import { KpiService, KpiDashboard } from '../../services/kpi.service';
 import { LeavesService } from '../../services/leaves.service';
 import { AdminService } from '../../services/admin.service';
+import { NoticesService, Aviso } from '../../services/notices.service';
 
 type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
 
@@ -59,7 +60,7 @@ export class Dashboard implements OnInit, OnDestroy {
   rrhhStats: any = {};
   supervisorStats: any = {};
 
-  notices: { title: string; text: string; icon: string; color: string }[] = [];
+  notices: any[] = [];
 
   private isCheckingIn = false;
   private isCheckingOut = false;
@@ -72,6 +73,7 @@ export class Dashboard implements OnInit, OnDestroy {
     private kpiService: KpiService,
     private leavesService: LeavesService,
     private adminService: AdminService,
+    private noticesService: NoticesService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object,
   ) {
@@ -119,9 +121,43 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private loadNotices(): void {
-    this.notices = [];
+    // 1. Cargar avisos persistentes desde la DB
+    this.noticesService.getMyNotices().subscribe({
+      next: (dbNotices) => {
+        this.notices = dbNotices.map(n => ({
+          id: n.avisoId,
+          title: n.titulo,
+          text: n.mensaje,
+          icon: this.getIconByType(n.tipo),
+          color: this.getColorByType(n.tipo),
+          persistent: true
+        }));
+        this.addDynamicNotices();
+        this.cdr.detectChanges();
+      }
+    });
+  }
 
-    // 1. Aviso de Marcaje (Si ya entró y se acerca la hora de salida)
+  private getIconByType(type: string): string {
+    switch (type) {
+      case 'success': return '✅';
+      case 'error': return '❌';
+      case 'warning': return '⚠️';
+      default: return 'ℹ️';
+    }
+  }
+
+  private getColorByType(type: string): string {
+    switch (type) {
+      case 'success': return 'green';
+      case 'error': return 'red';
+      case 'warning': return 'amber';
+      default: return 'blue';
+    }
+  }
+
+  private addDynamicNotices(): void {
+    // 2. Avisos dinámicos de Marcaje
     if (this.marcaEstado === 'Entrada') {
       this.notices.push({
         title: 'Recordatorio de marcaje',
@@ -131,25 +167,7 @@ export class Dashboard implements OnInit, OnDestroy {
       });
     }
 
-    // 2. Aviso de Solicitudes (Consultar última solicitud)
-    this.leavesService.getMyRequests().subscribe({
-      next: (requests: any[]) => {
-        if (requests.length > 0) {
-          const last = requests[0];
-          if (last.estado !== 'pendiente') {
-            this.notices.push({
-              title: `Solicitud ${last.estado}`,
-              text: `Tu solicitud de ${last.tipoPermiso?.nombre || 'permiso'} ha sido ${last.estado}.`,
-              icon: last.estado === 'aprobado' ? '✅' : '❌',
-              color: last.estado === 'aprobado' ? 'green' : 'red'
-            });
-          }
-        }
-        this.cdr.detectChanges();
-      }
-    });
-
-    // 3. Aviso de KPIs (Si el rendimiento es bajo)
+    // 3. Aviso de KPIs
     if (this.cumplimiento < 85 && this.cumplimiento > 0) {
       this.notices.push({
         title: 'Actualización de KPIs',
@@ -159,57 +177,35 @@ export class Dashboard implements OnInit, OnDestroy {
       });
     }
 
-    // 4. Aviso de Boleta (Si estamos a fin de mes o inicio del siguiente)
-    const now = new Date();
-    if (now.getDate() >= 25 || now.getDate() <= 5) {
-      this.notices.push({
-        title: 'Boleta de pago',
-        text: 'Tu boleta de pago del período actual pronto estará disponible.',
-        icon: '📄',
-        color: 'blue'
-      });
-    }
-
-    // 5. Avisos Exclusivos de RRHH
+    // 4. Avisos Exclusivos de RRHH
     if (this.role === 'rrhh') {
       if (this.rrhhStats.permisosPendientes > 0) {
-        this.notices.push({
-          title: 'Solicitudes en espera',
-          text: `Hay ${this.rrhhStats.permisosPendientes} solicitudes pendientes de revisión global.`,
-          icon: '📝',
-          color: 'blue'
-        });
+        this.notices.push({ title: 'Solicitudes en espera', text: `Hay ${this.rrhhStats.permisosPendientes} solicitudes pendientes de revisión.`, icon: '📝', color: 'blue' });
       }
-
       if (this.rrhhStats.empleadosEnRiesgo > 0) {
-        this.notices.push({
-          title: 'Alerta de Desempeño',
-          text: `Se detectaron ${this.rrhhStats.empleadosEnRiesgo} empleados con bajo rendimiento este mes.`,
-          icon: '⚠️',
-          color: 'red'
-        });
-      }
-
-      if (this.rrhhStats.empleadosConTurnoInactivo > 0) {
-        this.notices.push({
-          title: 'Revisión de Horarios',
-          text: `Hay ${this.rrhhStats.empleadosConTurnoInactivo} colaboradores con turnos desactivados en el catálogo.`,
-          icon: '📅',
-          color: 'amber'
-        });
-      }
-
-      if (now.getDate() >= 20) {
-        this.notices.push({
-          title: 'Procesamiento de Planilla',
-          text: 'Falta poco para el cierre de mes. Recuerda revisar los cálculos de planilla.',
-          icon: '💰',
-          color: 'green'
-        });
+        this.notices.push({ title: 'Alerta de Desempeño', text: `Se detectaron ${this.rrhhStats.empleadosEnRiesgo} empleados con bajo rendimiento.`, icon: '⚠️', color: 'red' });
       }
     }
+  }
 
-    this.cdr.detectChanges();
+  eliminarAviso(notice: any): void {
+    if (notice.persistent && notice.id) {
+      this.noticesService.deleteNotice(notice.id).subscribe(() => {
+        this.notices = this.notices.filter(n => n !== notice);
+        this.cdr.detectChanges();
+      });
+    } else {
+      // Si es dinámico solo lo quitamos de la lista local
+      this.notices = this.notices.filter(n => n !== notice);
+      this.cdr.detectChanges();
+    }
+  }
+
+  limpiarTodo(): void {
+    this.noticesService.clearAll().subscribe(() => {
+      this.notices = this.notices.filter(n => !n.persistent);
+      this.cdr.detectChanges();
+    });
   }
 
   private loadDashboardStats(): void {

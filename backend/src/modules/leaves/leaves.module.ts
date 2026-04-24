@@ -10,9 +10,11 @@ import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { NoticesModule } from '../notices/notices.module';
 
 @Module({
   imports: [
+    NoticesModule,
     TypeOrmModule.forFeature([
       SolicitudPermiso,
       TipoPermiso,

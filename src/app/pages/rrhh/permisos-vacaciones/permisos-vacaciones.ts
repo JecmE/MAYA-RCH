@@ -16,6 +16,7 @@ interface SolicitudItem {
   hasAdjunto: boolean;
   diasSolicitados: number;
   diasDisponibles: number;
+  descuentaVacaciones: boolean; // Nueva propiedad real
 }
 
 interface SaldoItem {
@@ -60,7 +61,7 @@ export class PermisosVacaciones implements OnInit {
   comentarioIntervencion = '';
 
   tipoEditando: any = { nombre: '', requiereDocumento: false, descuentaVacaciones: false, activo: true };
-  ajusteSaldo: any = { empleadoId: 0, empleadoNombre: '', dias: 0, motivo: '' };
+  ajusteSaldo: any = { empleadoId: 0, empleadoNombre: '', dlas: 0, motivo: '' };
 
   mostrarMensajeExito = false;
   mensajeExito = '';
@@ -99,7 +100,8 @@ export class PermisosVacaciones implements OnInit {
           comentario: s.motivo || '',
           hasAdjunto: s.adjuntos && s.adjuntos.length > 0,
           diasSolicitados: s.diasSolicitados,
-          diasDisponibles: s.diasDisponibles
+          diasDisponibles: s.diasDisponibles,
+          descuentaVacaciones: s.tipoPermiso?.descuentaVacaciones ?? false
         }));
         this.cdr.detectChanges();
       });
@@ -158,17 +160,18 @@ export class PermisosVacaciones implements OnInit {
 
   get recomendacionRRHH(): string {
     if (!this.solicitudSeleccionada) return '';
-    const disponibles = this.solicitudSeleccionada.diasDisponibles;
-    const solicitados = this.solicitudSeleccionada.diasSolicitados;
+    const disponibles = Number(this.solicitudSeleccionada.diasDisponibles);
+    const solicitados = Number(this.solicitudSeleccionada.diasSolicitados);
 
-    if (this.solicitudSeleccionada.tipo !== 'Vacaciones') {
-      return 'Este permiso no descuenta vacaciones. Validar motivo y adjuntos si aplica.';
+    // Lógica basada en la configuración real del tipo de permiso
+    if (!this.solicitudSeleccionada.descuentaVacaciones) {
+      return 'ℹ️ Este permiso no descuenta vacaciones. Validar motivo y adjuntos si aplica.';
     }
 
     if (solicitados > disponibles) {
-      return `⚠️ RIESGO: El empleado solicita ${solicitados} días pero solo tiene ${disponibles}. Se sugiere RECHAZAR o hablar con el colaborador.`;
+      return `⚠️ RIESGO: El empleado solicita ${solicitados} días pero solo tiene ${disponibles}. Se sugiere RECHAZAR.`;
     } else if (disponibles - solicitados < 2) {
-      return `ℹ️ OBSERVACIÓN: El saldo quedará muy bajo (${disponibles - solicitados} días). Se sugiere confirmar con el jefe inmediato.`;
+      return `ℹ️ OBSERVACIÓN: El saldo quedará muy bajo (${disponibles - solicitados} días). Se sugiere confirmar con el supervisor.`;
     } else {
       return '✅ FACTIBLE: El empleado tiene saldo suficiente para cubrir esta solicitud.';
     }

@@ -24,11 +24,12 @@ const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
 const adjunto_solicitud_entity_1 = require("../../entities/adjunto-solicitud.entity");
+const notices_service_1 = require("../notices/notices.service");
 const typeorm_3 = require("typeorm");
 const fs = require("fs");
 const path = require("path");
 let LeavesService = class LeavesService {
-    constructor(solicitudRepository, tipoPermisoRepository, decisionRepository, vacacionSaldoRepository, vacacionMovimientoRepository, empleadoRepository, auditRepository, adjuntoRepository, dataSource) {
+    constructor(solicitudRepository, tipoPermisoRepository, decisionRepository, vacacionSaldoRepository, vacacionMovimientoRepository, empleadoRepository, auditRepository, adjuntoRepository, noticesService, dataSource) {
         this.solicitudRepository = solicitudRepository;
         this.tipoPermisoRepository = tipoPermisoRepository;
         this.decisionRepository = decisionRepository;
@@ -37,6 +38,7 @@ let LeavesService = class LeavesService {
         this.empleadoRepository = empleadoRepository;
         this.auditRepository = auditRepository;
         this.adjuntoRepository = adjuntoRepository;
+        this.noticesService = noticesService;
         this.dataSource = dataSource;
     }
     async getTiposPermiso(todos = false) {
@@ -174,7 +176,7 @@ let LeavesService = class LeavesService {
         if (createDto.archivo && createDto.nombreArchivo) {
             await this.saveAttachment(saved.solicitudId, createDto.archivo, createDto.nombreArchivo, createDto.tipoMime || 'application/octet-stream');
         }
-        return { solicitudId: saved.solicitudId, estado: saved.estado, mensaje: 'Solicitud creada exitosamente' };
+        return { solicitudId: saved.solicitudId, estado: saved.estado };
     }
     async saveAttachment(solicitudId, base64Data, nombreArchivo, tipoMime) {
         const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
@@ -213,7 +215,7 @@ let LeavesService = class LeavesService {
         });
     }
     async approveRequest(solicitudId, comentario, usuarioId) {
-        const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso'] });
+        const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso', 'empleado', 'empleado.usuario'] });
         if (!solicitud)
             throw new common_1.NotFoundException('Solicitud no encontrada');
         if (solicitud.estado !== solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE) {
@@ -235,11 +237,19 @@ let LeavesService = class LeavesService {
         }
         solicitud.estado = solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_APROBADO;
         await this.solicitudRepository.save(solicitud);
-        await this.decisionRepository.save({ solicitudId, usuarioId, decision: decision_permiso_entity_1.DecisionPermiso.DECISION_APROBADO, comentario, fechaHora: new Date() });
+        await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'aprobado', comentario, fechaHora: new Date() });
+        try {
+            if (solicitud.empleado?.usuario) {
+                await this.noticesService.createNotice(solicitud.empleado.usuario.usuarioId, 'Solicitud Aprobada', `Tu solicitud de ${solicitud.tipoPermiso?.nombre || 'permiso'} ha sido aprobada.`, 'success');
+            }
+        }
+        catch (e) {
+            console.warn('Aviso no enviado pero solicitud procesada.');
+        }
         return { message: 'Solicitud aprobada' };
     }
     async rejectRequest(solicitudId, comentario, usuarioId) {
-        const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId } });
+        const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso', 'empleado', 'empleado.usuario'] });
         if (!solicitud)
             throw new common_1.NotFoundException('Solicitud no encontrada');
         if (solicitud.estado !== solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_PENDIENTE) {
@@ -247,7 +257,15 @@ let LeavesService = class LeavesService {
         }
         solicitud.estado = solicitud_permiso_entity_1.SolicitudPermiso.ESTADO_RECHAZADO;
         await this.solicitudRepository.save(solicitud);
-        await this.decisionRepository.save({ solicitudId, usuarioId, decision: decision_permiso_entity_1.DecisionPermiso.DECISION_RECHAZADO, comentario, fechaHora: new Date() });
+        await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'rechazado', comentario, fechaHora: new Date() });
+        try {
+            if (solicitud.empleado?.usuario) {
+                await this.noticesService.createNotice(solicitud.empleado.usuario.usuarioId, 'Solicitud Rechazada', `Tu solicitud de ${solicitud.tipoPermiso?.nombre || 'permiso'} ha sido rechazada.`, 'error');
+            }
+        }
+        catch (e) {
+            console.warn('Aviso no enviado pero solicitud procesada.');
+        }
         return { message: 'Solicitud rechazada' };
     }
     async getVacationBalance(empleadoId) {
@@ -290,6 +308,7 @@ exports.LeavesService = LeavesService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
+        notices_service_1.NoticesService,
         typeorm_3.DataSource])
 ], LeavesService);
 //# sourceMappingURL=leaves.service.js.map

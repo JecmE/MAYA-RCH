@@ -423,7 +423,12 @@
         <div class="card side-card">
           <div class="card-header card-header-between">
             <h3 class="card-title">Avisos</h3>
-            <span class="notice-badge">{{ notices.length }} Nuevos</span>
+            <div class="header-actions">
+              <span class="notice-badge">{{ notices.length }} Nuevos</span>
+              @if (notices.length > 0) {
+                <button class="clear-all-btn" (click)="limpiarTodo()" title="Limpiar todos los avisos persistentes">🗑️</button>
+              }
+            </div>
           </div>
 
           @if (role === 'admin') {
@@ -496,10 +501,11 @@
                 @for (notice of notices; track $index) {
                   <div class="notice-item" [class.notice-item-last]="$last">
                     <div class="notice-icon" [class]="'notice-icon-' + notice.color">{{ notice.icon }}</div>
-                    <div>
+                    <div class="notice-content">
                       <p class="notice-title">{{ notice.title }}</p>
                       <p class="notice-text">{{ notice.text }}</p>
                     </div>
+                    <button class="delete-notice-btn" (click)="eliminarAviso(notice)" title="Eliminar aviso">✕</button>
                   </div>
                 } @empty {
                   <div class="empty-notices">
