@@ -72,7 +72,16 @@ export class AttendanceController {
 
   @Get('all')
   @Roles('RRHH', 'Administrador')
-  async getAllAttendance(@Query('fecha') fecha?: string) {
-    return this.attendanceService.getAllAttendance(fecha);
+  async getAllAttendance(
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string
+  ) {
+    return this.attendanceService.getAllAttendance(fechaInicio, fechaFin);
+  }
+
+  @Get('adjustments/history')
+  @Roles('RRHH', 'Administrador')
+  async getAdjustmentHistory() {
+    return this.attendanceService.getAdjustmentHistory();
   }
 }

@@ -128,11 +128,11 @@ let AdminService = class AdminService {
             .where(qb => {
             const subQuery = qb
                 .subQuery()
-                .select('MAX(st.empleadoTurnoId)')
+                .select('MAX(st.empleado_turno_id)')
                 .from(empleado_turno_entity_1.EmpleadoTurno, 'st')
-                .groupBy('st.empleadoId')
+                .groupBy('st.empleado_id')
                 .getQuery();
-            return 'et.empleadoTurnoId IN ' + subQuery;
+            return 'et.empleado_turno_id IN ' + subQuery;
         })
             .orderBy('e.nombres', 'ASC');
         const assignments = await query.getMany();
@@ -220,13 +220,6 @@ let AdminService = class AdminService {
                 await this.parametroRepository.save(parametro);
             }
         }
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'ADMIN',
-            accion: 'UPDATE_PARAMETERS',
-            entidad: 'PARAMETRO_SISTEMA',
-            detalle: 'Parámetros de KPI actualizados',
-        });
         return this.getKpiParameters();
     }
     async getBonusRules() {
@@ -248,30 +241,13 @@ let AdminService = class AdminService {
     }
     async createBonusRule(createDto, usuarioId) {
         const regla = this.reglaBonoRepository.create(createDto);
-        const saved = (await this.reglaBonoRepository.save(regla));
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'ADMIN',
-            accion: 'CREATE_BONUS_RULE',
-            entidad: 'REGLA_BONO',
-            entidadId: saved.reglaBonoId,
-            detalle: `Regla de bono creada: ${saved.nombre}`,
-        });
+        await this.reglaBonoRepository.save(regla);
         return this.getBonusRules();
     }
     async getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo) {
         const where = {};
         if (fechaInicio && fechaFin) {
-            where.fechaHora = new Date(fechaInicio);
-        }
-        else if (fechaFin) {
-            where.fechaHora = new Date(fechaFin);
-        }
-        if (usuarioId) {
-            where.usuarioId = usuarioId;
-        }
-        if (modulo) {
-            where.modulo = modulo;
+            where.fechaHora = (0, typeorm_2.Between)(new Date(fechaInicio), new Date(fechaFin));
         }
         const logs = await this.auditRepository.find({
             where,
@@ -282,7 +258,7 @@ let AdminService = class AdminService {
         return logs.map((l) => ({
             auditId: l.auditId,
             fechaHora: l.fechaHora,
-            usuario: 'Sistema',
+            usuario: l.usuario?.username || 'Sistema',
             modulo: l.modulo,
             accion: l.accion,
             entidad: l.entidad,
@@ -301,8 +277,6 @@ let AdminService = class AdminService {
     async getAdminDashboardStats() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
         const [activeUsers, blockedUsers, auditEventsToday] = await Promise.all([
             this.usuarioRepository.count({ where: { estado: 'activo' } }),
             this.usuarioRepository.count({ where: { estado: (0, typeorm_2.Not)('activo') } }),
@@ -320,8 +294,6 @@ let AdminService = class AdminService {
     async getRrhhDashboardStats() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
         const currentMonth = today.getMonth() + 1;
         const currentYear = today.getFullYear();
         const [activeEmployees, pendingPermissions, tardiasToday, employeesAtRisk, activeVacations, employeesWithInactiveShifts] = await Promise.all([
@@ -367,8 +339,6 @@ let AdminService = class AdminService {
     async getSupervisorDashboardStats(supervisorId) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
         const currentMonth = today.getMonth() + 1;
         const currentYear = today.getFullYear();
         const [teamSize, pendingPermissions, teamTardias, teamKpis, pendingTimesheets] = await Promise.all([
@@ -384,7 +354,7 @@ let AdminService = class AdminService {
                 .innerJoin('ra.empleado', 'emp')
                 .where('emp.supervisorId = :supervisorId', { supervisorId })
                 .andWhere('ra.fecha >= :today', { today })
-                .andWhere('ra.fecha < :tomorrow', { tomorrow })
+                .andWhere('ra.fecha < :tomorrow', { tomorrow: new Date(today.getTime() + 86400000) })
                 .andWhere('ra.minutosTardia > 0')
                 .getCount(),
             this.kpiMensualRepository

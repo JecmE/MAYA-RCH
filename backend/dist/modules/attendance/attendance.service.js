@@ -43,17 +43,9 @@ let AttendanceService = class AttendanceService {
         if (existing && existing.horaEntradaReal) {
             throw new common_1.BadRequestException('Ya se registró la entrada hoy');
         }
-        const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-            where: {
-                empleadoId,
-                activo: true,
-                fechaInicio: (0, typeorm_2.LessThanOrEqual)(today)
-            },
-            relations: ['turno'],
-            order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
-        });
+        const empleadoTurno = await this.getShiftForDate(empleadoId, today);
         if (!empleadoTurno) {
-            throw new common_1.BadRequestException('No tiene turno asignado');
+            throw new common_1.BadRequestException('No tiene turno asignado para hoy');
         }
         const turno = empleadoTurno.turno;
         const now = new Date();
@@ -66,7 +58,6 @@ let AttendanceService = class AttendanceService {
             throw new common_1.BadRequestException(`Hoy (${hoyNombre}) no es un día laborable según tu turno (${turno.nombre}).`);
         }
         const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
-        const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
         const horaEntradaMin = new Date(now);
         horaEntradaMin.setHours(horaEntradaEsperada.getHours(), horaEntradaEsperada.getMinutes() - 30, 0, 0);
         const horaEntradaMax = new Date(horaEntradaEsperada);
@@ -96,19 +87,7 @@ let AttendanceService = class AttendanceService {
                 existing.estadoJornada = registro_asistencia_entity_1.RegistroAsistencia.ESTADO_INCOMPLETA;
             }
             await this.asistenciaRepository.save(existing);
-            await this.auditRepository.save({
-                usuarioId,
-                modulo: 'ASISTENCIA',
-                accion: 'CHECK_IN',
-                entidad: 'REGISTRO_ASISTENCIA',
-                entidadId: existing.asistenciaId,
-                detalle: `Entrada registrada${minutosTardia > 0 ? `, ${minutosTardia} min tardanza` : ''}`,
-            });
-            return {
-                message: 'Entrada registrada',
-                asistencia: existing,
-                minutosTardia,
-            };
+            return { message: 'Entrada registrada', asistencia: existing, minutosTardia };
         }
         const asistencia = this.asistenciaRepository.create({
             empleadoId,
@@ -116,17 +95,9 @@ let AttendanceService = class AttendanceService {
             fecha: today,
             horaEntradaReal: now,
             minutosTardia,
-            estadoJornada: registro_asistencia_entity_1.RegistroAsistencia.ESTADO_PENDIENTE,
+            estadoJornada: registro_asistencia_entity_1.RegistroAsistencia.ESTADO_INCOMPLETA,
         });
         const saved = await this.asistenciaRepository.save(asistencia);
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'ASISTENCIA',
-            accion: 'CHECK_IN',
-            entidad: 'REGISTRO_ASISTENCIA',
-            entidadId: saved.asistenciaId,
-            detalle: `Entrada registrada${minutosTardia > 0 ? `, ${minutosTardia} min tardanza` : ''}`,
-        });
         await this.kpiService.refreshEmployeeKpi(empleadoId);
         return {
             message: 'Entrada registrada',
@@ -146,47 +117,30 @@ let AttendanceService = class AttendanceService {
         if (asistencia.horaSalidaReal) {
             throw new common_1.BadRequestException('Ya se registró la salida hoy');
         }
-        const empleadoTurno = await this.empleadoTurnoRepository.findOne({
+        const empleadoTurno = await this.getShiftForDate(empleadoId, today);
+        if (!empleadoTurno) {
+            throw new common_1.BadRequestException('No tiene turno asignado');
+        }
+        const now = new Date();
+        asistencia.horaSalidaReal = now;
+        asistencia.estadoJornada = registro_asistencia_entity_1.RegistroAsistencia.ESTADO_COMPLETADA;
+        asistencia.horasTrabajadas = this.calculateHours(asistencia.horaEntradaReal, now);
+        await this.asistenciaRepository.save(asistencia);
+        await this.kpiService.refreshEmployeeKpi(empleadoId);
+        return { message: 'Salida registrada', asistencia };
+    }
+    async getShiftForDate(empleadoId, date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return await this.empleadoTurnoRepository.findOne({
             where: {
                 empleadoId,
                 activo: true,
-                fechaInicio: (0, typeorm_2.LessThanOrEqual)(today)
+                fechaInicio: (0, typeorm_2.LessThanOrEqual)(d)
             },
             relations: ['turno'],
             order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
         });
-        if (!empleadoTurno) {
-            throw new common_1.BadRequestException('No tiene turno asignado');
-        }
-        const turno = empleadoTurno.turno;
-        const now = new Date();
-        const horaSalidaEsperada = this.getTimeFromString(turno.horaSalida);
-        const horaSalidaPermitida = new Date(now);
-        horaSalidaPermitida.setHours(horaSalidaEsperada.getHours(), horaSalidaEsperada.getMinutes(), 0, 0);
-        if (now < horaSalidaPermitida) {
-            throw new common_1.BadRequestException(`Aún no puedes marcar salida. Puedes hacerlo a partir de las ${this.formatTimeToString(horaSalidaPermitida)}`);
-        }
-        asistencia.horaSalidaReal = now;
-        asistencia.estadoJornada = registro_asistencia_entity_1.RegistroAsistencia.ESTADO_COMPLETADA;
-        const horaEntrada = asistencia.horaEntradaReal instanceof Date
-            ? asistencia.horaEntradaReal
-            : new Date(asistencia.horaEntradaReal);
-        const horasTra = this.calculateHours(horaEntrada, now);
-        asistencia.horasTrabajadas = parseFloat(horasTra.toFixed(2));
-        await this.asistenciaRepository.save(asistencia);
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'ASISTENCIA',
-            accion: 'CHECK_OUT',
-            entidad: 'REGISTRO_ASISTENCIA',
-            entidadId: asistencia.asistenciaId,
-            detalle: `Salida registrada, ${asistencia.horasTrabajadas} horas trabajadas`,
-        });
-        await this.kpiService.refreshEmployeeKpi(empleadoId);
-        return {
-            message: 'Salida registrada',
-            asistencia,
-        };
     }
     async getTodayStatus(empleadoId) {
         const today = new Date();
@@ -194,15 +148,7 @@ let AttendanceService = class AttendanceService {
         const asistencia = await this.asistenciaRepository.findOne({
             where: { empleadoId, fecha: today },
         });
-        const empleadoTurno = await this.empleadoTurnoRepository.findOne({
-            where: {
-                empleadoId,
-                activo: true,
-                fechaInicio: (0, typeorm_2.LessThanOrEqual)(today)
-            },
-            relations: ['turno'],
-            order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
-        });
+        const empleadoTurno = await this.getShiftForDate(empleadoId, today);
         const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
         const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
         const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
@@ -270,47 +216,68 @@ let AttendanceService = class AttendanceService {
         }));
     }
     async adjustAttendance(asistenciaId, adjustDto, usuarioId) {
-        const asistencia = await this.asistenciaRepository.findOne({
-            where: { asistenciaId },
-        });
-        if (!asistencia) {
-            throw new common_1.NotFoundException('Registro de asistencia no encontrado');
+        let asistencia;
+        const parsePura = (s) => {
+            const [y, m, d] = s.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        };
+        const fechaReferencia = parsePura(adjustDto.fecha);
+        if (asistenciaId === 0) {
+            asistencia = await this.asistenciaRepository.findOne({
+                where: { empleadoId: adjustDto.empleadoId, fecha: fechaReferencia },
+            });
+            if (!asistencia) {
+                asistencia = this.asistenciaRepository.create({
+                    empleadoId: adjustDto.empleadoId,
+                    fecha: fechaReferencia,
+                    estadoJornada: registro_asistencia_entity_1.RegistroAsistencia.ESTADO_INCOMPLETA,
+                    observacion: 'Registro creado por ajuste manual'
+                });
+            }
         }
-        const { campo, valorAnterior, valorNuevo, motivo } = adjustDto;
+        else {
+            asistencia = await this.asistenciaRepository.findOne({ where: { asistenciaId } });
+        }
+        if (!asistencia) {
+            throw new common_1.NotFoundException('No se pudo localizar el registro de asistencia');
+        }
+        const { campo, valorNuevo, motivo } = adjustDto;
+        const valorAnterior = asistencia[campo] || 'Sin registro';
+        if (campo === 'horaEntradaReal' || campo === 'horaSalidaReal') {
+            const [hours, minutes] = valorNuevo.split(':').map(Number);
+            const newTime = new Date(asistencia.fecha);
+            newTime.setHours(hours, minutes, 0, 0);
+            asistencia[campo] = newTime;
+            if (campo === 'horaEntradaReal') {
+                const shift = await this.getShiftForDate(asistencia.empleadoId, asistencia.fecha);
+                if (shift && shift.turno) {
+                    const expectedIn = this.getTimeFromString(shift.turno.horaEntrada);
+                    const actualIn = new Date(asistencia.horaEntradaReal);
+                    if (actualIn > expectedIn) {
+                        const diffMin = Math.floor((actualIn.getTime() - expectedIn.getTime()) / 60000);
+                        asistencia.minutosTardia = Math.max(0, diffMin - shift.turno.toleranciaMinutos);
+                    }
+                    else {
+                        asistencia.minutosTardia = 0;
+                    }
+                }
+            }
+        }
+        if (asistencia.horaEntradaReal && asistencia.horaSalidaReal) {
+            asistencia.horasTrabajadas = this.calculateHours(asistencia.horaEntradaReal, asistencia.horaSalidaReal);
+            asistencia.estadoJornada = registro_asistencia_entity_1.RegistroAsistencia.ESTADO_COMPLETADA;
+        }
+        const saved = await this.asistenciaRepository.save(asistencia);
         await this.ajusteRepository.save({
-            asistenciaId,
+            asistenciaId: saved.asistenciaId,
             usuarioId,
             campoModificado: campo,
-            valorAnterior: valorAnterior.toString(),
+            valorAnterior: valorAnterior instanceof Date ? this.formatTimeToString(valorAnterior) : valorAnterior.toString(),
             valorNuevo: valorNuevo.toString(),
             motivo,
             fechaHora: new Date(),
         });
-        asistencia[campo] = valorNuevo;
-        if (campo === 'hora_entrada_real' || campo === 'hora_salida_real') {
-            if (asistencia.horaEntradaReal && asistencia.horaSalidaReal) {
-                const horaEntrada = asistencia.horaEntradaReal instanceof Date
-                    ? asistencia.horaEntradaReal
-                    : new Date(asistencia.horaEntradaReal);
-                const horaSalida = asistencia.horaSalidaReal instanceof Date
-                    ? asistencia.horaSalidaReal
-                    : new Date(asistencia.horaSalidaReal);
-                asistencia.horasTrabajadas = this.calculateHours(horaEntrada, horaSalida);
-            }
-        }
-        await this.asistenciaRepository.save(asistencia);
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'ASISTENCIA',
-            accion: 'ADJUST',
-            entidad: 'REGISTRO_ASISTENCIA',
-            entidadId: asistenciaId,
-            detalle: `Ajuste: ${campo}, de ${valorAnterior} a ${valorNuevo}, motivo: ${motivo}`,
-        });
-        return {
-            message: 'Ajuste registrado correctamente',
-            asistencia,
-        };
+        return { message: 'Ajuste registrado correctamente', asistencia: saved };
     }
     async getTeamAttendance(supervisorId, fecha) {
         try {
@@ -333,10 +300,10 @@ let AttendanceService = class AttendanceService {
                 const registro = registros.find((r) => r.empleadoId === emp.empleadoId);
                 return {
                     empleadoId: emp.empleadoId,
-                    nombreCompleto: `${emp.nombres} ${emp.apellidos}`,
+                    nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
                     codigoEmpleado: emp.codigoEmpleado,
-                    departamento: emp.departamento || 'Sin asignar',
-                    puesto: emp.puesto || 'Empleado',
+                    departamento: this.sanitizeString(emp.departamento) || 'Sin asignar',
+                    puesto: this.sanitizeString(emp.puesto) || 'Empleado',
                     asistencia: registro
                         ? {
                             asistenciaId: registro.asistenciaId,
@@ -356,84 +323,101 @@ let AttendanceService = class AttendanceService {
             throw error;
         }
     }
-    async getAllAttendance(fecha) {
+    async getAllAttendance(fechaInicio, fechaFin) {
         try {
-            const searchDate = fecha ? new Date(fecha) : new Date();
-            searchDate.setHours(0, 0, 0, 0);
+            const startISO = fechaInicio;
+            const endISO = fechaFin || fechaInicio;
+            const parseLocalSafe = (s) => {
+                const [y, m, d] = s.split('-').map(Number);
+                return new Date(y, m - 1, d, 12, 0, 0);
+            };
+            const startDate = parseLocalSafe(startISO);
+            const endDate = parseLocalSafe(endISO);
+            const timeDiff = endDate.getTime() - startDate.getTime();
+            const daysCount = Math.round(timeDiff / (1000 * 3600 * 24)) + 1;
+            const rangeISODates = [];
+            const limit = daysCount > 31 ? 31 : daysCount;
+            for (let i = 0; i < limit; i++) {
+                const d = new Date(startDate);
+                d.setDate(startDate.getDate() + i);
+                rangeISODates.push(d.toISOString().split('T')[0]);
+            }
             const empleados = await this.empleadoRepository.find({
                 where: { activo: true },
                 relations: ['empleadoTurnos', 'empleadoTurnos.turno']
             });
             const asistencias = await this.asistenciaRepository.find({
                 where: {
-                    fecha: searchDate
+                    fecha: (0, typeorm_2.Between)(new Date(startISO + 'T00:00:00'), new Date(endISO + 'T23:59:59'))
                 }
             });
-            return empleados.map(emp => {
-                const asistencia = asistencias.find(a => a.empleadoId === emp.empleadoId);
-                const turnoAsignado = emp.empleadoTurnos?.find(et => {
-                    const inicio = new Date(et.fechaInicio);
-                    const fin = et.fechaFin ? new Date(et.fechaFin) : null;
-                    return searchDate >= inicio && (!fin || searchDate <= fin);
-                });
-                return {
-                    empleadoId: emp.empleadoId,
-                    nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
-                    codigoEmpleado: emp.codigoEmpleado,
-                    departamento: this.sanitizeString(emp.departamento),
-                    puesto: this.sanitizeString(emp.puesto),
-                    turno: turnoAsignado?.turno?.nombre || 'Sin turno',
-                    asistencia: asistencia ? {
-                        asistenciaId: asistencia.asistenciaId,
-                        horaEntradaReal: asistencia.horaEntradaReal,
-                        horaSalidaReal: asistencia.horaSalidaReal,
-                        minutosTardia: asistencia.minutosTardia,
-                        horasTrabajadas: asistencia.horasTrabajadas,
-                        estadoJornada: asistencia.estadoJornada,
-                        observacion: asistencia.observacion
-                    } : null
-                };
-            });
+            const results = [];
+            for (const isoDate of rangeISODates) {
+                for (const emp of empleados) {
+                    const asistencia = asistencias.find(a => {
+                        const dbDateISO = new Date(a.fecha).toISOString().split('T')[0];
+                        return a.empleadoId === emp.empleadoId && dbDateISO === isoDate;
+                    });
+                    const turnosEnFecha = emp.empleadoTurnos?.filter(et => {
+                        const tStart = new Date(et.fechaInicio).toISOString().split('T')[0];
+                        const tEnd = et.fechaFin ? new Date(et.fechaFin).toISOString().split('T')[0] : null;
+                        return isoDate >= tStart && (!tEnd || isoDate <= tEnd);
+                    }) || [];
+                    const turnoAsignado = turnosEnFecha.sort((a, b) => {
+                        if (a.activo !== b.activo)
+                            return a.activo ? -1 : 1;
+                        return b.empleadoTurnoId - a.empleadoTurnoId;
+                    })[0];
+                    results.push({
+                        empleadoId: emp.empleadoId,
+                        nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+                        codigoEmpleado: emp.codigoEmpleado,
+                        departamento: this.sanitizeString(emp.departamento),
+                        fecha: isoDate,
+                        turno: turnoAsignado?.turno?.nombre || 'Sin turno',
+                        asistencia: asistencia ? {
+                            asistenciaId: asistencia.asistenciaId,
+                            horaEntradaReal: asistencia.horaEntradaReal,
+                            horaSalidaReal: asistencia.horaSalidaReal,
+                            minutosTardia: asistencia.minutosTardia,
+                            horasTrabajadas: asistencia.horasTrabajadas,
+                            estadoJornada: asistencia.estadoJornada,
+                            observacion: asistencia.observacion
+                        } : null
+                    });
+                }
+            }
+            return results;
         }
         catch (error) {
             console.error('Error in getAllAttendance:', error);
             throw error;
         }
     }
+    async getAdjustmentHistory() {
+        return this.ajusteRepository.find({
+            relations: ['asistencia', 'asistencia.empleado', 'usuario'],
+            order: { fechaHora: 'DESC' },
+            take: 200
+        });
+    }
     sanitizeString(str) {
         if (!str)
             return '';
-        let res = str
-            .replace(/\?/g, (match, offset, original) => {
-            if (original.includes('Rodr'))
-                return 'í';
-            if (original.includes('Mart'))
-                return 'í';
-            if (original.includes('Garc'))
-                return 'í';
-            if (original.includes('Fern'))
-                return 'á';
-            return 'í';
-        })
+        return str
+            .replace(/Rodr\?guez/g, 'Rodríguez')
+            .replace(/Mart\?nez/g, 'Martínez')
+            .replace(/Fern\?ndez/g, 'Fernández')
+            .replace(/Garc\?a/g, 'García')
+            .replace(/L\?pez/g, 'López')
+            .replace(/Tecnolog\?a/g, 'Tecnología')
+            .replace(/Mart\?n/g, 'Martín')
+            .replace(/Bust\?n/g, 'Bustón')
+            .replace(/S\?nchez/g, 'Sánchez')
+            .replace(/G\?mez/g, 'Gómez')
+            .replace(/P\?rez/g, 'Pérez')
             .replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
             .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
-        const words = res.trim().split(/\s+/);
-        const finalWords = [];
-        const seenSet = new Set();
-        for (const word of words) {
-            const normalized = word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (!seenSet.has(normalized)) {
-                finalWords.push(word);
-                seenSet.add(normalized);
-            }
-        }
-        return finalWords.join(' ');
-    }
-    getTimeFromString(timeStr) {
-        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, seconds || 0, 0);
-        return date;
     }
     formatTimeToString(date) {
         const hours = date.getHours();
@@ -442,8 +426,19 @@ let AttendanceService = class AttendanceService {
         const hour12 = hours % 12 || 12;
         return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
     }
+    getTimeFromString(timeStr) {
+        const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, seconds || 0, 0);
+        return date;
+    }
     calculateHours(start, end) {
-        const diff = end.getTime() - start.getTime();
+        const dStart = new Date(start);
+        const dEnd = new Date(end);
+        let diff = dEnd.getTime() - dStart.getTime();
+        if (diff < 0) {
+            diff += 24 * 60 * 60 * 1000;
+        }
         return Math.round((diff / 3600000) * 100) / 100;
     }
 };

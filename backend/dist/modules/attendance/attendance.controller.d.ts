@@ -66,7 +66,7 @@ export declare class AttendanceController {
     }[]>;
     adjustAttendance(id: number, adjustDto: any, req: any): Promise<{
         message: string;
-        asistencia: import("../../entities").RegistroAsistencia;
+        asistencia: any;
     }>;
     getTeamAttendance(req: any, fecha?: string): Promise<{
         empleadoId: number;
@@ -84,21 +84,6 @@ export declare class AttendanceController {
             observacion: string;
         };
     }[]>;
-    getAllAttendance(fecha?: string): Promise<{
-        empleadoId: number;
-        nombreCompleto: string;
-        codigoEmpleado: string;
-        departamento: string;
-        puesto: string;
-        turno: string;
-        asistencia: {
-            asistenciaId: number;
-            horaEntradaReal: Date;
-            horaSalidaReal: Date;
-            minutosTardia: number;
-            horasTrabajadas: number;
-            estadoJornada: string;
-            observacion: string;
-        };
-    }[]>;
+    getAllAttendance(fechaInicio?: string, fechaFin?: string): Promise<any[]>;
+    getAdjustmentHistory(): Promise<import("../../entities").AjusteAsistencia[]>;
 }

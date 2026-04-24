@@ -81,7 +81,7 @@ export class AttendanceService {
 
   adjustAttendance(
     id: number,
-    adjust: { campo: string; valorAnterior: any; valorNuevo: any; motivo: string },
+    adjust: { campo: string; valorAnterior: any; valorNuevo: any; motivo: string; empleadoId?: number; fecha?: string },
   ): Observable<any> {
     return this.http.put(`${this.apiUrl}/adjust/${id}`, adjust);
   }
@@ -92,9 +92,14 @@ export class AttendanceService {
     return this.http.get<TeamAttendance[]>(`${this.apiUrl}/team`, { params });
   }
 
-  getAllAttendance(fecha?: string): Observable<any[]> {
+  getAllAttendance(fechaInicio?: string, fechaFin?: string): Observable<any[]> {
     let params: any = {};
-    if (fecha) params.fecha = fecha;
+    if (fechaInicio) params.fechaInicio = fechaInicio;
+    if (fechaFin) params.fechaFin = fechaFin;
     return this.http.get<any[]>(`${this.apiUrl}/all`, { params });
+  }
+
+  getAdjustmentHistory(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/adjustments/history`);
   }
 }

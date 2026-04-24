@@ -147,8 +147,6 @@ export class AdminService {
   }
 
   async getAssignments() {
-    // Usamos una consulta personalizada para obtener solo la asignación más reciente de cada empleado
-    // y evitar duplicados en la lista de RRHH.
     const query = this.empleadoTurnoRepository
       .createQueryBuilder('et')
       .innerJoinAndSelect('et.empleado', 'e')
@@ -156,11 +154,11 @@ export class AdminService {
       .where(qb => {
         const subQuery = qb
           .subQuery()
-          .select('MAX(st.empleadoTurnoId)')
+          .select('MAX(st.empleado_turno_id)')
           .from(EmpleadoTurno, 'st')
-          .groupBy('st.empleadoId')
+          .groupBy('st.empleado_id')
           .getQuery();
-        return 'et.empleadoTurnoId IN ' + subQuery;
+        return 'et.empleado_turno_id IN ' + subQuery;
       })
       .orderBy('e.nombres', 'ASC');
 
@@ -203,7 +201,6 @@ export class AdminService {
       );
     } else {
       // REGLA 2: Cambio futuro. Borramos cualquier otra programación pendiente (mañana en adelante)
-      // para que este nuevo sea el único que "gane".
       const futureAssignments = await this.empleadoTurnoRepository.find({
         where: { empleadoId: assignDto.empleadoId, activo: true }
       });
@@ -212,7 +209,6 @@ export class AdminService {
         const faDate = new Date(fa.fechaInicio);
         faDate.setHours(0,0,0,0);
         if (faDate > today) {
-           // Si no tiene asistencias vinculadas, lo borramos. Si tiene (raro), lo desactivamos.
            await this.empleadoTurnoRepository.delete(fa.empleadoTurnoId).catch(() => {
              this.empleadoTurnoRepository.update(fa.empleadoTurnoId, { activo: false });
            });
@@ -220,7 +216,6 @@ export class AdminService {
       }
     }
 
-    // Insertamos el nuevo horario (El que "olvida" a los demás)
     const assignment = this.empleadoTurnoRepository.create({
       empleadoId: assignDto.empleadoId,
       turnoId: assignDto.turnoId,
@@ -239,11 +234,9 @@ export class AdminService {
     });
 
     const result: any = {};
-
     for (const p of parametros) {
       result[p.clave] = p.valor;
     }
-
     return result;
   }
 
@@ -266,15 +259,6 @@ export class AdminService {
         await this.parametroRepository.save(parametro);
       }
     }
-
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'ADMIN',
-      accion: 'UPDATE_PARAMETERS',
-      entidad: 'PARAMETRO_SISTEMA',
-      detalle: 'Parámetros de KPI actualizados',
-    });
-
     return this.getKpiParameters();
   }
 
@@ -299,37 +283,15 @@ export class AdminService {
 
   async createBonusRule(createDto: any, usuarioId: number) {
     const regla = this.reglaBonoRepository.create(createDto);
-    const saved = (await this.reglaBonoRepository.save(regla)) as unknown as ReglaBono;
-
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'ADMIN',
-      accion: 'CREATE_BONUS_RULE',
-      entidad: 'REGLA_BONO',
-      entidadId: saved.reglaBonoId,
-      detalle: `Regla de bono creada: ${saved.nombre}`,
-    });
-
+    await this.reglaBonoRepository.save(regla);
     return this.getBonusRules();
   }
 
   async getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string) {
     const where: any = {};
-
     if (fechaInicio && fechaFin) {
-      where.fechaHora = new Date(fechaInicio);
-    } else if (fechaFin) {
-      where.fechaHora = new Date(fechaFin);
+      where.fechaHora = Between(new Date(fechaInicio), new Date(fechaFin));
     }
-
-    if (usuarioId) {
-      where.usuarioId = usuarioId;
-    }
-
-    if (modulo) {
-      where.modulo = modulo;
-    }
-
     const logs = await this.auditRepository.find({
       where,
       relations: ['usuario'],
@@ -340,7 +302,7 @@ export class AdminService {
     return logs.map((l) => ({
       auditId: l.auditId,
       fechaHora: l.fechaHora,
-      usuario: 'Sistema',
+      usuario: l.usuario?.username || 'Sistema',
       modulo: l.modulo,
       accion: l.accion,
       entidad: l.entidad,
@@ -361,9 +323,6 @@ export class AdminService {
   async getAdminDashboardStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const [activeUsers, blockedUsers, auditEventsToday] = await Promise.all([
       this.usuarioRepository.count({ where: { estado: 'activo' } }),
       this.usuarioRepository.count({ where: { estado: Not('activo') } }),
@@ -383,9 +342,6 @@ export class AdminService {
   async getRrhhDashboardStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
 
@@ -435,9 +391,6 @@ export class AdminService {
   async getSupervisorDashboardStats(supervisorId: number) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
 
@@ -455,7 +408,7 @@ export class AdminService {
           .innerJoin('ra.empleado', 'emp')
           .where('emp.supervisorId = :supervisorId', { supervisorId })
           .andWhere('ra.fecha >= :today', { today })
-          .andWhere('ra.fecha < :tomorrow', { tomorrow })
+          .andWhere('ra.fecha < :tomorrow', { tomorrow: new Date(today.getTime() + 86400000) })
           .andWhere('ra.minutosTardia > 0')
           .getCount(),
         this.kpiMensualRepository

@@ -25,6 +25,7 @@ export declare class AttendanceService {
         message: string;
         asistencia: RegistroAsistencia;
     }>;
+    private getShiftForDate;
     getTodayStatus(empleadoId: number): Promise<{
         estadoJornada: string;
         fecha: Date;
@@ -70,7 +71,7 @@ export declare class AttendanceService {
     }[]>;
     adjustAttendance(asistenciaId: number, adjustDto: any, usuarioId: number): Promise<{
         message: string;
-        asistencia: RegistroAsistencia;
+        asistencia: any;
     }>;
     getTeamAttendance(supervisorId: number, fecha?: string): Promise<{
         empleadoId: number;
@@ -88,25 +89,10 @@ export declare class AttendanceService {
             observacion: string;
         };
     }[]>;
-    getAllAttendance(fecha?: string): Promise<{
-        empleadoId: number;
-        nombreCompleto: string;
-        codigoEmpleado: string;
-        departamento: string;
-        puesto: string;
-        turno: string;
-        asistencia: {
-            asistenciaId: number;
-            horaEntradaReal: Date;
-            horaSalidaReal: Date;
-            minutosTardia: number;
-            horasTrabajadas: number;
-            estadoJornada: string;
-            observacion: string;
-        };
-    }[]>;
+    getAllAttendance(fechaInicio?: string, fechaFin?: string): Promise<any[]>;
+    getAdjustmentHistory(): Promise<AjusteAsistencia[]>;
     private sanitizeString;
-    private getTimeFromString;
     private formatTimeToString;
+    private getTimeFromString;
     private calculateHours;
 }
