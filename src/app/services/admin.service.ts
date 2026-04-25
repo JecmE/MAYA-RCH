@@ -26,6 +26,7 @@ export interface ReglaBono {
   maxTardias?: number;
   maxFaltas?: number;
   minHoras?: number;
+  monto?: number;
   vigenciaInicio: string;
   vigenciaFin?: string;
 }
@@ -79,6 +80,14 @@ export class AdminService {
     return this.http.post<any[]>(`${this.apiUrl}/shifts/assignments`, data);
   }
 
+  runBonusEvaluation(mes: number, anio: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/bonus/evaluate`, { mes, anio });
+  }
+
+  seedJoseCuevas(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/seed-jose-cuevas`, {});
+  }
+
   // Parámetros KPI
   getKpiParameters(): Observable<ParametroKpi> {
     return this.http.get<ParametroKpi>(`${this.apiUrl}/kpi-parameters`);
@@ -95,6 +104,14 @@ export class AdminService {
 
   createBonusRule(data: Partial<ReglaBono>): Observable<ReglaBono[]> {
     return this.http.post<ReglaBono[]>(`${this.apiUrl}/bonus-rules`, data);
+  }
+
+  updateBonusRule(id: number, data: Partial<ReglaBono>): Observable<ReglaBono[]> {
+    return this.http.put<ReglaBono[]>(`${this.apiUrl}/bonus-rules/${id}`, data);
+  }
+
+  deleteBonusRule(id: number): Observable<ReglaBono[]> {
+    return this.http.delete<ReglaBono[]>(`${this.apiUrl}/bonus-rules/${id}`);
   }
 
   // Audit Logs

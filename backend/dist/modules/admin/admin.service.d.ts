@@ -1,4 +1,5 @@
-import { Repository } from 'typeorm';
+import { OnModuleInit } from '@nestjs/common';
+import { Repository, DataSource } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { TipoPermiso } from '../../entities/tipo-permiso.entity';
@@ -13,7 +14,8 @@ import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
-export declare class AdminService {
+import { BonoResultado } from '../../entities/bono-resultado.entity';
+export declare class AdminService implements OnModuleInit {
     private turnoRepository;
     private empleadoTurnoRepository;
     private tipoPermisoRepository;
@@ -28,99 +30,25 @@ export declare class AdminService {
     private kpiMensualRepository;
     private vacacionMovimientoRepository;
     private registroTiempoRepository;
-    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>);
-    getShifts(): Promise<{
-        turnoId: number;
-        nombre: string;
-        horaEntrada: string;
-        horaSalida: string;
-        toleranciaMinutos: number;
-        horasEsperadasDia: number;
-        dias: string;
-        activo: boolean;
-    }[]>;
-    createShift(createDto: any, usuarioId: number): Promise<{
-        turnoId: number;
-        nombre: string;
-        horaEntrada: string;
-        horaSalida: string;
-        toleranciaMinutos: number;
-        horasEsperadasDia: number;
-        dias: string;
-        activo: boolean;
-    }[]>;
-    updateShift(id: number, updateDto: any, usuarioId: number): Promise<{
-        turnoId: number;
-        nombre: string;
-        horaEntrada: string;
-        horaSalida: string;
-        toleranciaMinutos: number;
-        horasEsperadasDia: number;
-        dias: string;
-        activo: boolean;
-    }[]>;
+    private bonoResultadoRepository;
+    private dataSource;
+    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>, bonoResultadoRepository: Repository<BonoResultado>, dataSource: DataSource);
+    onModuleInit(): Promise<void>;
+    private ensureCorrectTableStructures;
+    getShifts(): Promise<Turno[]>;
+    createShift(createDto: any, usuarioId: number): Promise<Turno[]>;
+    updateShift(id: number, updateDto: any, usuarioId: number): Promise<Turno[]>;
     deactivateShift(id: number, usuarioId: number): Promise<{
         message: string;
     }>;
-    getAssignments(): Promise<{
-        id: number;
-        empleadoId: number;
-        empleadoNombre: string;
-        turnoId: number;
-        turnoNombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        activo: boolean;
-    }[]>;
-    assignShift(assignDto: any, usuarioId: number): Promise<{
-        id: number;
-        empleadoId: number;
-        empleadoNombre: string;
-        turnoId: number;
-        turnoNombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        activo: boolean;
-    }[]>;
-    getKpiParameters(): Promise<any>;
-    updateKpiParameters(updateDto: any, usuarioId: number): Promise<any>;
-    getBonusRules(): Promise<{
-        reglaBonoId: number;
-        nombre: string;
-        activo: boolean;
-        minDiasTrabajados: number;
-        maxTardias: number;
-        maxFaltas: number;
-        minHoras: number;
-        vigenciaInicio: Date;
-        vigenciaFin: Date;
-    }[]>;
-    createBonusRule(createDto: any, usuarioId: number): Promise<{
-        reglaBonoId: number;
-        nombre: string;
-        activo: boolean;
-        minDiasTrabajados: number;
-        maxTardias: number;
-        maxFaltas: number;
-        minHoras: number;
-        vigenciaInicio: Date;
-        vigenciaFin: Date;
-    }[]>;
-    getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<{
-        auditId: number;
-        fechaHora: Date;
-        usuario: string;
-        modulo: string;
-        accion: string;
-        entidad: string;
-        entidadId: number;
-        detalle: string;
-    }[]>;
-    getRoles(): Promise<{
-        rolId: number;
-        nombre: string;
-        descripcion: string;
-    }[]>;
+    getBonusRules(): Promise<ReglaBono[]>;
+    createBonusRule(createDto: any, usuarioId: number): Promise<ReglaBono[]>;
+    updateBonusRule(id: number, updateDto: any, usuarioId: number): Promise<ReglaBono[]>;
+    deleteBonusRule(id: number, usuarioId: number): Promise<ReglaBono[]>;
+    runBonusEvaluation(mes: number, anio: number, usuarioId: number): Promise<{
+        message: string;
+    }>;
+    getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<AuditLog[]>;
     getAdminDashboardStats(): Promise<{
         usuariosActivos: number;
         usuariosBloqueados: number;
@@ -141,4 +69,10 @@ export declare class AdminService {
         horasPendientes: number;
         kpiPromedio: number;
     }>;
+    getRoles(): Promise<Rol[]>;
+    getAssignments(): Promise<EmpleadoTurno[]>;
+    assignShift(dto: any, uid: number): Promise<EmpleadoTurno[]>;
+    getKpiParameters(): Promise<{}>;
+    updateKpiParameters(dto: any, uid: number): Promise<{}>;
+    private sanitizeString;
 }

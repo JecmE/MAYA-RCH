@@ -15,11 +15,8 @@ export declare class ReportsService {
     private empleadoRepository;
     private dataSource;
     constructor(asistenciaRepository: Repository<RegistroAsistencia>, solicitudRepository: Repository<SolicitudPermiso>, tiempoRepository: Repository<RegistroTiempo>, kpiRepository: Repository<KpiMensual>, bonoRepository: Repository<BonoResultado>, empleadoRepository: Repository<Empleado>, dataSource: DataSource);
-    getMonthlyAttendance(mes: number, anio: number): Promise<unknown[]>;
     getBonusEligibility(mes: number, anio: number): Promise<any>;
-    getProjectHours(fechaInicio: string, fechaFin: string): Promise<{
-        proyecto: any;
-        totalHoras: any;
-        empleados: unknown[];
-    }[]>;
+    private sanitizeString;
+    getMonthlyAttendance(mes: number, anio: number): Promise<any>;
+    getProjectHours(fechaInicio: string, fechaFin: string): Promise<any>;
 }

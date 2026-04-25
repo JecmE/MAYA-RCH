@@ -52,6 +52,15 @@ let AdminController = class AdminController {
     createBonusRule(createDto, req) {
         return this.adminService.createBonusRule(createDto, req.user.usuarioId);
     }
+    runEvaluation(body, req) {
+        return this.adminService.runBonusEvaluation(body.mes, body.anio, req.user.usuarioId);
+    }
+    updateBonusRule(id, updateDto, req) {
+        return this.adminService.updateBonusRule(id, updateDto, req.user.usuarioId);
+    }
+    deleteBonusRule(id, req) {
+        return this.adminService.deleteBonusRule(id, req.user.usuarioId);
+    }
     getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo) {
         return this.adminService.getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo);
     }
@@ -152,6 +161,34 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "createBonusRule", null);
+__decorate([
+    (0, common_1.Post)('bonus/evaluate'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "runEvaluation", null);
+__decorate([
+    (0, common_1.Put)('bonus-rules/:id'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateBonusRule", null);
+__decorate([
+    (0, common_1.Delete)('bonus-rules/:id'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteBonusRule", null);
 __decorate([
     (0, common_1.Get)('audit-logs'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),

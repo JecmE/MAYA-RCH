@@ -9,26 +9,29 @@ export class ReglaBono {
   @Column({ length: 100 })
   nombre: string;
 
-  @Column({ default: 1 })
-  activo: boolean;
-
-  @Column({ name: 'min_dias_trabajados', nullable: true })
+  @Column({ name: 'min_dias_trabajados', type: 'int', nullable: true })
   minDiasTrabajados: number;
 
-  @Column({ name: 'max_tardias', nullable: true })
+  @Column({ name: 'max_tardias', type: 'int', nullable: true })
   maxTardias: number;
 
-  @Column({ name: 'max_faltas', nullable: true })
+  @Column({ name: 'max_faltas', type: 'int', nullable: true })
   maxFaltas: number;
 
-  @Column({ name: 'min_horas', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  @Column({ name: 'min_horas', type: 'decimal', precision: 10, scale: 2, nullable: true })
   minHoras: number;
+
+  @Column({ name: 'monto', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  monto: number;
 
   @Column({ name: 'vigencia_inicio', type: 'date' })
   vigenciaInicio: Date;
 
   @Column({ name: 'vigencia_fin', type: 'date', nullable: true })
   vigenciaFin: Date;
+
+  @Column({ default: 1 })
+  activo: boolean;
 
   @OneToMany(() => BonoResultado, (br) => br.reglaBono)
   resultados: BonoResultado[];

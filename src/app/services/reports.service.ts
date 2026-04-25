@@ -17,9 +17,11 @@ export interface MonthlyAttendanceReport {
 export interface BonusEligibilityReport {
   empleadoId: number;
   nombreCompleto: string;
+  departamento: string;
   reglaBonoId: number;
   reglaNombre: string;
   elegible: boolean;
+  monto: number;
   motivoNoElegible?: string;
 }
 

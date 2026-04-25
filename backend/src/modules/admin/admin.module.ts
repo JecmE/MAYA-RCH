@@ -16,6 +16,7 @@ import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
+import { BonoResultado } from '../../entities/bono-resultado.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
       KpiMensual,
       VacacionMovimiento,
       RegistroTiempo,
+      BonoResultado,
     ]),
   ],
   controllers: [AdminController],

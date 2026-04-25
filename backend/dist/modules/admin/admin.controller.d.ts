@@ -2,98 +2,28 @@ import { AdminService } from './admin.service';
 export declare class AdminController {
     private readonly adminService;
     constructor(adminService: AdminService);
-    getShifts(): Promise<{
-        turnoId: number;
-        nombre: string;
-        horaEntrada: string;
-        horaSalida: string;
-        toleranciaMinutos: number;
-        horasEsperadasDia: number;
-        dias: string;
-        activo: boolean;
-    }[]>;
-    createShift(createDto: any, req: any): Promise<{
-        turnoId: number;
-        nombre: string;
-        horaEntrada: string;
-        horaSalida: string;
-        toleranciaMinutos: number;
-        horasEsperadasDia: number;
-        dias: string;
-        activo: boolean;
-    }[]>;
-    updateShift(id: number, updateDto: any, req: any): Promise<{
-        turnoId: number;
-        nombre: string;
-        horaEntrada: string;
-        horaSalida: string;
-        toleranciaMinutos: number;
-        horasEsperadasDia: number;
-        dias: string;
-        activo: boolean;
-    }[]>;
+    getShifts(): Promise<import("../../entities").Turno[]>;
+    createShift(createDto: any, req: any): Promise<import("../../entities").Turno[]>;
+    updateShift(id: number, updateDto: any, req: any): Promise<import("../../entities").Turno[]>;
     deactivateShift(id: number, req: any): Promise<{
         message: string;
     }>;
-    getAssignments(): Promise<{
-        id: number;
-        empleadoId: number;
-        empleadoNombre: string;
-        turnoId: number;
-        turnoNombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        activo: boolean;
-    }[]>;
-    assignShift(assignDto: any, req: any): Promise<{
-        id: number;
-        empleadoId: number;
-        empleadoNombre: string;
-        turnoId: number;
-        turnoNombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        activo: boolean;
-    }[]>;
-    getKpiParameters(): Promise<any>;
-    updateKpiParameters(updateDto: any, req: any): Promise<any>;
-    getBonusRules(): Promise<{
-        reglaBonoId: number;
-        nombre: string;
-        activo: boolean;
-        minDiasTrabajados: number;
-        maxTardias: number;
-        maxFaltas: number;
-        minHoras: number;
-        vigenciaInicio: Date;
-        vigenciaFin: Date;
-    }[]>;
-    createBonusRule(createDto: any, req: any): Promise<{
-        reglaBonoId: number;
-        nombre: string;
-        activo: boolean;
-        minDiasTrabajados: number;
-        maxTardias: number;
-        maxFaltas: number;
-        minHoras: number;
-        vigenciaInicio: Date;
-        vigenciaFin: Date;
-    }[]>;
-    getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<{
-        auditId: number;
-        fechaHora: Date;
-        usuario: string;
-        modulo: string;
-        accion: string;
-        entidad: string;
-        entidadId: number;
-        detalle: string;
-    }[]>;
-    getRoles(): Promise<{
-        rolId: number;
-        nombre: string;
-        descripcion: string;
-    }[]>;
+    getAssignments(): Promise<import("../../entities").EmpleadoTurno[]>;
+    assignShift(assignDto: any, req: any): Promise<import("../../entities").EmpleadoTurno[]>;
+    getKpiParameters(): Promise<{}>;
+    updateKpiParameters(updateDto: any, req: any): Promise<{}>;
+    getBonusRules(): Promise<import("../../entities").ReglaBono[]>;
+    createBonusRule(createDto: any, req: any): Promise<import("../../entities").ReglaBono[]>;
+    runEvaluation(body: {
+        mes: number;
+        anio: number;
+    }, req: any): Promise<{
+        message: string;
+    }>;
+    updateBonusRule(id: number, updateDto: any, req: any): Promise<import("../../entities").ReglaBono[]>;
+    deleteBonusRule(id: number, req: any): Promise<import("../../entities").ReglaBono[]>;
+    getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<import("../../entities").AuditLog[]>;
+    getRoles(): Promise<import("../../entities").Rol[]>;
     getAdminDashboard(): Promise<{
         usuariosActivos: number;
         usuariosBloqueados: number;

@@ -1,20 +1,11 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
-  CreateDateColumn,
-  Unique,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Empleado } from './empleado.entity';
 import { ReglaBono } from './regla-bono.entity';
 
 @Entity('BONO_RESULTADO')
-@Unique(['empleadoId', 'reglaBonoId', 'anio', 'mes'])
 export class BonoResultado {
-  @PrimaryGeneratedColumn({ name: 'bono_res_id' })
-  bonoResId: number;
+  @PrimaryGeneratedColumn({ name: 'bono_resultado_id' })
+  bonoResultadoId: number;
 
   @Column({ name: 'empleado_id' })
   empleadoId: number;
@@ -22,14 +13,17 @@ export class BonoResultado {
   @Column({ name: 'regla_bono_id' })
   reglaBonoId: number;
 
-  @Column()
-  anio: number;
-
-  @Column()
+  @Column({ type: 'int' })
   mes: number;
 
-  @Column()
+  @Column({ type: 'int' })
+  anio: number;
+
+  @Column({ default: false })
   elegible: boolean;
+
+  @Column({ name: 'cumplimiento_pct', type: 'decimal', precision: 5, scale: 2, default: 0 })
+  cumplimientoPct: number;
 
   @Column({ name: 'motivo_no_elegible', length: 255, nullable: true })
   motivoNoElegible: string;

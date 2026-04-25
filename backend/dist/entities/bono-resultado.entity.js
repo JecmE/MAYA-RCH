@@ -17,9 +17,9 @@ let BonoResultado = class BonoResultado {
 };
 exports.BonoResultado = BonoResultado;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)({ name: 'bono_res_id' }),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ name: 'bono_resultado_id' }),
     __metadata("design:type", Number)
-], BonoResultado.prototype, "bonoResId", void 0);
+], BonoResultado.prototype, "bonoResultadoId", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'empleado_id' }),
     __metadata("design:type", Number)
@@ -29,17 +29,21 @@ __decorate([
     __metadata("design:type", Number)
 ], BonoResultado.prototype, "reglaBonoId", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
-    __metadata("design:type", Number)
-], BonoResultado.prototype, "anio", void 0);
-__decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ type: 'int' }),
     __metadata("design:type", Number)
 ], BonoResultado.prototype, "mes", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "anio", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], BonoResultado.prototype, "elegible", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'cumplimiento_pct', type: 'decimal', precision: 5, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "cumplimientoPct", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'motivo_no_elegible', length: 255, nullable: true }),
     __metadata("design:type", String)
@@ -59,7 +63,6 @@ __decorate([
     __metadata("design:type", regla_bono_entity_1.ReglaBono)
 ], BonoResultado.prototype, "reglaBono", void 0);
 exports.BonoResultado = BonoResultado = __decorate([
-    (0, typeorm_1.Entity)('BONO_RESULTADO'),
-    (0, typeorm_1.Unique)(['empleadoId', 'reglaBonoId', 'anio', 'mes'])
+    (0, typeorm_1.Entity)('BONO_RESULTADO')
 ], BonoResultado);
 //# sourceMappingURL=bono-resultado.entity.js.map

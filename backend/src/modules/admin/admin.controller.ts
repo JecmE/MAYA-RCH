@@ -81,6 +81,28 @@ export class AdminController {
     return this.adminService.createBonusRule(createDto, req.user.usuarioId);
   }
 
+  @Post('bonus/evaluate')
+  @Roles('RRHH', 'Administrador')
+  runEvaluation(@Body() body: { mes: number, anio: number }, @Req() req: any) {
+    return this.adminService.runBonusEvaluation(body.mes, body.anio, req.user.usuarioId);
+  }
+
+  @Put('bonus-rules/:id')
+  @Roles('RRHH', 'Administrador')
+  updateBonusRule(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: any,
+    @Req() req: any,
+  ) {
+    return this.adminService.updateBonusRule(id, updateDto, req.user.usuarioId);
+  }
+
+  @Delete('bonus-rules/:id')
+  @Roles('RRHH', 'Administrador')
+  deleteBonusRule(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.adminService.deleteBonusRule(id, req.user.usuarioId);
+  }
+
   @Get('audit-logs')
   @Roles('RRHH', 'Administrador')
   getAuditLogs(
