@@ -45,6 +45,26 @@ __decorate([
     __metadata("design:type", Number)
 ], BonoResultado.prototype, "cumplimientoPct", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'dias_asistidos', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "diasAsistidos", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'dias_laborables', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "diasLaborables", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'tardias_count', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "tardiasCount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'faltas_count', type: 'int', default: 0 }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "faltasCount", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'horas_count', type: 'decimal', precision: 10, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], BonoResultado.prototype, "horasCount", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'motivo_no_elegible', length: 255, nullable: true }),
     __metadata("design:type", String)
 ], BonoResultado.prototype, "motivoNoElegible", void 0);

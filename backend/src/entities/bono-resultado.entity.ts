@@ -25,6 +25,21 @@ export class BonoResultado {
   @Column({ name: 'cumplimiento_pct', type: 'decimal', precision: 5, scale: 2, default: 0 })
   cumplimientoPct: number;
 
+  @Column({ name: 'dias_asistidos', type: 'int', default: 0 })
+  diasAsistidos: number;
+
+  @Column({ name: 'dias_laborables', type: 'int', default: 0 })
+  diasLaborables: number;
+
+  @Column({ name: 'tardias_count', type: 'int', default: 0 })
+  tardiasCount: number;
+
+  @Column({ name: 'faltas_count', type: 'int', default: 0 })
+  faltasCount: number;
+
+  @Column({ name: 'horas_count', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  horasCount: number;
+
   @Column({ name: 'motivo_no_elegible', length: 255, nullable: true })
   motivoNoElegible: string;
 

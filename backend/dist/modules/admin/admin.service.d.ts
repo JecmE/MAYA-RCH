@@ -36,19 +36,19 @@ export declare class AdminService implements OnModuleInit {
     onModuleInit(): Promise<void>;
     private ensureCorrectTableStructures;
     getShifts(): Promise<Turno[]>;
-    createShift(createDto: any, usuarioId: number): Promise<Turno[]>;
-    updateShift(id: number, updateDto: any, usuarioId: number): Promise<Turno[]>;
-    deactivateShift(id: number, usuarioId: number): Promise<{
+    createShift(dto: any, uid: number): Promise<Turno[]>;
+    updateShift(id: number, dto: any, uid: number): Promise<Turno[]>;
+    deactivateShift(id: number, uid: number): Promise<{
         message: string;
     }>;
     getBonusRules(): Promise<ReglaBono[]>;
-    createBonusRule(createDto: any, usuarioId: number): Promise<ReglaBono[]>;
-    updateBonusRule(id: number, updateDto: any, usuarioId: number): Promise<ReglaBono[]>;
-    deleteBonusRule(id: number, usuarioId: number): Promise<ReglaBono[]>;
+    createBonusRule(dto: any, uid: number): Promise<ReglaBono[]>;
+    updateBonusRule(id: number, dto: any, uid: number): Promise<ReglaBono[]>;
+    deleteBonusRule(id: number, uid: number): Promise<ReglaBono[]>;
     runBonusEvaluation(mes: number, anio: number, usuarioId: number): Promise<{
         message: string;
     }>;
-    getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<AuditLog[]>;
+    getAuditLogs(fi?: string, ff?: string, uid?: number, mod?: string): Promise<AuditLog[]>;
     getAdminDashboardStats(): Promise<{
         usuariosActivos: number;
         usuariosBloqueados: number;
@@ -63,7 +63,7 @@ export declare class AdminService implements OnModuleInit {
         empleadosEnRiesgo: number;
         empleadosConTurnoInactivo: number;
     }>;
-    getSupervisorDashboardStats(supervisorId: number): Promise<{
+    getSupervisorDashboardStats(sid: number): Promise<{
         empleadosACargo: number;
         permisosPendientes: number;
         horasPendientes: number;
@@ -74,5 +74,4 @@ export declare class AdminService implements OnModuleInit {
     assignShift(dto: any, uid: number): Promise<EmpleadoTurno[]>;
     getKpiParameters(): Promise<{}>;
     updateKpiParameters(dto: any, uid: number): Promise<{}>;
-    private sanitizeString;
 }

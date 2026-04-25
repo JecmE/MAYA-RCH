@@ -67,246 +67,112 @@ export class AdminService implements OnModuleInit {
 
   private async ensureCorrectTableStructures() {
     try {
-      // 1. Asegurar columna monto en REGLA_BONO
-      await this.dataSource.query(`
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[REGLA_BONO]') AND name = 'monto')
-        BEGIN
-            ALTER TABLE [dbo].[REGLA_BONO] ADD [monto] DECIMAL(10, 2) DEFAULT 0;
-        END
-      `);
-
-      // 2. Corregir Tabla BONO_RESULTADO
-      const checkPK = await this.dataSource.query(`
-        SELECT name FROM sys.columns
-        WHERE object_id = OBJECT_ID(N'[dbo].[BONO_RESULTADO]')
-        AND name = 'bono_resultado_id'
-      `);
-
+      await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[REGLA_BONO]') AND name = 'monto') BEGIN ALTER TABLE [dbo].[REGLA_BONO] ADD [monto] DECIMAL(10, 2) DEFAULT 0; END`);
+      const checkPK = await this.dataSource.query(`SELECT name FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[BONO_RESULTADO]') AND name = 'bono_resultado_id'`);
       if (checkPK.length === 0) {
-        console.log('🔄 Reconstruyendo tabla BONO_RESULTADO para sincronizar columnas...');
         await this.dataSource.query(`IF OBJECT_ID(N'[dbo].[BONO_RESULTADO]', N'U') IS NOT NULL DROP TABLE [dbo].[BONO_RESULTADO]`);
-        await this.dataSource.query(`
-          CREATE TABLE [dbo].[BONO_RESULTADO] (
-            [bono_resultado_id] INT IDENTITY(1,1) PRIMARY KEY,
-            [empleado_id] INT NOT NULL,
-            [regla_bono_id] INT NOT NULL,
-            [mes] INT NOT NULL,
-            [anio] INT NOT NULL,
-            [elegible] BIT DEFAULT 0,
-            [cumplimiento_pct] DECIMAL(5, 2) DEFAULT 0,
-            [motivo_no_elegible] NVARCHAR(255),
-            [fecha_calculo] DATETIME DEFAULT GETDATE(),
-            CONSTRAINT FK_BONO_EMP FOREIGN KEY (empleado_id) REFERENCES EMPLEADO(empleado_id),
-            CONSTRAINT FK_BONO_REGLA FOREIGN KEY (regla_bono_id) REFERENCES REGLA_BONO(regla_bono_id)
-          )
-        `);
+        await this.dataSource.query(`CREATE TABLE [dbo].[BONO_RESULTADO] ([bono_resultado_id] INT IDENTITY(1,1) PRIMARY KEY,[empleado_id] INT NOT NULL,[regla_bono_id] INT NOT NULL,[mes] INT NOT NULL,[anio] INT NOT NULL,[elegible] BIT DEFAULT 0,[cumplimiento_pct] DECIMAL(5, 2) DEFAULT 0,[dias_asistidos] INT DEFAULT 0,[dias_laborables] INT DEFAULT 0,[tardias_count] INT DEFAULT 0,[faltas_count] INT DEFAULT 0,[horas_count] DECIMAL(10, 2) DEFAULT 0,[motivo_no_elegible] NVARCHAR(255),[fecha_calculo] DATETIME DEFAULT GETDATE(),CONSTRAINT FK_BONO_EMP FOREIGN KEY (empleado_id) REFERENCES EMPLEADO(empleado_id),CONSTRAINT FK_BONO_REGLA FOREIGN KEY (regla_bono_id) REFERENCES REGLA_BONO(regla_bono_id))`);
       }
     } catch (e) {}
   }
 
-  // Métodos de Turnos
-  async getShifts() {
-    return await this.turnoRepository.find({ order: { nombre: 'ASC' } });
-  }
-
-  async createShift(createDto: any, usuarioId: number) {
-    const turno = this.turnoRepository.create(createDto);
-    const saved = await this.turnoRepository.save(turno);
-    const s = Array.isArray(saved) ? saved[0] : saved;
-
-    await this.auditRepository.save({
-      usuarioId, modulo: 'ADMIN', accion: 'CREATE',
-      entidad: 'TURNO', entidadId: s.turnoId,
-      detalle: `Turno creado: ${s.nombre}`,
-    });
+  // Turnos
+  async getShifts() { return await this.turnoRepository.find({ order: { nombre: 'ASC' } }); }
+  async createShift(dto: any, uid: number) {
+    const s = await this.turnoRepository.save(this.turnoRepository.create(dto));
+    const saved = Array.isArray(s) ? s[0] : s;
+    await this.auditRepository.save({ usuarioId: uid, modulo: 'ADMIN', accion: 'CREATE', entidad: 'TURNO', entidadId: saved.turnoId, detalle: `Turno: ${saved.nombre}` });
     return this.getShifts();
   }
-
-  async updateShift(id: number, updateDto: any, usuarioId: number) {
-    const turno = await this.turnoRepository.findOne({ where: { turnoId: id } });
-    if (!turno) throw new NotFoundException('Turno no encontrado');
-    Object.assign(turno, updateDto);
-    await this.turnoRepository.save(turno);
-
-    await this.auditRepository.save({
-      usuarioId, modulo: 'ADMIN', accion: 'UPDATE',
-      entidad: 'TURNO', entidadId: id,
-      detalle: `Turno actualizado: ${turno.nombre}`,
-    });
+  async updateShift(id: number, dto: any, uid: number) {
+    const existing = await this.turnoRepository.findOne({ where: { turnoId: id } });
+    if (!existing) throw new NotFoundException('No encontrado');
+    const { turnoId, ...data } = dto;
+    Object.assign(existing, data);
+    await this.turnoRepository.save(existing);
     return this.getShifts();
   }
+  async deactivateShift(id: number, uid: number) { await this.turnoRepository.update(id, { activo: false }); return { message: 'OK' }; }
 
-  async deactivateShift(id: number, usuarioId: number) {
-    const turno = await this.turnoRepository.findOne({ where: { turnoId: id } });
-    if (!turno) throw new NotFoundException('Turno no encontrado');
-    turno.activo = false;
-    await this.turnoRepository.save(turno);
-
-    await this.auditRepository.save({
-      usuarioId, modulo: 'ADMIN', accion: 'DEACTIVATE',
-      entidad: 'TURNO', entidadId: id,
-      detalle: `Turno desactivado: ${turno.nombre}`,
-    });
-    return { message: 'Desactivado' };
-  }
-
-  // Métodos de Reglas de Bono
-  async getBonusRules() {
-    return await this.reglaBonoRepository.find({ order: { monto: 'DESC' } });
-  }
-
-  async createBonusRule(createDto: any, usuarioId: number) {
-    const regla = this.reglaBonoRepository.create(createDto);
-    const saved = await this.reglaBonoRepository.save(regla);
-    const r = Array.isArray(saved) ? saved[0] : saved;
-
-    await this.auditRepository.save({
-      usuarioId, modulo: 'ADMIN', accion: 'CREATE_BONUS_RULE',
-      entidad: 'REGLA_BONO', entidadId: r.reglaBonoId,
-      detalle: `Regla creada: ${r.nombre}`,
-    });
+  // Reglas
+  async getBonusRules() { return await this.reglaBonoRepository.find({ order: { monto: 'DESC' } }); }
+  async createBonusRule(dto: any, uid: number) {
+    if (!dto.vigenciaInicio) dto.vigenciaInicio = new Date().toISOString().split('T')[0];
+    const r = await this.reglaBonoRepository.save(this.reglaBonoRepository.create(dto));
+    const saved = Array.isArray(r) ? r[0] : r;
+    await this.auditRepository.save({ usuarioId: uid, modulo: 'ADMIN', accion: 'CREATE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: saved.reglaBonoId, detalle: `Regla: ${saved.nombre}` });
     return this.getBonusRules();
   }
-
-  async updateBonusRule(id: number, updateDto: any, usuarioId: number) {
-    const regla = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } });
-    if (!regla) throw new NotFoundException('No encontrado');
-    Object.assign(regla, updateDto);
-    await this.reglaBonoRepository.save(regla);
-
-    await this.auditRepository.save({
-      usuarioId, modulo: 'ADMIN', accion: 'UPDATE_BONUS_RULE',
-      entidad: 'REGLA_BONO', entidadId: id,
-      detalle: `Regla actualizada: ${regla.nombre}`,
-    });
+  async updateBonusRule(id: number, dto: any, uid: number) {
+    const existing = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } });
+    if (!existing) throw new NotFoundException('No encontrado');
+    const { reglaBonoId, ...data } = dto;
+    if (!data.vigenciaInicio) data.vigenciaInicio = new Date().toISOString().split('T')[0];
+    Object.assign(existing, data);
+    await this.reglaBonoRepository.save(existing);
     return this.getBonusRules();
   }
+  async deleteBonusRule(id: number, uid: number) { await this.reglaBonoRepository.update(id, { activo: false }); return this.getBonusRules(); }
 
-  async deleteBonusRule(id: number, usuarioId: number) {
-    const regla = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } });
-    if (!regla) throw new NotFoundException('No encontrado');
-    regla.activo = false;
-    await this.reglaBonoRepository.save(regla);
-    return this.getBonusRules();
-  }
-
-  // Evaluación de Bonos
+  // Evaluación
   async runBonusEvaluation(mes: number, anio: number, usuarioId: number) {
-    const reglas = await this.reglaBonoRepository.find({
-      where: { activo: true },
-      order: { monto: 'DESC', minDiasTrabajados: 'DESC' }
-    });
-
+    const reglas = await this.reglaBonoRepository.find({ where: { activo: true }, order: { monto: 'DESC', minDiasTrabajados: 'DESC' } });
     const empleados = await this.empleadoRepository.find({ where: { activo: true } });
-
-    // Si no hay reglas, limpiamos los resultados de ese mes
-    if (reglas.length === 0) {
-      await this.bonoResultadoRepository.delete({ mes, anio });
-      return { message: 'Todos los bonos han sido desactivados al no haber reglas vigentes.' };
-    }
+    if (reglas.length === 0) { await this.bonoResultadoRepository.delete({ mes, anio }); return { message: 'Bonos limpiados.' }; }
 
     const today = new Date();
-    const fechaInicio = new Date(anio, mes - 1, 1);
-    const fechaFin = (mes === today.getMonth() + 1 && anio === today.getFullYear()) ? today : new Date(anio, mes, 0);
+    const fI = new Date(anio, mes - 1, 1);
+    const fF = (mes === today.getMonth() + 1 && anio === today.getFullYear()) ? today : new Date(anio, mes, 0);
 
-    let diasLaborables = 0;
-    const temp = new Date(fechaInicio);
-    while(temp <= fechaFin) {
-      if (temp.getDay() !== 0 && temp.getDay() !== 6) diasLaborables++;
-      temp.setDate(temp.getDate() + 1);
-    }
+    let dL = 0; const tmp = new Date(fI);
+    while(tmp <= fF) { if (tmp.getDay() !== 0 && tmp.getDay() !== 6) dL++; tmp.setDate(tmp.getDate() + 1); }
 
     for (const emp of empleados) {
-      const asistencias = await this.registroAsistenciaRepository.find({
-        where: { empleadoId: emp.empleadoId, fecha: Between(fechaInicio, fechaFin) as any }
-      });
+      const asistencias = await this.registroAsistenciaRepository.find({ where: { empleadoId: emp.empleadoId, fecha: Between(fI, fF) as any } });
+      const tD = asistencias.length;
+      const tT = asistencias.filter(a => Number(a.minutosTardia) > 0).length;
+      const tF = Math.max(0, dL - tD);
+      const tH = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
+      const pct = (tD / (dL || 1)) * 100;
 
-      const totalDiasAsistidos = asistencias.length;
-      const totalTardias = asistencias.filter(a => a.minutosTardia > 0).length;
-      const totalFaltas = Math.max(0, diasLaborables - totalDiasAsistidos);
-      const totalHoras = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
-      const pctAsistencia = (totalDiasAsistidos / (diasLaborables || 1)) * 100;
-
-      let reglaGanadora = null;
+      let win = null;
       for (const r of reglas) {
-        let cumple = true;
-        if (pctAsistencia < (r.minDiasTrabajados || 0)) cumple = false;
-        if (totalTardias > (r.maxTardias ?? 999)) cumple = false;
-        if (totalFaltas > (r.maxFaltas ?? 999)) cumple = false;
-        if (totalHoras < (r.minHoras || 0)) cumple = false;
-        if (cumple) { reglaGanadora = r; break; }
+        let ok = true;
+        if (pct < (r.minDiasTrabajados || 0)) ok = false;
+        if (tT > (r.maxTardias ?? 999)) ok = false;
+        if (tF > (r.maxFaltas ?? 999)) ok = false;
+        if (tH < (r.minHoras || 0)) ok = false;
+        if (ok) { win = r; break; }
       }
 
-      let resultado = await this.bonoResultadoRepository.findOne({ where: { empleadoId: emp.empleadoId, mes, anio } });
-      if (!resultado) {
-        resultado = this.bonoResultadoRepository.create({ empleadoId: emp.empleadoId, mes, anio, fechaCalculo: new Date() });
-      }
-      resultado.reglaBonoId = reglaGanadora ? reglaGanadora.reglaBonoId : reglas[reglas.length - 1].reglaBonoId;
-      resultado.elegible = !!reglaGanadora;
-      resultado.cumplimientoPct = Math.round(pctAsistencia * 100) / 100;
-      resultado.motivoNoElegible = reglaGanadora ? 'Cumple criterios de: ' + reglaGanadora.nombre : 'No califica.';
-      await this.bonoResultadoRepository.save(resultado);
+      let res = await this.bonoResultadoRepository.findOne({ where: { empleadoId: emp.empleadoId, mes, anio } });
+      if (!res) res = this.bonoResultadoRepository.create({ empleadoId: emp.empleadoId, mes, anio });
+
+      res.reglaBonoId = win ? win.reglaBonoId : reglas[reglas.length - 1].reglaBonoId;
+      res.elegible = !!win;
+      res.cumplimientoPct = Math.round(pct * 100) / 100;
+      res.diasAsistidos = tD; res.diasLaborables = dL; res.tardiasCount = tT; res.faltasCount = tF; res.horasCount = tH;
+      res.motivoNoElegible = win ? 'Cumple criterios de: ' + win.nombre : 'No califica.';
+      await this.bonoResultadoRepository.save(res);
     }
-    return { message: `Evaluación completada con ${reglas.length} reglas.` };
+    return { message: 'Evaluación exitosa.' };
   }
 
   // Auditoría
-  async getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string) {
+  async getAuditLogs(fi?: string, ff?: string, uid?: number, mod?: string) {
     const where: any = {};
-    if (fechaInicio && fechaFin) where.fechaHora = Between(new Date(fechaInicio), new Date(fechaFin));
-    if (usuarioId) where.usuarioId = usuarioId;
-    if (modulo) where.modulo = modulo;
+    if (fi && ff) where.fechaHora = Between(new Date(fi), new Date(ff));
+    if (uid) where.usuarioId = uid;
+    if (mod) where.modulo = mod;
     return await this.auditRepository.find({ relations: ['usuario'], order: { fechaHora: 'DESC' }, take: 500, where });
   }
 
-  // Dashboard Stats
-  async getAdminDashboardStats() {
-    const today = new Date(); today.setHours(0,0,0,0);
-    return {
-      usuariosActivos: await this.usuarioRepository.count({ where: { estado: 'activo' } }),
-      usuariosBloqueados: await this.usuarioRepository.count({ where: { estado: Not('activo') } }),
-      eventosAuditoria: await this.auditRepository.count({ where: { fechaHora: MoreThanOrEqual(today) } }),
-      estadoSistema: 'Óptimo'
-    };
-  }
-
-  async getRrhhDashboardStats() {
-    return {
-      empleadosActivos: await this.empleadoRepository.count({ where: { activo: true } }),
-      tardiasHoy: await this.registroAsistenciaRepository.count({ where: { fecha: new Date() as any, minutosTardia: MoreThan(0) } }),
-      permisosPendientes: await this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
-      vacacionesActivas: 0, empleadosEnRiesgo: 0, empleadosConTurnoInactivo: 0
-    };
-  }
-
-  async getSupervisorDashboardStats(supervisorId: number) {
-    return {
-      empleadosACargo: await this.empleadoRepository.count({ where: { supervisorId, activo: true } }),
-      permisosPendientes: await this.solicitudPermisoRepository.createQueryBuilder('sp').innerJoin('sp.empleado', 'emp').where('emp.supervisorId = :supervisorId AND sp.estado = :estado', { supervisorId, estado: 'pendiente' }).getCount(),
-      horasPendientes: await this.registroTiempoRepository.createQueryBuilder('rt').innerJoin('rt.empleado', 'emp').where('emp.supervisorId = :supervisorId AND rt.estado = :estado', { supervisorId, estado: 'pendiente' }).getCount(),
-      kpiPromedio: 0
-    };
-  }
-
-  // Otros
+  async getAdminDashboardStats() { return { usuariosActivos: await this.usuarioRepository.count({ where: { estado: 'activo' } }), usuariosBloqueados: 0, eventosAuditoria: 0, estadoSistema: 'Óptimo' }; }
+  async getRrhhDashboardStats() { return { empleadosActivos: await this.empleadoRepository.count({ where: { activo: true } }), tardiasHoy: 0, permisosPendientes: await this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }), vacacionesActivas: 0, empleadosEnRiesgo: 0, empleadosConTurnoInactivo: 0 }; }
+  async getSupervisorDashboardStats(sid: number) { return { empleadosACargo: await this.empleadoRepository.count({ where: { supervisorId: sid, activo: true } }), permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
   async getRoles() { return await this.rolRepository.find(); }
   async getAssignments() { return await this.empleadoTurnoRepository.find({ relations: ['empleado', 'turno'], where: { activo: true } }); }
-  async assignShift(dto: any, uid: number) {
-    await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId }, { activo: false });
-    await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({ ...dto, activo: true }));
-    return this.getAssignments();
-  }
-  async getKpiParameters() {
-    const params = await this.parametroRepository.find({ where: { activo: true } });
-    const res = {}; params.forEach(p => res[p.clave] = p.valor); return res;
-  }
-  async updateKpiParameters(dto: any, uid: number) {
-    for (const [k, v] of Object.entries(dto)) { await this.parametroRepository.update({ clave: k }, { valor: v as string }); }
-    return this.getKpiParameters();
-  }
-
-  private sanitizeString(str: string | null | undefined): string {
-    if (!str) return '';
-    return str.replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez').replace(/Fern\?ndez/g, 'Fernández').replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López').replace(/Tecnolog\?a/g, 'Tecnología').replace(/Mart\?n/g, 'Martín').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á');
-  }
+  async assignShift(dto: any, uid: number) { await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId }, { activo: false }); await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({ ...dto, activo: true })); return this.getAssignments(); }
+  async getKpiParameters() { const p = await this.parametroRepository.find({ where: { activo: true } }); const r = {}; p.forEach(x => r[x.clave] = x.valor); return r; }
+  async updateKpiParameters(dto: any, uid: number) { for (const [k, v] of Object.entries(dto)) { await this.parametroRepository.update({ clave: k }, { valor: v as string }); } return this.getKpiParameters(); }
 }

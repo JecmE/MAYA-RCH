@@ -67,7 +67,12 @@
                 <tr class="table-row">
                   <td><span class="font-bold">{{ row.empleado }}</span></td>
                   <td class="text-xs text-slate-500">{{ row.departamento }}</td>
-                  <td class="text-center"><span class="val-pill val-pill--blue">{{ row.cumplimiento }}</span></td>
+                  <td class="text-center">
+                    <div class="compliance-cell">
+                      <span class="val-pill val-pill--blue">{{ row.cumplimiento }}</span>
+                      <button class="info-icon-btn" (click)="verInfoBono(row)" title="Ver resumen detallado">ⓘ</button>
+                    </div>
+                  </td>
                   <td><span class="status-badge" [class]="getEstadoClass(row.estado)">{{ row.estado }}</span></td>
                   <td class="text-slate-500 italic">{{ row.regla }}</td>
                   <td class="font-mono font-bold">{{ row.bono }}</td>
@@ -118,6 +123,49 @@
         </div>
       }
     </div>
+
+    <!-- Modal Detalles de Bono (Lupa de Info) -->
+    @if (modalDetalleBono) {
+      <div class="modal-backdrop">
+        <div class="info-modal">
+          <div class="info-modal__header">
+            <div class="info-modal__title-group">
+              <h3>Resumen de Cumplimiento</h3>
+              <p>{{ bonoDetalle.empleado }} - {{ bonoDetalle.periodo }}</p>
+            </div>
+            <button class="close-x" (click)="modalDetalleBono = false">✕</button>
+          </div>
+          <div class="info-modal__body">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-label">Días Asistidos</span>
+                <span class="stat-value">{{ bonoDetalle.detalles.asistencias }} / {{ bonoDetalle.detalles.laborables }}</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Tardías Detectadas</span>
+                <span class="stat-value" [class.text-red]="bonoDetalle.detalles.tardias > 0">{{ bonoDetalle.detalles.tardias }}</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Faltas Reales</span>
+                <span class="stat-value" [class.text-red]="bonoDetalle.detalles.faltas > 0">{{ bonoDetalle.detalles.faltas }}</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Horas Totales</span>
+                <span class="stat-value">{{ bonoDetalle.detalles.horas }}h</span>
+              </div>
+            </div>
+
+            <div class="info-notice">
+              <p><strong>Estado:</strong> {{ bonoDetalle.estado }}</p>
+              <p><strong>Observación:</strong> {{ bonoDetalle.motivo }}</p>
+            </div>
+          </div>
+          <div class="info-modal__footer">
+            <button class="btn-close-info" (click)="modalDetalleBono = false">Entendido</button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- Modal Nueva/Editar Regla -->
     @if (modalRegla) {
@@ -174,8 +222,10 @@
             </div>
           </div>
           <div class="modal-footer-v2">
-            <button class="btn-cancel" (click)="modalRegla = false">Cancelar</button>
-            <button class="btn-save-orange" (click)="guardarRegla()">Guardar Regla</button>
+            <button class="btn-cancel" [disabled]="isSaving" (click)="modalRegla = false">Cancelar</button>
+            <button class="btn-save-orange" [disabled]="isSaving" (click)="guardarRegla()">
+              {{ isSaving ? 'Guardando...' : 'Guardar Regla' }}
+            </button>
           </div>
         </div>
       </div>

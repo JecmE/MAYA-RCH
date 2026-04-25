@@ -8,6 +8,11 @@ export declare class BonoResultado {
     anio: number;
     elegible: boolean;
     cumplimientoPct: number;
+    diasAsistidos: number;
+    diasLaborables: number;
+    tardiasCount: number;
+    faltasCount: number;
+    horasCount: number;
     motivoNoElegible: string;
     fechaCalculo: Date;
     empleado: Empleado;
