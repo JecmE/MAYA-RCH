@@ -73,6 +73,8 @@ export declare class AdminService implements OnModuleInit {
         usuariosActivos: number;
         usuariosBloqueados: number;
         eventosAuditoria: number;
+        intentosFallidos: number;
+        sesionesActivas: number;
         estadoSistema: string;
     }>;
     getRrhhDashboardStats(): Promise<{

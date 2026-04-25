@@ -218,7 +218,22 @@ export class AdminService implements OnModuleInit {
     return await this.auditRepository.find({ relations: ['usuario'], order: { fechaHora: 'DESC' }, take: 500, where });
   }
 
-  async getAdminDashboardStats() { return { usuariosActivos: await this.usuarioRepository.count({ where: { estado: 'activo' } }), usuariosBloqueados: 0, eventosAuditoria: 0, estadoSistema: 'Óptimo' }; }
+  async getAdminDashboardStats() {
+    const [usuariosActivos, usuariosBloqueados, eventosAuditoria] = await Promise.all([
+      this.usuarioRepository.count({ where: { estado: 'activo' } }),
+      this.usuarioRepository.count({ where: { estado: 'bloqueado' } }),
+      this.auditRepository.count()
+    ]);
+
+    return {
+      usuariosActivos,
+      usuariosBloqueados,
+      eventosAuditoria,
+      intentosFallidos: 0, // Mock for now
+      sesionesActivas: 0, // Mock for now
+      estadoSistema: 'Óptimo'
+    };
+  }
   async getRrhhDashboardStats() { return { empleadosActivos: await this.empleadoRepository.count({ where: { activo: true } }), tardiasHoy: 0, permisosPendientes: await this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }), vacacionesActivas: 0, empleadosEnRiesgo: 0, empleadosConTurnoInactivo: 0 }; }
   async getSupervisorDashboardStats(sid: number) { return { empleadosACargo: await this.empleadoRepository.count({ where: { supervisorId: sid, activo: true } }), permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
   async getRoles() { return await this.rolRepository.find(); }

@@ -121,7 +121,6 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private loadNotices(): void {
-    // 1. Cargar avisos persistentes desde la DB
     this.noticesService.getMyNotices().subscribe({
       next: (dbNotices) => {
         this.notices = dbNotices.map(n => ({
@@ -157,7 +156,6 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private addDynamicNotices(): void {
-    // 2. Avisos dinámicos de Marcaje
     if (this.marcaEstado === 'Entrada') {
       this.notices.push({
         title: 'Recordatorio de marcaje',
@@ -167,7 +165,6 @@ export class Dashboard implements OnInit, OnDestroy {
       });
     }
 
-    // 3. Aviso de KPIs
     if (this.cumplimiento < 85 && this.cumplimiento > 0) {
       this.notices.push({
         title: 'Actualización de KPIs',
@@ -177,7 +174,6 @@ export class Dashboard implements OnInit, OnDestroy {
       });
     }
 
-    // 4. Avisos Exclusivos de RRHH
     if (this.role === 'rrhh') {
       if (this.rrhhStats.permisosPendientes > 0) {
         this.notices.push({ title: 'Solicitudes en espera', text: `Hay ${this.rrhhStats.permisosPendientes} solicitudes pendientes de revisión.`, icon: '📝', color: 'blue' });
@@ -189,13 +185,13 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   eliminarAviso(notice: any): void {
-    if (notice.persistent && notice.id) {
-      this.noticesService.deleteNotice(notice.id).subscribe(() => {
+    const noticeId = notice.id;
+    if (notice.persistent && noticeId) {
+      this.noticesService.deleteNotice(noticeId).subscribe(() => {
         this.notices = this.notices.filter(n => n !== notice);
         this.cdr.detectChanges();
       });
     } else {
-      // Si es dinámico solo lo quitamos de la lista local
       this.notices = this.notices.filter(n => n !== notice);
       this.cdr.detectChanges();
     }
@@ -380,10 +376,7 @@ export class Dashboard implements OnInit, OnDestroy {
     let horaSalidaEsperada = new Date(now);
     horaSalidaEsperada.setHours(hSal, mSal, sSal || 0, 0);
 
-    // Lógica inteligente para determinar si la salida es hoy o mañana
     if (this.isNocturnalShift()) {
-      // Si la hora actual es mayor o igual a la de entrada, la salida es MAÑANA
-      // Si la hora actual es menor a la de entrada (ya pasó medianoche), la salida es HOY
       if (now.getHours() >= hEnt) {
         horaSalidaEsperada.setDate(horaSalidaEsperada.getDate() + 1);
       }
@@ -467,7 +460,7 @@ export class Dashboard implements OnInit, OnDestroy {
         this.marcaSuccess = 'Entrada registrada correctamente';
         this.canCheckIn = false;
         this.checkInDisabledReason = '';
-        this.calculateCheckOutAvailability(); // Evaluar salida real inmediatamente
+        this.calculateCheckOutAvailability();
         this.isCheckingIn = false;
         this.loadKpiData();
         this.cdr.detectChanges();

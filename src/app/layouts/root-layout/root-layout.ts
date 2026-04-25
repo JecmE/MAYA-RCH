@@ -15,6 +15,13 @@ export class RootLayout {
 
   role: UserRole = 'empleado';
 
+  collapsedSections: { [key: string]: boolean } = {
+    general: false,
+    supervisor: false,
+    rrhh: false,
+    admin: false
+  };
+
   constructor(
     private router: Router,
     @Inject(PLATFORM_ID) private platformId: object
@@ -31,6 +38,10 @@ export class RootLayout {
         this.role = storedRole;
       }
     }
+  }
+
+  toggleSection(section: string): void {
+    this.collapsedSections[section] = !this.collapsedSections[section];
   }
 
   get isEmpleado(): boolean {
@@ -50,7 +61,7 @@ export class RootLayout {
   }
 
   get showEmpleadoMenu(): boolean {
-    return this.isEmpleado || this.isSupervisor || this.isRrhh;
+    return true; // Todos los roles tienen acceso a herramientas generales
   }
 
   logout(): void {

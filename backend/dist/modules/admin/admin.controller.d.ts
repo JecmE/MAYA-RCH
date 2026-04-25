@@ -46,6 +46,8 @@ export declare class AdminController {
         usuariosActivos: number;
         usuariosBloqueados: number;
         eventosAuditoria: number;
+        intentosFallidos: number;
+        sesionesActivas: number;
         estadoSistema: string;
     }>;
     getRrhhDashboard(): Promise<{
