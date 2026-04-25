@@ -12,7 +12,7 @@ type UserRole = 'empleado' | 'supervisor' | 'rrhh' | 'admin';
   styleUrl: './root-layout.scss'
 })
 export class RootLayout {
-  
+
   role: UserRole = 'empleado';
 
   constructor(
@@ -50,7 +50,7 @@ export class RootLayout {
   }
 
   get showEmpleadoMenu(): boolean {
-    return this.isEmpleado || this.isSupervisor;
+    return this.isEmpleado || this.isSupervisor || this.isRrhh;
   }
 
   logout(): void {
