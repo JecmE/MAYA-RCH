@@ -40,6 +40,12 @@ let ReportsController = class ReportsController {
     getDepartments() {
         return this.reportsService.getUniqueDepartments();
     }
+    getGlobalKpis(mes, anio, departamento, supervisorId) {
+        return this.reportsService.getGlobalKpis(Number(mes), Number(anio), departamento, supervisorId);
+    }
+    getSupervisors() {
+        return this.reportsService.getSupervisors();
+    }
 };
 exports.ReportsController = ReportsController;
 __decorate([
@@ -94,6 +100,24 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getDepartments", null);
+__decorate([
+    (0, common_1.Get)('global-kpis'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Query)('mes')),
+    __param(1, (0, common_1.Query)('anio')),
+    __param(2, (0, common_1.Query)('departamento')),
+    __param(3, (0, common_1.Query)('supervisorId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, String, String]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getGlobalKpis", null);
+__decorate([
+    (0, common_1.Get)('supervisors'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getSupervisors", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, common_1.Controller)('reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

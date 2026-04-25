@@ -22,6 +22,15 @@ export declare class ReportsService {
     getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyectoNombre?: string): Promise<any>;
     getBonusEligibility(mes: number, anio: number, departamento?: string): Promise<any>;
     getBonusEligibilityByRange(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
+    getBonusEligibilityByRangeForReports(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
+    getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string): Promise<{
+        summary: any;
+        deptStats: any;
+        teamStats: any;
+        distStats: any;
+        detail: any;
+    }>;
+    getSupervisors(): Promise<any>;
     getUniqueDepartments(): Promise<unknown[]>;
     private sanitizeString;
 }

@@ -30,7 +30,6 @@ export class ReportsService {
     private dataSource: DataSource,
   ) {}
 
-  // 1. ASISTENCIA (Rango de fechas)
   async getMonthlyAttendance(fechaInicio: string, fechaFin: string, departamento?: string) {
     const fI = `${fechaInicio} 00:00:00`;
     const fF = `${fechaFin} 23:59:59`;
@@ -59,7 +58,6 @@ export class ReportsService {
     return res.map(r => ({ ...r, nombreCompleto: this.sanitizeString(r.nombreCompleto), departamento: this.sanitizeString(r.departamento), horasTrabajadasTotal: Number(r.horasTrabajadasTotal).toFixed(1) }));
   }
 
-  // 2. VACACIONES (Rango de fechas para usados)
   async getVacationReport(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string) {
     const fI = `${fechaInicio} 00:00:00`;
     const fF = `${fechaFin} 23:59:59`;
@@ -86,18 +84,12 @@ export class ReportsService {
     return res.map(s => ({ ...s, nombreCompleto: this.sanitizeString(s.nombreCompleto), departamento: this.sanitizeString(s.departamento), totalAcumulado: Number(s.diasDisponibles) + Number(s.diasUsados) }));
   }
 
-  // 3. HORAS POR PROYECTO
   async getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyectoNombre?: string) {
     const fI = `${fechaInicio} 00:00:00`;
     const fF = `${fechaFin} 23:59:59`;
-
     let query = `
-      SELECT
-        p.nombre as proyectoNombre,
-        p.codigo as proyectoCodigo,
-        ISNULL(e.nombres + ' ' + e.apellidos, '-') as nombreEmpleado,
-        e.departamento,
-        ISNULL(stats.horasTotales, 0) as horasTotales
+      SELECT p.nombre as proyectoNombre, p.codigo as proyectoCodigo, ISNULL(e.nombres + ' ' + e.apellidos, '-') as nombreEmpleado,
+             e.departamento, ISNULL(stats.horasTotales, 0) as horasTotales
       FROM PROYECTO p
       LEFT JOIN EMPLEADO_PROYECTO ep ON p.proyecto_id = ep.proyecto_id AND ep.activo = 1
       LEFT JOIN EMPLEADO e ON ep.empleado_id = e.empleado_id
@@ -109,25 +101,14 @@ export class ReportsService {
       ) stats ON p.proyecto_id = stats.proyecto_id AND e.empleado_id = stats.empleado_id
       WHERE 1=1
     `;
-
     const params: any[] = [fI, fF];
     let pIdx = 2;
-
-    if (proyectoNombre && proyectoNombre !== 'Todos los proyectos') {
-      query += ` AND p.nombre = @${pIdx++}`;
-      params.push(proyectoNombre);
-    }
-
-    if (departamento && departamento !== 'Todos') {
-      query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`;
-      pIdx++; params.push(departamento);
-    }
-
+    if (proyectoNombre && proyectoNombre !== 'Todos los proyectos') { query += ` AND p.nombre = @${pIdx++}`; params.push(proyectoNombre); }
+    if (departamento && departamento !== 'Todos') { query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`; pIdx++; params.push(departamento); }
     const res = await this.dataSource.query(query + ` ORDER BY p.nombre ASC, e.nombres ASC`, params);
     return res.map(r => ({ ...r, nombreEmpleado: this.sanitizeString(r.nombreEmpleado), proyectoNombre: this.sanitizeString(r.proyectoNombre) }));
   }
 
-  // 4. BONOS (PARA PANTALLA BONOS - POR MES/ANIO)
   async getBonusEligibility(mes: number, anio: number, departamento?: string) {
     let query = `
       SELECT br.empleado_id, br.cumplimiento_pct, br.elegible, br.motivo_no_elegible,
@@ -158,36 +139,22 @@ export class ReportsService {
     }));
   }
 
-  // 5. BONOS POR RANGO (PARA REPORTE)
   async getBonusEligibilityByRange(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string) {
     const fI = `${fechaInicio} 00:00:00`;
     const fF = `${fechaFin} 23:59:59`;
-
     let query = `
-      SELECT
-        e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+      SELECT e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
         br.cumplimiento_pct, br.elegible, rb.nombre as reglaNombre, rb.monto as montoBono
       FROM EMPLEADO e
       LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.fecha_calculo >= @0 AND br.fecha_calculo <= @1
       LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
       WHERE e.activo = 1
     `;
-
     const params: any[] = [fI, fF];
     let pIdx = 2;
-
-    if (departamento && departamento !== 'Todos') {
-      query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`;
-      pIdx++; params.push(departamento);
-    }
-
-    if (proyecto && proyecto !== 'Todos los proyectos') {
-      query += ` AND e.empleado_id IN (SELECT empleado_id FROM EMPLEADO_PROYECTO ep INNER JOIN PROYECTO p ON ep.proyecto_id = p.proyecto_id WHERE p.nombre = @${pIdx} AND ep.activo = 1)`;
-      params.push(proyecto);
-    }
-
+    if (departamento && departamento !== 'Todos') { query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`; pIdx++; params.push(departamento); }
+    if (proyecto && proyecto !== 'Todos los proyectos') { query += ` AND e.empleado_id IN (SELECT empleado_id FROM EMPLEADO_PROYECTO ep INNER JOIN PROYECTO p ON ep.proyecto_id = p.proyecto_id WHERE p.nombre = @${pIdx} AND ep.activo = 1)`; params.push(proyecto); }
     const results = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
-
     return results.map(r => ({
       empleadoId: r.empleado_id,
       nombreCompleto: this.sanitizeString(r.nombreCompleto),
@@ -197,6 +164,173 @@ export class ReportsService {
       monto: Number(r.montoBono || 0),
       cumplimientoPct: Number(r.cumplimiento_pct || 0)
     }));
+  }
+
+  async getBonusEligibilityByRangeForReports(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string) {
+    const fI = `${fechaInicio} 00:00:00`;
+    const fF = `${fechaFin} 23:59:59`;
+    let query = `
+      SELECT e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+        br.cumplimiento_pct, br.elegible, rb.nombre as reglaNombre, rb.monto as montoBono
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.fecha_calculo >= @0 AND br.fecha_calculo <= @1
+      LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
+      WHERE e.activo = 1
+    `;
+    const params: any[] = [fI, fF];
+    let pIdx = 2;
+    if (departamento && departamento !== 'Todos') { query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`; pIdx++; params.push(departamento); }
+    if (proyecto && proyecto !== 'Todos los proyectos') { query += ` AND e.empleado_id IN (SELECT empleado_id FROM EMPLEADO_PROYECTO ep INNER JOIN PROYECTO p ON ep.proyecto_id = p.proyecto_id WHERE p.nombre = @${pIdx} AND ep.activo = 1)`; params.push(proyecto); }
+    const results = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
+    return results.map(r => ({
+      empleadoId: r.empleado_id,
+      nombreCompleto: this.sanitizeString(r.nombreCompleto),
+      departamento: this.sanitizeString(r.departamento),
+      reglaNombre: this.sanitizeString(r.reglaNombre) || 'Sin Cálculo',
+      elegible: r.elegible || false,
+      monto: Number(r.montoBono || 0),
+      cumplimientoPct: Number(r.cumplimiento_pct || 0)
+    }));
+  }
+
+  async getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string) {
+    const prevMes = mes === 1 ? 12 : mes - 1;
+    const prevAnio = mes === 1 ? anio - 1 : anio;
+
+    let whereClause = `WHERE e.activo = 1`;
+    const params: any[] = [mes, anio];
+    if (departamento && departamento !== 'Todos') {
+      whereClause += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`;
+      params.push(departamento);
+    }
+    if (supervisorId && supervisorId !== 'Todos') {
+      whereClause += ` AND e.supervisor_id = @${params.length}`;
+      params.push(supervisorId);
+    }
+
+    const summaryQuery = `
+      SELECT
+        AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as avgCompliance,
+        SUM(ISNULL(br.tardias_count, 0)) as totalTardies,
+        SUM(ISNULL(br.faltas_count, 0)) as totalFaltas,
+        COUNT(CASE WHEN br.cumplimiento_pct < 85 THEN 1 END) as employeesAtRisk
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${whereClause}
+    `;
+
+    const prevSummaryQuery = `
+      SELECT
+        AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as avgCompliance,
+        SUM(ISNULL(br.tardias_count, 0)) as totalTardies,
+        SUM(ISNULL(br.faltas_count, 0)) as totalFaltas
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${whereClause}
+    `;
+
+    const deptStatsQuery = `
+      SELECT
+        ISNULL(e.departamento, 'Sin Área') as name,
+        AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as kpi
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      WHERE e.activo = 1
+      GROUP BY e.departamento
+    `;
+
+    const teamStatsQuery = `
+      SELECT
+        ISNULL(s.nombres + ' ' + s.apellidos, 'Sin Supervisor') as name,
+        AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as kpi
+      FROM EMPLEADO e
+      LEFT JOIN EMPLEADO s ON e.supervisor_id = s.empleado_id
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      WHERE e.activo = 1
+      GROUP BY s.nombres, s.apellidos
+    `;
+
+    const distQuery = `
+      SELECT
+        CASE
+          WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
+          WHEN br.cumplimiento_pct >= 85 THEN 'Bueno'
+          WHEN br.cumplimiento_pct >= 75 THEN 'Regular'
+          ELSE 'Riesgo'
+        END as classification,
+        COUNT(e.empleado_id) as count
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${whereClause}
+      GROUP BY
+        CASE
+          WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
+          WHEN br.cumplimiento_pct >= 85 THEN 'Bueno'
+          WHEN br.cumplimiento_pct >= 75 THEN 'Regular'
+          ELSE 'Riesgo'
+        END
+    `;
+
+    const detailQuery = `
+      SELECT
+        e.empleado_id as id,
+        e.nombres + ' ' + e.apellidos as empleado,
+        e.departamento as depto,
+        ISNULL(br.tardias_count, 0) as tardias,
+        ISNULL(br.faltas_count, 0) as faltas,
+        ISNULL(br.horas_count, 0) as horas,
+        ISNULL(br.cumplimiento_pct, 0) as cumplimiento,
+        CASE
+          WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
+          WHEN br.cumplimiento_pct >= 85 THEN 'Bueno'
+          WHEN br.cumplimiento_pct >= 75 THEN 'Regular'
+          ELSE 'Riesgo'
+        END as clasificacion
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${whereClause}
+      ORDER BY br.cumplimiento_pct DESC
+    `;
+
+    const [summary, prevSummary, deptStats, teamStats, distStats, detail] = await Promise.all([
+      this.dataSource.query(summaryQuery, params),
+      this.dataSource.query(prevSummaryQuery, [prevMes, prevAnio, ...(params.slice(2))]),
+      this.dataSource.query(deptStatsQuery, [mes, anio]),
+      this.dataSource.query(teamStatsQuery, [mes, anio]),
+      this.dataSource.query(distQuery, params),
+      this.dataSource.query(detailQuery, params)
+    ]);
+
+    const s = summary[0] || { avgCompliance: 0, totalTardies: 0, totalFaltas: 0, employeesAtRisk: 0 };
+    const ps = prevSummary[0] || { avgCompliance: 0, totalTardies: 0, totalFaltas: 0 };
+
+    return {
+      summary: {
+        ...s,
+        complianceTrend: s.avgCompliance - ps.avgCompliance,
+        tardiesTrend: ps.totalTardies > 0 ? ((s.totalTardies - ps.totalTardies) / ps.totalTardies * 100) : 0,
+        faltasTrend: ps.totalFaltas > 0 ? ((s.totalFaltas - ps.totalFaltas) / ps.totalFaltas * 100) : 0
+      },
+      deptStats: deptStats.map(d => ({ ...d, name: this.sanitizeString(d.name) })),
+      teamStats: teamStats.map(t => ({ ...t, name: this.sanitizeString(t.name) })),
+      distStats,
+      detail: detail.map(d => ({
+        ...d,
+        empleado: this.sanitizeString(d.empleado),
+        depto: this.sanitizeString(d.depto),
+        cumplimiento: Number(d.cumplimiento || 0).toFixed(1) + '%'
+      }))
+    };
+  }
+
+  async getSupervisors() {
+    const results = await this.dataSource.query(`
+      SELECT DISTINCT s.empleado_id, s.nombres + ' ' + s.apellidos as nombre
+      FROM EMPLEADO e
+      INNER JOIN EMPLEADO s ON e.supervisor_id = s.empleado_id
+      WHERE e.activo = 1
+    `);
+    return results.map(r => ({ id: r.empleado_id, nombre: this.sanitizeString(r.nombre) }));
   }
 
   async getUniqueDepartments() {

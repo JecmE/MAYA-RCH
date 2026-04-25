@@ -75,4 +75,14 @@ export class ReportsService {
   getDepartments(): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/departments`);
   }
+
+  getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/global-kpis`, {
+      params: { mes, anio, departamento: departamento || 'Todos', supervisorId: supervisorId || 'Todos' }
+    });
+  }
+
+  getSupervisors(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/supervisors`);
+  }
 }

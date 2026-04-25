@@ -1,89 +1,104 @@
-<div class="global-kpi-page">
-  <main class="global-kpi-main">
+<div class="kpi-page">
+  <main class="kpi-main">
 
-    <div class="page-header page-header--top">
-      <div class="page-header__left">
-        <button
-          type="button"
-          (click)="goBack()"
-          class="back-button"
-        >
-          ←
-        </button>
+    <div class="page-header">
+      <button type="button" (click)="goBack()" class="back-button">←</button>
+      <div class="page-header__content">
+        <h2 class="page-title">KPIs Globales</h2>
+        <p class="page-subtitle">Desempeño organizacional y métricas de cumplimiento.</p>
+      </div>
 
-        <div class="page-header__content">
-          <h2 class="page-title">KPIs Globales</h2>
-          <p class="page-subtitle">
-            Métricas de desempeño y cumplimiento organizacional.
-          </p>
+      <div class="header-filters">
+        <div class="filter-group">
+          <label>Mes</label>
+          <select [(ngModel)]="mesActual" (change)="loadKpiData()" class="filter-select">
+            @for (m of meses; track m.v) {
+              <option [value]="m.v">{{ m.n }}</option>
+            }
+          </select>
         </div>
-      </div>
-
-      <div class="page-header__actions">
-        <select
-          class="form-control form-control--header"
-          [(ngModel)]="periodoSeleccionado"
-        >
-          @for (periodo of periodosDisponibles; track periodo) {
-            <option [value]="periodo">{{ periodo }}</option>
-          }
-        </select>
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card stat-card--icon">
-        <div class="stat-card__icon stat-card__icon--green">↗</div>
-        <div>
-          <p class="stat-card__label stat-card__label--normal">Cumplimiento Promedio</p>
-          <p class="stat-card__value">{{ cumplimientoPromedio }}</p>
-          <p class="stat-card__meta stat-card__meta--green">+1.2% vs mes anterior</p>
+        <div class="filter-group">
+          <label>Año</label>
+          <input type="number" [(ngModel)]="anioActual" (change)="loadKpiData()" class="filter-input" style="width: 80px;">
         </div>
-      </div>
-
-      <div class="stat-card stat-card--icon">
-        <div class="stat-card__icon stat-card__icon--amber">🕒</div>
-        <div>
-          <p class="stat-card__label stat-card__label--normal">Tardías del Mes</p>
-          <p class="stat-card__value">{{ tardiasMes }}</p>
-          <p class="stat-card__meta stat-card__meta--red">+5% vs mes anterior</p>
+        <div class="filter-group">
+          <label>Departamento</label>
+          <select [(ngModel)]="departamentoSeleccionado" (change)="loadKpiData()" class="filter-select">
+            @for (d of departamentos; track $index) {
+              <option [value]="d">{{ d }}</option>
+            }
+          </select>
         </div>
-      </div>
-
-      <div class="stat-card stat-card--icon">
-        <div class="stat-card__icon stat-card__icon--red">⚠</div>
-        <div>
-          <p class="stat-card__label stat-card__label--normal">Faltas del Mes</p>
-          <p class="stat-card__value">{{ faltasMes }}</p>
-          <p class="stat-card__meta stat-card__meta--green">-2% vs mes anterior</p>
-        </div>
-      </div>
-
-      <div class="stat-card stat-card--icon">
-        <div class="stat-card__icon stat-card__icon--orange">👥</div>
-        <div>
-          <p class="stat-card__label stat-card__label--normal">Empleados en Riesgo</p>
-          <p class="stat-card__value">{{ empleadosEnRiesgo }}</p>
-          <p class="stat-card__meta">Requieren atención</p>
+        <div class="filter-group">
+          <label>Equipo</label>
+          <select [(ngModel)]="supervisorSeleccionado" (change)="loadKpiData()" class="filter-select">
+            @for (s of supervisores; track s.id) {
+              <option [value]="s.id">{{ s.nombre }}</option>
+            }
+          </select>
         </div>
       </div>
     </div>
 
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-icon card-icon--green">📈</div>
+        <div class="card-info">
+          <span class="card-label">Cumplimiento Promedio</span>
+          <h3 class="card-value">{{ summary.avgCompliance | number:'1.1-1' }}%</h3>
+          <span class="card-trend" [ngClass]="summary.complianceTrend >= 0 ? 'card-trend--up' : 'card-trend--down'">
+            {{ summary.complianceTrend >= 0 ? '+' : '' }}{{ summary.complianceTrend | number:'1.1-1' }}% vs mes anterior
+          </span>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="card-icon card-icon--orange">🕒</div>
+        <div class="card-info">
+          <span class="card-label">Total Tardías</span>
+          <h3 class="card-value">{{ summary.totalTardies || 0 }}</h3>
+          <span class="card-trend" [ngClass]="summary.tardiesTrend <= 0 ? 'card-trend--up' : 'card-trend--down'">
+            {{ summary.tardiesTrend >= 0 ? '+' : '' }}{{ summary.tardiesTrend | number:'1.0-0' }}% vs mes anterior
+          </span>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="card-icon card-icon--red">⚠️</div>
+        <div class="card-info">
+          <span class="card-label">Total Faltas</span>
+          <h3 class="card-value">{{ summary.totalFaltas || 0 }}</h3>
+          <span class="card-trend" [ngClass]="summary.faltasTrend <= 0 ? 'card-trend--up' : 'card-trend--down'">
+            {{ summary.faltasTrend >= 0 ? '+' : '' }}{{ summary.faltasTrend | number:'1.0-0' }}% vs mes anterior
+          </span>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="card-icon card-icon--blue">👥</div>
+        <div class="card-info">
+          <span class="card-label">Empleados en Riesgo</span>
+          <h3 class="card-value">{{ summary.employeesAtRisk || 0 }}</h3>
+          <span class="card-trend">Requieren atención</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Triple Horizontal Charts Grid -->
     <div class="charts-grid">
       <div class="chart-card">
         <h3 class="chart-card__title">KPI por Departamento</h3>
-
-        <div class="chart-vertical">
-          @for (item of deptoDataFiltrado; track item.name) {
-            <div class="chart-vertical__item">
-              <div class="chart-vertical__bar-wrap">
-                <div
-                  class="chart-bar chart-bar--primary"
-                  [style.height.%]="getBarHeight(item.kpi)"
-                ></div>
+        <div class="horizontal-chart">
+          @for (d of deptStats; track $index) {
+            <div class="chart-row">
+              <div class="chart-info">
+                <span class="chart-name">{{ d.name }}</span>
+                <span class="chart-val">{{ d.kpi | number:'1.0-1' }}%</span>
               </div>
-              <div class="chart-vertical__label">{{ item.name }}</div>
-              <div class="chart-vertical__value">{{ item.kpi }}%</div>
+              <div class="chart-progress">
+                <div class="chart-fill chart-fill--blue" [style.width]="getBarWidth(d.kpi)"></div>
+              </div>
             </div>
           }
         </div>
@@ -91,18 +106,16 @@
 
       <div class="chart-card">
         <h3 class="chart-card__title">KPI por Equipo</h3>
-
-        <div class="chart-vertical">
-          @for (item of equipoDataFiltrado; track item.name) {
-            <div class="chart-vertical__item">
-              <div class="chart-vertical__bar-wrap">
-                <div
-                  class="chart-bar chart-bar--accent"
-                  [style.height.%]="getBarHeight(item.kpi)"
-                ></div>
+        <div class="horizontal-chart">
+          @for (t of teamStats; track $index) {
+            <div class="chart-row">
+              <div class="chart-info">
+                <span class="chart-name">{{ t.name }}</span>
+                <span class="chart-val">{{ t.kpi | number:'1.0-1' }}%</span>
               </div>
-              <div class="chart-vertical__label">{{ item.name }}</div>
-              <div class="chart-vertical__value">{{ item.kpi }}%</div>
+              <div class="chart-progress">
+                <div class="chart-fill chart-fill--orange" [style.width]="getBarWidth(t.kpi)"></div>
+              </div>
             </div>
           }
         </div>
@@ -110,95 +123,66 @@
 
       <div class="chart-card">
         <h3 class="chart-card__title">Por Clasificación</h3>
-
-        <div class="chart-horizontal">
-          @for (item of clasificacionDataFiltrado; track item.name) {
-            <div class="chart-horizontal__row">
-              <div class="chart-horizontal__label">{{ item.name }}</div>
-              <div class="chart-horizontal__bar-wrap">
-                <div
-                  [class]="getClasificacionBarClass(item.name)"
-                  [style.width.%]="item.cantidad"
-                ></div>
+        <div class="horizontal-chart">
+          @for (s of distStats; track $index) {
+            <div class="dist-row-wrapper">
+              <div class="chart-info">
+                <span class="chart-name">{{ s.classification }}</span>
+                <span class="chart-val">{{ s.count }}</span>
               </div>
-              <div class="chart-horizontal__value">{{ item.cantidad }}</div>
+              <div class="chart-progress">
+                <div class="chart-fill" [ngClass]="getClasificacionClass(s.classification)" [style.width]="getDistWidth(s.count)"></div>
+              </div>
             </div>
           }
         </div>
       </div>
     </div>
 
-    <div class="detail-card">
-      <div class="detail-card__header">
-        <h3 class="detail-card__title">Detalle General</h3>
-      </div>
-
-      <div class="detail-card__filters">
+    <!-- Details Table -->
+    <div class="details-card">
+      <div class="card-header">
+        <h3 class="card-title">Ranking de Desempeño</h3>
         <div class="search-box">
-          <input
-            type="text"
-            placeholder="Buscar empleado o departamento..."
-            class="form-control"
-            [(ngModel)]="filtroBusqueda"
-          />
-        </div>
-
-        <div class="filters-group">
-          <select
-            class="form-control form-control--auto"
-            [(ngModel)]="filtroClasificacion"
-          >
-            <option>Todas las clasificaciones</option>
-            <option>Excelente</option>
-            <option>Bueno</option>
-            <option>Regular</option>
-            <option>Observación</option>
-            <option>Riesgo</option>
-            <option>Riesgo Moderado</option>
-          </select>
+          <input type="text" [(ngModel)]="filtroBusqueda" placeholder="Buscar empleado o área...">
         </div>
       </div>
 
-      <div class="table-wrapper">
-        <table class="detail-table">
-          <thead>
-            <tr class="detail-table__head-row">
-              <th class="table-head table-head--first">Empleado</th>
-              <th class="table-head">Departamento</th>
-              <th class="table-head table-head--center">Tardías</th>
-              <th class="table-head table-head--center">Faltas</th>
-              <th class="table-head table-head--center">Horas</th>
-              <th class="table-head table-head--center">Cumplimiento</th>
-              <th class="table-head table-head--last">Clasificación</th>
-            </tr>
-          </thead>
-
-          <tbody class="detail-table__body">
-            @if (detalleFiltrado.length > 0) {
-              @for (row of detalleFiltrado; track row.id) {
-                <tr class="detail-table__row">
-                  <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
-                  <td class="table-cell table-cell--muted">{{ row.depto }}</td>
-                  <td class="table-cell table-cell--center table-cell--amber">{{ row.tardias }}</td>
-                  <td class="table-cell table-cell--center table-cell--red">{{ row.faltas }}</td>
-                  <td class="table-cell table-cell--center">{{ row.horas }}</td>
-                  <td class="table-cell table-cell--center table-cell--primary">{{ row.cumplimiento }}</td>
-                  <td class="table-cell table-cell--last">
-                    <span class="status-badge" [class]="getClasificacionClass(row.clasificacion)">
+      <div class="table-container">
+        @if (isLoading) {
+          <div class="table-loading">Consultando indicadores...</div>
+        } @else {
+          <table class="kpi-table">
+            <thead>
+              <tr>
+                <th>Empleado</th>
+                <th>Área</th>
+                <th>Tardías</th>
+                <th>Faltas</th>
+                <th>Horas</th>
+                <th>Cumplimiento</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of filteredData; track row.id) {
+                <tr>
+                  <td><span class="emp-name">{{ row.empleado }}</span></td>
+                  <td>{{ row.depto }}</td>
+                  <td style="text-align: center;">{{ row.tardias }}</td>
+                  <td style="text-align: center;">{{ row.faltas }}</td>
+                  <td style="text-align: center;">{{ row.horas }}h</td>
+                  <td><span class="pct-value">{{ row.cumplimiento }}</span></td>
+                  <td>
+                    <span class="status-badge" [ngClass]="getClasificacionClass(row.clasificacion)">
                       {{ row.clasificacion }}
                     </span>
                   </td>
                 </tr>
               }
-            } @else {
-              <tr>
-                <td colspan="7" class="empty-state-cell">
-                  No se encontraron registros con los filtros seleccionados.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        }
       </div>
     </div>
 

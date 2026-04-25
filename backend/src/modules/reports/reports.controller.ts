@@ -62,4 +62,21 @@ export class ReportsController {
   getDepartments() {
     return this.reportsService.getUniqueDepartments();
   }
+
+  @Get('global-kpis')
+  @Roles('RRHH', 'Administrador')
+  getGlobalKpis(
+    @Query('mes') mes: number,
+    @Query('anio') anio: number,
+    @Query('departamento') departamento?: string,
+    @Query('supervisorId') supervisorId?: string
+  ) {
+    return this.reportsService.getGlobalKpis(Number(mes), Number(anio), departamento, supervisorId);
+  }
+
+  @Get('supervisors')
+  @Roles('RRHH', 'Administrador')
+  getSupervisors() {
+    return this.reportsService.getSupervisors();
+  }
 }
