@@ -42,11 +42,46 @@ let PayrollService = class PayrollService {
         return { periodoId: s.periodoId, nombre: s.nombre };
     }
     async calculatePayroll(periodoId, usuarioId) {
-        return { mensaje: 'Nómina calculada localmente (Modo Pro-forma activo)' };
+        const periodo = await this.periodoRepository.findOne({ where: { periodoId } });
+        if (!periodo)
+            throw new common_1.NotFoundException('Periodo no encontrado');
+        const empleados = await this.empleadoRepository.find({ where: { activo: true } });
+        const resultados = [];
+        const dateFin = new Date(periodo.fechaFin);
+        const year = dateFin.getFullYear();
+        const month = dateFin.getMonth() + 1;
+        for (const emp of empleados) {
+            const asistencias = await this.asistenciaRepository.find({
+                where: { empleadoId: emp.empleadoId, fecha: (0, typeorm_2.Between)(periodo.fechaInicio, periodo.fechaFin) }
+            });
+            const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
+            const montoSalario = horas * (Number(emp.tarifaHora) || 45.5);
+            const bonoReal = await this.bonoRepository.findOne({
+                where: { empleadoId: emp.empleadoId, mes: month, anio: year },
+                relations: ['reglaBono'],
+                order: { fechaCalculo: 'DESC' }
+            });
+            const montoBonos = bonoReal && bonoReal.elegible ? Number(bonoReal.reglaBono?.monto || 0) : 0;
+            const igss = montoSalario * 0.0483;
+            const neto = (montoSalario + montoBonos) - igss;
+            resultados.push({
+                empleadoId: emp.empleadoId,
+                nombreCompleto: `${emp.nombres} ${emp.apellidos}`,
+                horasTrabajadas: horas,
+                montoBruto: montoSalario,
+                totalBonificaciones: montoBonos,
+                totalDeducciones: igss,
+                montoNeto: neto
+            });
+        }
+        return {
+            mensaje: 'Cálculo de nómina completado exitosamente (Modo Pro-forma)',
+            resultados
+        };
     }
     async closePeriod(periodoId, usuarioId) {
         await this.periodoRepository.update(periodoId, { estado: periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_CERRADO });
-        return { message: 'Cerrado' };
+        return { message: 'Periodo cerrado correctamente. Boletas publicadas para los empleados.' };
     }
     async getMyPaycheck(empleadoId, periodoId) {
         const periodo = periodoId
@@ -55,8 +90,9 @@ let PayrollService = class PayrollService {
         if (!periodo)
             return { message: 'Periodo no encontrado' };
         const emp = await this.empleadoRepository.findOne({ where: { empleadoId } });
-        const year = new Date(periodo.fechaFin).getFullYear();
-        const month = new Date(periodo.fechaFin).getMonth() + 1;
+        const dateFin = new Date(periodo.fechaFin);
+        const year = dateFin.getFullYear();
+        const month = dateFin.getMonth() + 1;
         const asistencias = await this.asistenciaRepository.find({
             where: { empleadoId, fecha: (0, typeorm_2.Between)(periodo.fechaInicio, periodo.fechaFin) }
         });

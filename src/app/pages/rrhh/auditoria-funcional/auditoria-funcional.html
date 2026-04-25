@@ -2,109 +2,98 @@
   <main class="functional-audit-main">
 
     <div class="page-header">
-      <button
-        type="button"
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
-      </button>
+      <button type="button" (click)="goBack()" class="back-button">←</button>
       <div class="page-header__content">
         <h2 class="page-title">Auditoría Funcional</h2>
-        <p class="page-subtitle">
-          Consulta la trazabilidad de acciones operativas dentro del sistema.
-        </p>
+        <p class="page-subtitle">Consulta la trazabilidad de acciones operativas dentro del sistema.</p>
       </div>
     </div>
 
     <div class="stats-grid">
       <div class="stat-card">
         <p class="stat-card__label">Eventos hoy</p>
-        <p class="stat-card__value stat-card__value--blue">126</p>
+        <p class="stat-card__value stat-card__value--blue">{{ stats.hoy }}</p>
       </div>
 
       <div class="stat-card">
         <p class="stat-card__label">Aprobaciones</p>
-        <p class="stat-card__value stat-card__value--green">34</p>
+        <p class="stat-card__value stat-card__value--green">{{ stats.aprobaciones }}</p>
       </div>
 
       <div class="stat-card">
         <p class="stat-card__label">Ediciones</p>
-        <p class="stat-card__value stat-card__value--amber">18</p>
+        <p class="stat-card__value stat-card__value--amber">{{ stats.ediciones }}</p>
       </div>
 
       <div class="stat-card">
         <p class="stat-card__label">Procesos sistema</p>
-        <p class="stat-card__value stat-card__value--slate">9</p>
+        <p class="stat-card__value stat-card__value--slate">{{ stats.sistema }}</p>
       </div>
     </div>
 
     <div class="audit-card">
       <div class="audit-card__filters">
-        <div class="search-box">
-          <input
-            type="text"
-            placeholder="Buscar por usuario, módulo o entidad..."
-            class="form-control"
-            [(ngModel)]="filtroBusqueda"
-          />
-        </div>
+        <div class="filters-row">
+          <div class="search-box">
+            <input
+              type="text"
+              placeholder="Buscar por detalle..."
+              class="form-control"
+              [(ngModel)]="filtroBusqueda"
+              (keyup.enter)="loadAuditLogs()"
+            />
+          </div>
 
-        <div class="filters-group">
-          <select
-            class="form-control form-control--auto"
-            [(ngModel)]="filtroModulo"
-          >
-            <option>Todos los módulos</option>
-            <option>Permisos</option>
-            <option>Usuarios</option>
-            <option>Empleados</option>
-            <option>Planilla</option>
-          </select>
+          <div class="date-group">
+            <input type="date" class="form-control" [(ngModel)]="filtroFechaDesde" (change)="loadAuditLogs()" />
+            <span class="date-sep">a</span>
+            <input type="date" class="form-control" [(ngModel)]="filtroFechaHasta" (change)="loadAuditLogs()" />
+          </div>
 
-          <input
-            type="date"
-            class="form-control form-control--auto"
-            [(ngModel)]="filtroFecha"
-          />
+          <div class="select-group">
+            <select class="form-control" [(ngModel)]="filtroModulo" (change)="loadAuditLogs()">
+              @for (mod of modulos; track mod) {
+                <option [value]="mod">{{ mod }}</option>
+              }
+            </select>
+          </div>
 
-          <button
-            type="button"
-            class="pagination-button"
-            (click)="limpiarFiltros()"
-          >
+          <button type="button" class="btn-clear" (click)="limpiarFiltros()">
             Limpiar
           </button>
         </div>
       </div>
 
       <div class="table-wrapper">
+        @if (isLoading) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Cargando bitácora...</p>
+          </div>
+        }
+
         <table class="audit-table">
           <thead>
             <tr class="audit-table__head-row">
-              <th class="table-head table-head--first">Fecha</th>
+              <th class="table-head">Fecha</th>
               <th class="table-head">Usuario</th>
               <th class="table-head">Módulo</th>
               <th class="table-head">Acción</th>
-              <th class="table-head">Entidad</th>
-              <th class="table-head table-head--last">Detalle</th>
+              <th class="table-head">Detalle</th>
             </tr>
           </thead>
           <tbody class="audit-table__body">
-            @if (registrosFiltrados.length > 0) {
-              @for (row of registrosFiltrados; track row.id) {
-                <tr class="audit-table__row">
-                  <td class="table-cell table-cell--first table-cell--mono">{{ row.fecha }}</td>
-                  <td class="table-cell table-cell--strong">{{ row.usuario }}</td>
-                  <td class="table-cell">{{ row.modulo }}</td>
-                  <td class="table-cell">{{ row.accion }}</td>
-                  <td class="table-cell table-cell--muted">{{ row.entidad }}</td>
-                  <td class="table-cell table-cell--last table-cell--muted">{{ row.detalle }}</td>
-                </tr>
-              }
-            } @else {
+            @for (row of registrosPaginados; track row.id) {
+              <tr class="audit-table__row">
+                <td class="table-cell table-cell--mono">{{ row.fecha }}</td>
+                <td class="table-cell table-cell--strong">{{ row.usuario }}</td>
+                <td class="table-cell"><span class="badge-module">{{ row.modulo }}</span></td>
+                <td class="table-cell"><strong>{{ row.accion }}</strong></td>
+                <td class="table-cell table-cell--muted">{{ row.detalle }}</td>
+              </tr>
+            } @empty {
               <tr>
-                <td colspan="6" class="table-cell table-cell--center">
+                <td colspan="5" class="table-cell table-cell--center">
                   No se encontraron registros con los filtros seleccionados.
                 </td>
               </tr>
@@ -114,12 +103,24 @@
       </div>
 
       <div class="audit-card__footer">
-        <span>Mostrando {{ registrosFiltrados.length }} de {{ registros.length }} registros</span>
+        <div class="footer-info">
+          <span>Mostrando página {{ paginaActual }} de {{ totalPaginas }} (Total: {{ registros.length }} registros)</span>
+        </div>
         <div class="pagination-actions">
-          <button class="pagination-button pagination-button--disabled">
+          <button
+            type="button"
+            class="pagination-button"
+            [disabled]="paginaActual === 1"
+            (click)="cambiarPagina(-1)"
+          >
             Anterior
           </button>
-          <button class="pagination-button">
+          <button
+            type="button"
+            class="pagination-button"
+            [disabled]="paginaActual === totalPaginas"
+            (click)="cambiarPagina(1)"
+          >
             Siguiente
           </button>
         </div>

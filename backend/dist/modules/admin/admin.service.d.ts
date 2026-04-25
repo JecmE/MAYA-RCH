@@ -41,6 +41,26 @@ export declare class AdminService implements OnModuleInit {
     deactivateShift(id: number, uid: number): Promise<{
         message: string;
     }>;
+    getAssignments(): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
+    assignShift(dto: any, uid: number): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
     getBonusRules(): Promise<ReglaBono[]>;
     createBonusRule(dto: any, uid: number): Promise<ReglaBono[]>;
     updateBonusRule(id: number, dto: any, uid: number): Promise<ReglaBono[]>;
@@ -70,8 +90,6 @@ export declare class AdminService implements OnModuleInit {
         kpiPromedio: number;
     }>;
     getRoles(): Promise<Rol[]>;
-    getAssignments(): Promise<EmpleadoTurno[]>;
-    assignShift(dto: any, uid: number): Promise<EmpleadoTurno[]>;
     getKpiParameters(): Promise<{}>;
     updateKpiParameters(dto: any, uid: number): Promise<{}>;
 }

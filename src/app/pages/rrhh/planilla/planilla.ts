@@ -99,12 +99,8 @@ export class Planilla implements OnInit {
 
   private sanitize(str: string | undefined | null): string {
     if (!str) return '';
-
-    // Corregir caracteres rotos
     let res = str.replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
                  .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ').replace(/Ã/g, 'í');
-
-    // Corregir signos ?
     res = res.replace(/\?/g, (m, offset, original) => {
       if (original.includes('Rodr')) return 'í';
       if (original.includes('Mart')) return 'í';
@@ -112,8 +108,6 @@ export class Planilla implements OnInit {
       if (original.includes('Fern')) return 'á';
       return 'í';
     });
-
-    // Eliminar palabras duplicadas (ej: María José María José)
     const words = res.split(' ');
     const seen = new Set<string>();
     return words.filter(w => {
@@ -154,10 +148,8 @@ export class Planilla implements OnInit {
 
   exportarExcel(): void {
     if (this.planillaData.length === 0) return;
-
     const headers = ['Colaborador', 'Sueldo Bruto', 'Bonificaciones', 'Deducciones', 'Sueldo Neto'];
     const cleanNum = (val: string) => val.replace('Q', '').replace(/,/g, '').trim();
-
     const rows = this.planillaFiltrada.map(p => [
       p.empleado,
       cleanNum(p.salarioBase),
@@ -165,22 +157,18 @@ export class Planilla implements OnInit {
       cleanNum(p.deducciones),
       cleanNum(p.neto)
     ]);
-
-    // Usar coma y comillas dobles (estándar CSV universal)
     let csvContent = headers.map(h => `"${h}"`).join(",") + "\r\n";
     rows.forEach(row => {
       csvContent += row.map(cell => `"${cell}"`).join(",") + "\r\n";
     });
-
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Planilla_${this.obtenerNombrePeriodo().replace(/\s+/g, '_')}.csv`;
+    link.download = `Planilla_${this.obtenerNombrePeriodo().replace(/\s/g, '_')}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     this.mostrarNotificacion('Archivo Excel generado con éxito.');
   }
 
@@ -192,7 +180,6 @@ export class Planilla implements OnInit {
     doc.text(`Reporte de Planilla - ${periodName}`, 14, 20);
     doc.setFontSize(10);
     doc.text(`Fecha: ${new Date().toLocaleString()}`, 14, 28);
-
     let y = 45;
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
@@ -203,7 +190,6 @@ export class Planilla implements OnInit {
     doc.text("Neto", 170, y);
     doc.line(14, y + 2, 195, y + 2);
     y += 10;
-
     doc.setFont("helvetica", "normal");
     this.planillaFiltrada.forEach(item => {
       doc.text(item.empleado, 14, y);
@@ -213,8 +199,7 @@ export class Planilla implements OnInit {
       doc.text(item.neto, 170, y);
       y += 8;
     });
-
-    doc.save(`Planilla_${periodName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Planilla_${periodName.replace(/\s/g, '_')}.pdf`);
   }
 
   get planillaFiltrada(): PlanillaEmpleadoItem[] {
@@ -254,6 +239,6 @@ export class Planilla implements OnInit {
 
   obtenerNombrePeriodo(): string {
     const p = this.periodosDisponibles.find(x => x.periodoId === this.periodoId);
-    return p ? p.nombre : 'Abril 2026';
+    return p ? p.nombre : 'Período Actual';
   }
 }

@@ -23,9 +23,10 @@ const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const vacacion_saldo_entity_1 = require("../../entities/vacacion-saldo.entity");
+const audit_log_entity_1 = require("../../entities/audit-log.entity");
 const typeorm_3 = require("typeorm");
 let ReportsService = class ReportsService {
-    constructor(asistenciaRepository, solicitudRepository, tiempoRepository, kpiRepository, bonoRepository, empleadoRepository, saldoRepository, dataSource) {
+    constructor(asistenciaRepository, solicitudRepository, tiempoRepository, kpiRepository, bonoRepository, empleadoRepository, saldoRepository, auditRepository, dataSource) {
         this.asistenciaRepository = asistenciaRepository;
         this.solicitudRepository = solicitudRepository;
         this.tiempoRepository = tiempoRepository;
@@ -33,6 +34,7 @@ let ReportsService = class ReportsService {
         this.bonoRepository = bonoRepository;
         this.empleadoRepository = empleadoRepository;
         this.saldoRepository = saldoRepository;
+        this.auditRepository = auditRepository;
         this.dataSource = dataSource;
     }
     async getMonthlyAttendance(fechaInicio, fechaFin, departamento) {
@@ -149,39 +151,6 @@ let ReportsService = class ReportsService {
         }));
     }
     async getBonusEligibilityByRange(fechaInicio, fechaFin, departamento, proyecto) {
-        const fI = `${fechaInicio} 00:00:00`;
-        const fF = `${fechaFin} 23:59:59`;
-        let query = `
-      SELECT e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
-        br.cumplimiento_pct, br.elegible, rb.nombre as reglaNombre, rb.monto as montoBono
-      FROM EMPLEADO e
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.fecha_calculo >= @0 AND br.fecha_calculo <= @1
-      LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
-      WHERE e.activo = 1
-    `;
-        const params = [fI, fF];
-        let pIdx = 2;
-        if (departamento && departamento !== 'Todos') {
-            query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`;
-            pIdx++;
-            params.push(departamento);
-        }
-        if (proyecto && proyecto !== 'Todos los proyectos') {
-            query += ` AND e.empleado_id IN (SELECT empleado_id FROM EMPLEADO_PROYECTO ep INNER JOIN PROYECTO p ON ep.proyecto_id = p.proyecto_id WHERE p.nombre = @${pIdx} AND ep.activo = 1)`;
-            params.push(proyecto);
-        }
-        const results = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
-        return results.map(r => ({
-            empleadoId: r.empleado_id,
-            nombreCompleto: this.sanitizeString(r.nombreCompleto),
-            departamento: this.sanitizeString(r.departamento),
-            reglaNombre: this.sanitizeString(r.reglaNombre) || 'Sin Cálculo',
-            elegible: r.elegible || false,
-            monto: Number(r.montoBono || 0),
-            cumplimientoPct: Number(r.cumplimiento_pct || 0)
-        }));
-    }
-    async getBonusEligibilityByRangeForReports(fechaInicio, fechaFin, departamento, proyecto) {
         const fI = `${fechaInicio} 00:00:00`;
         const fF = `${fechaFin} 23:59:59`;
         let query = `
@@ -342,6 +311,31 @@ let ReportsService = class ReportsService {
     `);
         return results.map(r => ({ id: r.empleado_id, nombre: this.sanitizeString(r.nombre) }));
     }
+    async getFunctionalAudit(fi, ff, modulo, accion) {
+        let query = `
+      SELECT
+        al.audit_id, al.fecha_hora, u.username as usuario,
+        al.modulo, al.accion, al.entidad, al.entidad_id, al.detalle
+      FROM AUDIT_LOG al
+      LEFT JOIN USUARIO u ON al.usuario_id = u.usuario_id
+      WHERE 1=1
+    `;
+        const params = [];
+        if (fi && ff) {
+            query += ` AND al.fecha_hora BETWEEN @${params.length} AND @${params.length + 1}`;
+            params.push(fi + ' 00:00:00', ff + ' 23:59:59');
+        }
+        if (modulo && modulo !== 'Todos los módulos') {
+            query += ` AND al.modulo = @${params.length}`;
+            params.push(modulo);
+        }
+        if (accion) {
+            query += ` AND al.accion LIKE @${params.length}`;
+            params.push(`%${accion}%`);
+        }
+        query += ` ORDER BY al.fecha_hora DESC`;
+        return await this.dataSource.query(query, params);
+    }
     async getUniqueDepartments() {
         const results = await this.dataSource.query(`SELECT DISTINCT departamento FROM EMPLEADO WHERE activo = 1 AND departamento IS NOT NULL`);
         const sanitized = results.map(r => this.sanitizeString(r.departamento));
@@ -363,7 +357,9 @@ exports.ReportsService = ReportsService = __decorate([
     __param(4, (0, typeorm_1.InjectRepository)(bono_resultado_entity_1.BonoResultado)),
     __param(5, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
     __param(6, (0, typeorm_1.InjectRepository)(vacacion_saldo_entity_1.VacacionSaldo)),
+    __param(7, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

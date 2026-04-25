@@ -8,8 +8,26 @@ export declare class AdminController {
     deactivateShift(id: number, req: any): Promise<{
         message: string;
     }>;
-    getAssignments(): Promise<import("../../entities").EmpleadoTurno[]>;
-    assignShift(assignDto: any, req: any): Promise<import("../../entities").EmpleadoTurno[]>;
+    getAssignments(): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
+    assignShift(assignDto: any, req: any): Promise<{
+        id: number;
+        empleadoId: number;
+        empleadoNombre: string;
+        turnoId: number;
+        turnoNombre: string;
+        fechaInicio: Date;
+        fechaFin: Date;
+        activo: boolean;
+    }[]>;
     getKpiParameters(): Promise<{}>;
     updateKpiParameters(updateDto: any, req: any): Promise<{}>;
     getBonusRules(): Promise<import("../../entities").ReglaBono[]>;

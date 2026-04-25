@@ -72,10 +72,6 @@ export class ReportsService {
     });
   }
 
-  getDepartments(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/departments`);
-  }
-
   getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/global-kpis`, {
       params: { mes, anio, departamento: departamento || 'Todos', supervisorId: supervisorId || 'Todos' }
@@ -84,5 +80,20 @@ export class ReportsService {
 
   getSupervisors(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/supervisors`);
+  }
+
+  getDepartments(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/departments`);
+  }
+
+  getFunctionalAudit(fi?: string, ff?: string, modulo?: string, accion?: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/functional-audit`, {
+      params: {
+        fi: fi || '',
+        ff: ff || '',
+        modulo: modulo || 'Todos los módulos',
+        accion: accion || ''
+      }
+    });
   }
 }

@@ -81,6 +81,43 @@ let AdminService = class AdminService {
         return this.getShifts();
     }
     async deactivateShift(id, uid) { await this.turnoRepository.update(id, { activo: false }); return { message: 'OK' }; }
+    async getAssignments() {
+        const assignments = await this.empleadoTurnoRepository.find({
+            relations: ['empleado', 'turno'],
+            where: { activo: true },
+            order: { fechaInicio: 'DESC' }
+        });
+        return assignments.map(a => ({
+            id: a.empleadoTurnoId,
+            empleadoId: a.empleadoId,
+            empleadoNombre: `${a.empleado?.nombres} ${a.empleado?.apellidos}`,
+            turnoId: a.turnoId,
+            turnoNombre: a.turno?.nombre,
+            fechaInicio: a.fechaInicio,
+            fechaFin: a.fechaFin,
+            activo: a.activo
+        }));
+    }
+    async assignShift(dto, uid) {
+        if (dto.id && dto.activo === false) {
+            await this.empleadoTurnoRepository.update(dto.id, { activo: false, fechaFin: new Date() });
+            return this.getAssignments();
+        }
+        if (dto.empleadoId) {
+            const fInicio = dto.fechaInicio || new Date().toISOString().split('T')[0];
+            const fFin = dto.fechaFin === '' ? null : dto.fechaFin;
+            await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId }, { activo: false });
+            const newAssignment = this.empleadoTurnoRepository.create({
+                empleadoId: dto.empleadoId,
+                turnoId: dto.turnoId,
+                fechaInicio: fInicio,
+                fechaFin: fFin,
+                activo: dto.activo !== undefined ? dto.activo : true
+            });
+            await this.empleadoTurnoRepository.save(newAssignment);
+        }
+        return this.getAssignments();
+    }
     async getBonusRules() { return await this.reglaBonoRepository.find({ order: { monto: 'DESC' } }); }
     async createBonusRule(dto, uid) {
         if (!dto.vigenciaInicio)
@@ -172,8 +209,6 @@ let AdminService = class AdminService {
     async getRrhhDashboardStats() { return { empleadosActivos: await this.empleadoRepository.count({ where: { activo: true } }), tardiasHoy: 0, permisosPendientes: await this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }), vacacionesActivas: 0, empleadosEnRiesgo: 0, empleadosConTurnoInactivo: 0 }; }
     async getSupervisorDashboardStats(sid) { return { empleadosACargo: await this.empleadoRepository.count({ where: { supervisorId: sid, activo: true } }), permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
     async getRoles() { return await this.rolRepository.find(); }
-    async getAssignments() { return await this.empleadoTurnoRepository.find({ relations: ['empleado', 'turno'], where: { activo: true } }); }
-    async assignShift(dto, uid) { await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId }, { activo: false }); await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({ ...dto, activo: true })); return this.getAssignments(); }
     async getKpiParameters() { const p = await this.parametroRepository.find({ where: { activo: true } }); const r = {}; p.forEach(x => r[x.clave] = x.valor); return r; }
     async updateKpiParameters(dto, uid) { for (const [k, v] of Object.entries(dto)) {
         await this.parametroRepository.update({ clave: k }, { valor: v });

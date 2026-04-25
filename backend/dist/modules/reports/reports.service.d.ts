@@ -6,6 +6,7 @@ import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
+import { AuditLog } from '../../entities/audit-log.entity';
 import { DataSource } from 'typeorm';
 export declare class ReportsService {
     private asistenciaRepository;
@@ -15,14 +16,14 @@ export declare class ReportsService {
     private bonoRepository;
     private empleadoRepository;
     private saldoRepository;
+    private auditRepository;
     private dataSource;
-    constructor(asistenciaRepository: Repository<RegistroAsistencia>, solicitudRepository: Repository<SolicitudPermiso>, tiempoRepository: Repository<RegistroTiempo>, kpiRepository: Repository<KpiMensual>, bonoRepository: Repository<BonoResultado>, empleadoRepository: Repository<Empleado>, saldoRepository: Repository<VacacionSaldo>, dataSource: DataSource);
+    constructor(asistenciaRepository: Repository<RegistroAsistencia>, solicitudRepository: Repository<SolicitudPermiso>, tiempoRepository: Repository<RegistroTiempo>, kpiRepository: Repository<KpiMensual>, bonoRepository: Repository<BonoResultado>, empleadoRepository: Repository<Empleado>, saldoRepository: Repository<VacacionSaldo>, auditRepository: Repository<AuditLog>, dataSource: DataSource);
     getMonthlyAttendance(fechaInicio: string, fechaFin: string, departamento?: string): Promise<any>;
     getVacationReport(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
     getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyectoNombre?: string): Promise<any>;
     getBonusEligibility(mes: number, anio: number, departamento?: string): Promise<any>;
     getBonusEligibilityByRange(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
-    getBonusEligibilityByRangeForReports(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
     getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string): Promise<{
         summary: any;
         deptStats: any;
@@ -31,6 +32,7 @@ export declare class ReportsService {
         detail: any;
     }>;
     getSupervisors(): Promise<any>;
+    getFunctionalAudit(fi?: string, ff?: string, modulo?: string, accion?: string): Promise<any>;
     getUniqueDepartments(): Promise<unknown[]>;
     private sanitizeString;
 }

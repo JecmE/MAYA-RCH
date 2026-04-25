@@ -6,7 +6,6 @@ export declare class ReportsController {
     getBonusEligibility(mes?: number, anio?: number, fechaInicio?: string, fechaFin?: string, departamento?: string, proyecto?: string): Promise<any>;
     getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
     getVacationBalances(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Promise<any>;
-    getDepartments(): Promise<unknown[]>;
     getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string): Promise<{
         summary: any;
         deptStats: any;
@@ -15,4 +14,6 @@ export declare class ReportsController {
         detail: any;
     }>;
     getSupervisors(): Promise<any>;
+    getDepartments(): Promise<unknown[]>;
+    getFunctionalAudit(fi?: string, ff?: string, modulo?: string, accion?: string): Promise<any>;
 }

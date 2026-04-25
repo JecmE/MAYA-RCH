@@ -39,12 +39,61 @@ export class PayrollService {
   }
 
   async calculatePayroll(periodoId: number, usuarioId: number) {
-    return { mensaje: 'Nómina calculada localmente (Modo Pro-forma activo)' };
+    const periodo = await this.periodoRepository.findOne({ where: { periodoId } });
+    if (!periodo) throw new NotFoundException('Periodo no encontrado');
+
+    const empleados = await this.empleadoRepository.find({ where: { activo: true } });
+    const resultados = [];
+
+    // Determinar mes y año basado en la fecha de fin del periodo
+    const dateFin = new Date(periodo.fechaFin);
+    const year = dateFin.getFullYear();
+    const month = dateFin.getMonth() + 1;
+
+    for (const emp of empleados) {
+      // Calcular horas trabajadas en el rango del periodo
+      const asistencias = await this.asistenciaRepository.find({
+        where: { empleadoId: emp.empleadoId, fecha: Between(periodo.fechaInicio, periodo.fechaFin) as any }
+      });
+
+      const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
+      const montoSalario = horas * (Number(emp.tarifaHora) || 45.5);
+
+      // Buscar Bono Real del empleado para este mes/año
+      const bonoReal = await this.bonoRepository.findOne({
+        where: { empleadoId: emp.empleadoId, mes: month, anio: year },
+        relations: ['reglaBono'],
+        order: { fechaCalculo: 'DESC' }
+      });
+
+      const montoBonos = bonoReal && bonoReal.elegible ? Number(bonoReal.reglaBono?.monto || 0) : 0;
+
+      // Deducción estándar IGSS
+      const igss = montoSalario * 0.0483;
+
+      // Salario Neto
+      const neto = (montoSalario + montoBonos) - igss;
+
+      resultados.push({
+        empleadoId: emp.empleadoId,
+        nombreCompleto: `${emp.nombres} ${emp.apellidos}`,
+        horasTrabajadas: horas,
+        montoBruto: montoSalario,
+        totalBonificaciones: montoBonos,
+        totalDeducciones: igss,
+        montoNeto: neto
+      });
+    }
+
+    return {
+      mensaje: 'Cálculo de nómina completado exitosamente (Modo Pro-forma)',
+      resultados
+    };
   }
 
   async closePeriod(periodoId: number, usuarioId: number) {
     await this.periodoRepository.update(periodoId, { estado: PeriodoPlanilla.ESTADO_CERRADO });
-    return { message: 'Cerrado' };
+    return { message: 'Periodo cerrado correctamente. Boletas publicadas para los empleados.' };
   }
 
   async getMyPaycheck(empleadoId: number, periodoId?: number) {
@@ -55,8 +104,9 @@ export class PayrollService {
     if (!periodo) return { message: 'Periodo no encontrado' };
 
     const emp = await this.empleadoRepository.findOne({ where: { empleadoId } });
-    const year = new Date(periodo.fechaFin).getFullYear();
-    const month = new Date(periodo.fechaFin).getMonth() + 1;
+    const dateFin = new Date(periodo.fechaFin);
+    const year = dateFin.getFullYear();
+    const month = dateFin.getMonth() + 1;
 
     const asistencias = await this.asistenciaRepository.find({
       where: { empleadoId, fecha: Between(periodo.fechaInicio, periodo.fechaFin) as any }
@@ -83,7 +133,6 @@ export class PayrollService {
         nombreBono = 'Bono Incentivo (No califica)';
       }
     } else {
-      // Verificar si hay reglas activas en el sistema
       const reglasActivas = await this.dataSourceQuery(`SELECT COUNT(*) as total FROM REGLA_BONO WHERE activo = 1`);
       if (reglasActivas[0].total === 0) {
         nombreBono = 'Sin Bonificaciones (No hay reglas)';
@@ -116,7 +165,6 @@ export class PayrollService {
   async seedTestData() { return { message: 'OK' }; }
 
   private async dataSourceQuery(query: string) {
-    // Helper simple para consultas directas
     try {
         const ds = (this.periodoRepository as any).manager.connection;
         return await ds.query(query);

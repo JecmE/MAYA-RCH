@@ -57,12 +57,6 @@ export class ReportsController {
     return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento, proyecto);
   }
 
-  @Get('departments')
-  @Roles('RRHH', 'Administrador')
-  getDepartments() {
-    return this.reportsService.getUniqueDepartments();
-  }
-
   @Get('global-kpis')
   @Roles('RRHH', 'Administrador')
   getGlobalKpis(
@@ -78,5 +72,22 @@ export class ReportsController {
   @Roles('RRHH', 'Administrador')
   getSupervisors() {
     return this.reportsService.getSupervisors();
+  }
+
+  @Get('departments')
+  @Roles('RRHH', 'Administrador')
+  getDepartments() {
+    return this.reportsService.getUniqueDepartments();
+  }
+
+  @Get('functional-audit')
+  @Roles('RRHH', 'Administrador')
+  getFunctionalAudit(
+    @Query('fi') fi?: string,
+    @Query('ff') ff?: string,
+    @Query('modulo') modulo?: string,
+    @Query('accion') accion?: string
+  ) {
+    return this.reportsService.getFunctionalAudit(fi, ff, modulo, accion);
   }
 }

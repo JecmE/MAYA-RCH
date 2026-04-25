@@ -23,6 +23,7 @@ export declare class PayrollService {
     }>;
     calculatePayroll(periodoId: number, usuarioId: number): Promise<{
         mensaje: string;
+        resultados: any[];
     }>;
     closePeriod(periodoId: number, usuarioId: number): Promise<{
         message: string;

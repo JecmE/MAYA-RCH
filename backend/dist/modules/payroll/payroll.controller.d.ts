@@ -9,6 +9,7 @@ export declare class PayrollController {
     }>;
     calculatePayroll(id: number, req: any): Promise<{
         mensaje: string;
+        resultados: any[];
     }>;
     closePeriod(id: number, req: any): Promise<{
         message: string;

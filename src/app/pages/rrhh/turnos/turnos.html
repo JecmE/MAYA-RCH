@@ -73,7 +73,7 @@
           </thead>
           <tbody>
             @if (tab === 'catalogo') {
-              @for (row of dataFiltrada; track row.id) {
+              @for (row of dataFiltrada; track $index) {
                 <tr class="table-row">
                   <td>
                     <div class="name-cell">
@@ -100,7 +100,7 @@
                 </tr>
               }
             } @else {
-              @for (row of dataFiltrada; track row.id) {
+              @for (row of dataFiltrada; track $index) {
                 <tr class="table-row">
                   <td>
                     <div class="name-cell">
@@ -141,7 +141,7 @@
       </div>
     </div>
 
-    <!-- Modales (Mantienen lógica anterior pero estilizados) -->
+    <!-- Modales -->
     @if (modalNuevoTurno) {
       <div class="modal-backdrop">
         <div class="styled-modal">
@@ -181,7 +181,7 @@
             <div class="modal-field">
               <label>DÍAS APLICABLES</label>
               <div class="days-selector">
-                @for (dia of diasSemana; track dia.id) {
+                @for (dia of diasSemana; track $index) {
                   <div class="day-check" [class.selected]="isDiaSelected(dia.id)" (click)="toggleDia(dia.id)">
                     <div class="check-box">
                       @if (isDiaSelected(dia.id)) { <span>✓</span> }
@@ -223,7 +223,7 @@
               <label>Colaborador</label>
               <select class="modal-input" [(ngModel)]="nuevaAsignacion.empleadoId">
                 <option [ngValue]="null">Elija un empleado...</option>
-                @for (emp of empleadosDisponibles; track emp.empleadoId) {
+                @for (emp of empleadosDisponibles; track $index) {
                   <option [ngValue]="emp.empleadoId">{{ emp.nombreCompleto }}</option>
                 }
               </select>
@@ -232,7 +232,7 @@
               <label>Turno</label>
               <select class="modal-input" [(ngModel)]="nuevaAsignacion.turnoId">
                 <option [ngValue]="null">Elija un turno...</option>
-                @for (t of turnosSelect; track t.turnoId) {
+                @for (t of turnosSelect; track $index) {
                   <option [ngValue]="t.turnoId">{{ t.nombre }}</option>
                 }
               </select>

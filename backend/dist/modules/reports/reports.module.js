@@ -18,6 +18,7 @@ const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const vacacion_saldo_entity_1 = require("../../entities/vacacion-saldo.entity");
+const audit_log_entity_1 = require("../../entities/audit-log.entity");
 let ReportsModule = class ReportsModule {
 };
 exports.ReportsModule = ReportsModule;
@@ -32,6 +33,7 @@ exports.ReportsModule = ReportsModule = __decorate([
                 bono_resultado_entity_1.BonoResultado,
                 empleado_entity_1.Empleado,
                 vacacion_saldo_entity_1.VacacionSaldo,
+                audit_log_entity_1.AuditLog,
             ]),
         ],
         controllers: [reports_controller_1.ReportsController],
