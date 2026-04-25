@@ -62,13 +62,40 @@ let AuthService = class AuthService {
             relations: ['roles', 'empleado'],
         });
         if (!usuario) {
+            console.log(`[AUTH] Login fallido: Usuario inexistente ${loginDto.username}`);
+            await this.auditRepository.save({
+                modulo: 'AUTH',
+                accion: 'LOGIN_FAILED',
+                entidad: 'USUARIO',
+                detalle: `Intento de acceso fallido para usuario inexistente: ${loginDto.username} desde IP: ${ip}`,
+                fechaHora: new Date()
+            });
             throw new common_1.UnauthorizedException('Credenciales inválidas');
         }
         if (usuario.estado !== 'activo') {
+            await this.auditRepository.save({
+                usuarioId: usuario.usuarioId,
+                modulo: 'AUTH',
+                accion: 'LOGIN_BLOCKED',
+                entidad: 'USUARIO',
+                entidadId: usuario.usuarioId,
+                detalle: `Intento de acceso a cuenta suspendida: ${usuario.username} desde IP: ${ip}`,
+                fechaHora: new Date()
+            });
             throw new common_1.UnauthorizedException('Tu cuenta ha sido bloqueada o está inactiva. Contacta a RRHH.');
         }
         const isMatch = await bcrypt.compare(loginDto.password, usuario.passwordHash);
         if (!isMatch) {
+            console.log(`[AUTH] Login fallido: Contraseña incorrecta para ${usuario.username}`);
+            await this.auditRepository.save({
+                usuarioId: usuario.usuarioId,
+                modulo: 'AUTH',
+                accion: 'LOGIN_FAILED',
+                entidad: 'USUARIO',
+                entidadId: usuario.usuarioId,
+                detalle: `Contraseña incorrecta para usuario: ${usuario.username} desde IP: ${ip}`,
+                fechaHora: new Date()
+            });
             throw new common_1.UnauthorizedException('Credenciales inválidas');
         }
         const payload = {

@@ -10,9 +10,7 @@ export declare class AdminController {
     }>;
     getAssignments(): Promise<{
         id: number;
-        empleadoId: number;
         empleadoNombre: string;
-        turnoId: number;
         turnoNombre: string;
         fechaInicio: Date;
         fechaFin: Date;
@@ -20,9 +18,7 @@ export declare class AdminController {
     }[]>;
     assignShift(assignDto: any, req: any): Promise<{
         id: number;
-        empleadoId: number;
         empleadoNombre: string;
-        turnoId: number;
         turnoNombre: string;
         fechaInicio: Date;
         fechaFin: Date;
@@ -56,7 +52,7 @@ export declare class AdminController {
         permisosPendientes: number;
         vacacionesActivas: number;
         empleadosEnRiesgo: number;
-        empleadosConTurnoInactivo: number;
+        elegiblesBono: number;
     }>;
     getSupervisorDashboard(req: any): Promise<{
         empleadosACargo: number;

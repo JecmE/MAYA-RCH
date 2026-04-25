@@ -6,7 +6,8 @@ import {
   OnDestroy,
   ChangeDetectorRef,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
@@ -15,19 +16,21 @@ import { AttendanceService } from '../../services/attendance.service';
 import { KpiService, KpiDashboard } from '../../services/kpi.service';
 import { LeavesService } from '../../services/leaves.service';
 import { AdminService } from '../../services/admin.service';
-import { NoticesService, Aviso } from '../../services/notices.service';
+import { NoticesService, Notice } from '../../services/notices.service';
 
 type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
 export class Dashboard implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
+  private statsInterval?: any;
+
   marcaEstado: MarcaEstado = 'Pendiente';
   role = 'empleado';
   userName = '';
@@ -95,7 +98,7 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       });
 
-    // Actualizar reloj y disponibilidad cada 5 segundos para que sea reactivo
+    // Actualizar reloj y disponibilidad cada 5 segundos
     setInterval(() => {
       this.updateDateTime();
       if (this.marcaEstado === 'Pendiente') {
@@ -105,10 +108,18 @@ export class Dashboard implements OnInit, OnDestroy {
       }
       this.cdr.detectChanges();
     }, 5000);
+
+    // Actualizar estadísticas de admin cada 15 segundos
+    if (isPlatformBrowser(this.platformId) && this.role === 'admin') {
+      this.statsInterval = setInterval(() => {
+        this.loadDashboardStats();
+      }, 15000);
+    }
   }
 
   ngOnDestroy(): void {
     this.routerSubscription?.unsubscribe();
+    if (this.statsInterval) clearInterval(this.statsInterval);
   }
 
   private loadAllData(): void {
@@ -156,38 +167,41 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private addDynamicNotices(): void {
+    // Evitar duplicados
+    this.notices = this.notices.filter(n => n.persistent);
+
     if (this.marcaEstado === 'Entrada') {
-      this.notices.push({
-        title: 'Recordatorio de marcaje',
-        text: 'No olvides registrar tu salida al finalizar tu jornada.',
-        icon: '⏰',
-        color: 'blue'
-      });
+      this.notices.push({ title: 'Marcaje pendiente', text: 'Recuerda registrar tu salida al finalizar.', icon: '⏰', color: 'blue' });
     }
 
-    if (this.cumplimiento < 85 && this.cumplimiento > 0) {
-      this.notices.push({
-        title: 'Actualización de KPIs',
-        text: 'Tu rendimiento actual está por debajo de la meta. ¡Tú puedes mejorar!',
-        icon: '📊',
-        color: 'amber'
-      });
+    if (this.role === 'admin') {
+      if (this.adminStats.intentosFallidos > 0) {
+        this.notices.push({
+          title: 'Seguridad: Intentos Fallidos',
+          text: `Se han detectado ${this.adminStats.intentosFallidos} intentos fallidos de acceso hoy.`,
+          icon: '🛡️',
+          color: 'red'
+        });
+      }
+      if (this.adminStats.usuariosBloqueados > 0) {
+        this.notices.push({
+          title: 'Gestión de Cuentas',
+          text: `Hay ${this.adminStats.usuariosBloqueados} cuentas suspendidas que requieren revisión.`,
+          icon: '🔒',
+          color: 'amber'
+        });
+      }
     }
 
-    if (this.role === 'rrhh') {
-      if (this.rrhhStats.permisosPendientes > 0) {
-        this.notices.push({ title: 'Solicitudes en espera', text: `Hay ${this.rrhhStats.permisosPendientes} solicitudes pendientes de revisión.`, icon: '📝', color: 'blue' });
-      }
-      if (this.rrhhStats.empleadosEnRiesgo > 0) {
-        this.notices.push({ title: 'Alerta de Desempeño', text: `Se detectaron ${this.rrhhStats.empleadosEnRiesgo} empleados con bajo rendimiento.`, icon: '⚠️', color: 'red' });
-      }
+    if (this.role === 'rrhh' && this.rrhhStats.permisosPendientes > 0) {
+      this.notices.push({ title: 'Tareas de RRHH', text: `Tienes ${this.rrhhStats.permisosPendientes} solicitudes pendientes.`, icon: '📝', color: 'blue' });
     }
   }
 
   eliminarAviso(notice: any): void {
-    const noticeId = notice.id;
-    if (notice.persistent && noticeId) {
-      this.noticesService.deleteNotice(noticeId).subscribe(() => {
+    const id = notice.id || notice.avisoId;
+    if (notice.persistent && id) {
+      this.noticesService.deleteNotice(id).subscribe(() => {
         this.notices = this.notices.filter(n => n !== notice);
         this.cdr.detectChanges();
       });
@@ -209,25 +223,24 @@ export class Dashboard implements OnInit, OnDestroy {
       this.adminService.getAdminDashboardStats().subscribe({
         next: (stats) => {
           this.adminStats = stats;
+          this.addDynamicNotices();
           this.cdr.detectChanges();
-        },
-        error: () => {},
+        }
       });
     } else if (this.role === 'rrhh') {
       this.adminService.getRrhhDashboardStats().subscribe({
         next: (stats) => {
           this.rrhhStats = stats;
+          this.addDynamicNotices();
           this.cdr.detectChanges();
-        },
-        error: () => {},
+        }
       });
     } else if (this.role === 'supervisor') {
       this.adminService.getSupervisorDashboardStats().subscribe({
         next: (stats) => {
           this.supervisorStats = stats;
           this.cdr.detectChanges();
-        },
-        error: () => {},
+        }
       });
     }
   }
@@ -248,10 +261,8 @@ export class Dashboard implements OnInit, OnDestroy {
     this.authService.getCurrentUser().subscribe({
       next: (user: any) => {
         this.userName = this.sanitizeName(user.nombreCompleto || user.username || '');
-      },
-      error: () => {
-        this.userName = '';
-      },
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -278,12 +289,8 @@ export class Dashboard implements OnInit, OnDestroy {
           this.marcaEstado = 'Pendiente';
         }
 
-        this.horaEntradaReal = status.horaEntradaReal
-          ? this.formatTime(status.horaEntradaReal)
-          : '--:--';
-        this.horaSalidaReal = status.horaSalidaReal
-          ? this.formatTime(status.horaSalidaReal)
-          : '--:--';
+        this.horaEntradaReal = status.horaEntradaReal ? this.formatTime(status.horaEntradaReal) : '--:--';
+        this.horaSalidaReal = status.horaSalidaReal ? this.formatTime(status.horaSalidaReal) : '--:--';
         this.turnoNombre = status.turnoNombre || 'Sin turno';
         this.toleranciaMinutos = status.toleranciaMinutos || 0;
         this.horaEntradaTurno = status.horaEntradaTurno || '';
@@ -292,35 +299,26 @@ export class Dashboard implements OnInit, OnDestroy {
         if (status.estadoJornada === 'no_laboral') {
           this.esDiaLaboral = false;
           this.canCheckIn = false;
-          this.checkInDisabledReason = status.mensajeEstado || 'Hoy no es un día laborable para tu turno.';
+          this.canCheckOut = false;
+          this.checkInDisabledReason = status.mensajeEstado || 'Hoy no es un día laborable.';
         } else {
           this.esDiaLaboral = true;
-          if (!status.tieneEntrada && !status.tieneSalida) {
+          if (this.marcaEstado === 'Pendiente') {
             this.calculateCheckInAvailability();
             this.canCheckOut = false;
-            this.checkOutDisabledReason = '';
-          } else if (status.tieneEntrada && !status.tieneSalida) {
+          } else if (this.marcaEstado === 'Entrada') {
             this.canCheckIn = false;
-            this.checkInDisabledReason = '';
+            this.checkInDisabledReason = 'Entrada ya registrada.';
             this.calculateCheckOutAvailability();
-          } else {
+          } else if (this.marcaEstado === 'Completa') {
             this.canCheckIn = false;
-            this.checkOutDisabledReason = '';
+            this.canCheckOut = false;
+            this.checkInDisabledReason = 'Jornada finalizada por hoy.';
+            this.checkOutDisabledReason = 'Salida ya registrada.';
           }
         }
-
         this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.marcaEstado = 'Pendiente';
-        this.turnoNombre = 'Sin turno';
-        this.toleranciaMinutos = 0;
-        this.horaEntradaReal = '--:--';
-        this.horaSalidaReal = '--:--';
-        this.canCheckIn = false;
-        this.canCheckOut = false;
-        this.cdr.detectChanges();
-      },
+      }
     });
   }
 
@@ -330,31 +328,29 @@ export class Dashboard implements OnInit, OnDestroy {
     this.checkInDisabledReason = '';
 
     if (!this.esDiaLaboral) {
-      this.checkInDisabledReason = 'Hoy no es un día laborable para tu turno.';
+      this.checkInDisabledReason = 'Hoy no es un día laborable.';
       return;
     }
 
     if (!this.horaEntradaTurno) {
-      this.checkInDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';
+      this.checkInDisabledReason = 'No tienes turno asignado.';
       return;
     }
 
-    const [h, m, s] = this.horaEntradaTurno.split(':').map(Number);
-    const horaEntradaEsperada = new Date(now);
-    horaEntradaEsperada.setHours(h, m, s || 0, 0);
+    const [h, m] = this.horaEntradaTurno.split(':').map(Number);
+    const expected = new Date(now);
+    expected.setHours(h, m, 0, 0);
 
-    const horaEntradaMin = new Date(horaEntradaEsperada);
-    horaEntradaMin.setMinutes(horaEntradaMin.getMinutes() - 30);
+    const minTime = new Date(expected);
+    minTime.setMinutes(minTime.getMinutes() - 30);
 
-    const horaEntradaMax = new Date(horaEntradaEsperada);
-    horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + this.toleranciaMinutos);
+    const maxTime = new Date(expected);
+    maxTime.setMinutes(maxTime.getMinutes() + this.toleranciaMinutos);
 
-    if (now < horaEntradaMin) {
-      const horaHabilitacion = this.formatShiftTime(this.getFormattedTime(horaEntradaMin));
-      this.checkInDisabledReason = `Podrás marcar entrada a partir de las ${horaHabilitacion}`;
-    } else if (now > horaEntradaMax) {
-      const horaLimite = this.formatShiftTime(this.getFormattedTime(horaEntradaMax));
-      this.checkInDisabledReason = `Límite excedido (${horaLimite}). Contacta a tu supervisor.`;
+    if (now < minTime) {
+      this.checkInDisabledReason = `Marcaje disponible desde las ${this.formatShiftTime(this.getFormattedTime(minTime))}`;
+    } else if (now > maxTime) {
+      this.checkInDisabledReason = `Límite excedido (${this.formatShiftTime(this.getFormattedTime(maxTime))})`;
     } else {
       this.canCheckIn = true;
     }
@@ -365,25 +361,23 @@ export class Dashboard implements OnInit, OnDestroy {
     this.canCheckOut = false;
     this.checkOutDisabledReason = '';
 
-    if (!this.horaSalidaTurno || !this.horaEntradaTurno) {
-      this.checkOutDisabledReason = 'No tienes turno asignado. Contacta a tu supervisor.';
+    if (!this.horaSalidaTurno) {
+      this.checkOutDisabledReason = 'No tienes turno asignado.';
       return;
     }
 
-    const [hSal, mSal, sSal] = this.horaSalidaTurno.split(':').map(Number);
-    const [hEnt, mEnt] = this.horaEntradaTurno.split(':').map(Number);
+    const [hSal, mSal] = this.horaSalidaTurno.split(':').map(Number);
+    const [hEnt] = this.horaEntradaTurno.split(':').map(Number);
 
-    let horaSalidaEsperada = new Date(now);
-    horaSalidaEsperada.setHours(hSal, mSal, sSal || 0, 0);
+    let expectedSal = new Date(now);
+    expectedSal.setHours(hSal, mSal, 0, 0);
 
-    if (this.isNocturnalShift()) {
-      if (now.getHours() >= hEnt) {
-        horaSalidaEsperada.setDate(horaSalidaEsperada.getDate() + 1);
-      }
+    if (this.isNocturnalShift() && now.getHours() >= hEnt) {
+      expectedSal.setDate(expectedSal.getDate() + 1);
     }
 
-    if (now < horaSalidaEsperada) {
-      this.checkOutDisabledReason = `Podrás marcar salida a partir de las ${this.formatShiftTime(this.horaSalidaTurno)}${this.isNocturnalShift() && now.getHours() >= hEnt ? ' (Mañana)' : ''}.`;
+    if (now < expectedSal) {
+      this.checkOutDisabledReason = `Salida disponible desde las ${this.formatShiftTime(this.horaSalidaTurno)}`;
     } else {
       this.canCheckOut = true;
     }
@@ -401,24 +395,20 @@ export class Dashboard implements OnInit, OnDestroy {
         this.cumplimiento = kpi.cumplimientoPct || 0;
         this.clasificacion = kpi.clasificacion || 'N/A';
         this.cdr.detectChanges();
-      },
-      error: () => {},
+      }
     });
 
     this.leavesService.getMyRequests().subscribe({
       next: (requests: any[]) => {
         this.permisosPendientes = requests.filter((r) => r.estado === 'pendiente').length;
         this.cdr.detectChanges();
-      },
-      error: () => {},
+      }
     });
   }
 
   private formatTime(time: string): string {
     if (!time) return '--:--';
-    if (time.includes('T')) {
-      return new Date(time).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
-    }
+    if (time.includes('T')) return new Date(time).toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
     return time.substring(0, 5);
   }
 
@@ -431,18 +421,14 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   getWelcomeName(): string {
-    if (this.userName) return this.userName;
-    if (this.role === 'admin') return 'Administrador del Sistema';
-    if (this.role === 'rrhh') return 'Usuario RRHH';
-    if (this.role === 'supervisor') return 'Supervisor';
-    return 'Empleado';
+    return this.userName || 'Usuario';
   }
 
   isNocturnalShift(): boolean {
     if (!this.horaEntradaTurno || !this.horaSalidaTurno) return false;
-    const [hEnt, mEnt] = this.horaEntradaTurno.split(':').map(Number);
-    const [hSal, mSal] = this.horaSalidaTurno.split(':').map(Number);
-    return hSal < hEnt || (hSal === hEnt && mSal < mEnt);
+    const [hEnt] = this.horaEntradaTurno.split(':').map(Number);
+    const [hSal] = this.horaSalidaTurno.split(':').map(Number);
+    return hSal < hEnt;
   }
 
   marcarEntrada(): void {
@@ -454,15 +440,9 @@ export class Dashboard implements OnInit, OnDestroy {
     this.attendanceService.checkIn().subscribe({
       next: (response: any) => {
         this.marcaEstado = 'Entrada';
-        if (response.asistencia?.horaEntradaReal) {
-          this.horaEntradaReal = this.formatTime(response.asistencia.horaEntradaReal);
-        }
         this.marcaSuccess = 'Entrada registrada correctamente';
-        this.canCheckIn = false;
-        this.checkInDisabledReason = '';
-        this.calculateCheckOutAvailability();
+        this.loadTodayStatus();
         this.isCheckingIn = false;
-        this.loadKpiData();
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -482,14 +462,9 @@ export class Dashboard implements OnInit, OnDestroy {
     this.attendanceService.checkOut().subscribe({
       next: (response: any) => {
         this.marcaEstado = 'Completa';
-        if (response.asistencia?.horaSalidaReal) {
-          this.horaSalidaReal = this.formatTime(response.asistencia.horaSalidaReal);
-        }
         this.marcaSuccess = 'Salida registrada correctamente';
-        this.canCheckIn = false;
-        this.canCheckOut = false;
+        this.loadTodayStatus();
         this.isCheckingOut = false;
-        this.loadKpiData();
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -501,25 +476,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    this.authService.logout().subscribe({
-      complete: () => {
-        this.authService.clearToken();
-        if (isPlatformBrowser(this.platformId)) {
-          localStorage.removeItem('userRole');
-          localStorage.removeItem('usuarioId');
-          localStorage.removeItem('empleadoId');
-        }
-        this.router.navigate(['/login']);
-      },
-      error: () => {
-        this.authService.clearToken();
-        if (isPlatformBrowser(this.platformId)) {
-          localStorage.removeItem('userRole');
-          localStorage.removeItem('usuarioId');
-          localStorage.removeItem('empleadoId');
-        }
-        this.router.navigate(['/login']);
-      },
-    });
+    localStorage.clear();
+    this.router.navigate(['/login']);
   }
 }

@@ -35,6 +35,20 @@ export declare class AdminService implements OnModuleInit {
     constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>, bonoResultadoRepository: Repository<BonoResultado>, dataSource: DataSource);
     onModuleInit(): Promise<void>;
     private ensureCorrectTableStructures;
+    logAction(dto: {
+        modulo: string;
+        accion: string;
+        entidad: string;
+        entidadId?: number;
+        detalle: string;
+    }, uid: number): Promise<{
+        usuarioId: number;
+        modulo: string;
+        accion: string;
+        entidad: string;
+        entidadId?: number;
+        detalle: string;
+    } & AuditLog>;
     getShifts(): Promise<Turno[]>;
     createShift(dto: any, uid: number): Promise<Turno[]>;
     updateShift(id: number, dto: any, uid: number): Promise<Turno[]>;
@@ -43,9 +57,7 @@ export declare class AdminService implements OnModuleInit {
     }>;
     getAssignments(): Promise<{
         id: number;
-        empleadoId: number;
         empleadoNombre: string;
-        turnoId: number;
         turnoNombre: string;
         fechaInicio: Date;
         fechaFin: Date;
@@ -53,9 +65,7 @@ export declare class AdminService implements OnModuleInit {
     }[]>;
     assignShift(dto: any, uid: number): Promise<{
         id: number;
-        empleadoId: number;
         empleadoNombre: string;
-        turnoId: number;
         turnoNombre: string;
         fechaInicio: Date;
         fechaFin: Date;
@@ -65,7 +75,7 @@ export declare class AdminService implements OnModuleInit {
     createBonusRule(dto: any, uid: number): Promise<ReglaBono[]>;
     updateBonusRule(id: number, dto: any, uid: number): Promise<ReglaBono[]>;
     deleteBonusRule(id: number, uid: number): Promise<ReglaBono[]>;
-    runBonusEvaluation(mes: number, anio: number, usuarioId: number): Promise<{
+    runBonusEvaluation(mes: number, anio: number, uid: number): Promise<{
         message: string;
     }>;
     getAuditLogs(fi?: string, ff?: string, uid?: number, mod?: string): Promise<AuditLog[]>;
@@ -83,7 +93,7 @@ export declare class AdminService implements OnModuleInit {
         permisosPendientes: number;
         vacacionesActivas: number;
         empleadosEnRiesgo: number;
-        empleadosConTurnoInactivo: number;
+        elegiblesBono: number;
     }>;
     getSupervisorDashboardStats(sid: number): Promise<{
         empleadosACargo: number;
@@ -92,6 +102,15 @@ export declare class AdminService implements OnModuleInit {
         kpiPromedio: number;
     }>;
     getRoles(): Promise<Rol[]>;
+    getUsers(): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+    }[]>;
     getKpiParameters(): Promise<{}>;
     updateKpiParameters(dto: any, uid: number): Promise<{}>;
 }
