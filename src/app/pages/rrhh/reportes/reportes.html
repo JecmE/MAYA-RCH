@@ -1,165 +1,127 @@
 <div class="reports-page">
   <main class="reports-main">
 
-    <div class="success-alert" *ngIf="mostrarMensajeExito">
-      <span class="success-alert__icon">✓</span>
-      <span>{{ mensajeExito }}</span>
-    </div>
+    @if (mostrarMensajeExito) {
+      <div class="success-alert">
+        <span class="success-alert__icon">✓</span>
+        <span>{{ mensajeExito }}</span>
+      </div>
+    }
 
     <div class="page-header">
+      <button type="button" (click)="goBack()" class="back-button">←</button>
       <div class="page-header__content">
-        <h2 class="page-title">Reportes</h2>
-        <p class="page-subtitle">Centraliza la generación de reportes exportables.</p>
+        <h2 class="page-title">Generación de Reportes</h2>
+        <p class="page-subtitle">Consolida la información de asistencia, proyectos y saldos de personal.</p>
       </div>
     </div>
 
-    <div class="reports-layout">
-      <section class="config-card">
-        <h3 class="card-title">Configuración de Reporte</h3>
+    <div class="reports-grid">
+      <!-- Panel de Configuración -->
+      <section class="config-panel">
+        <div class="panel-card">
+          <h3 class="panel-card__title">Parámetros del Reporte</h3>
 
-        <div class="form-stack">
-          <div class="form-field">
-            <label>Tipo de Reporte</label>
-            <select
-              class="form-control"
-              [(ngModel)]="tipoReporteSeleccionado"
-            >
-              <option value="">Seleccionar reporte...</option>
-              @for (reporte of reportesDisponibles; track reporte.id) {
-                <option [value]="reporte.nombre">{{ reporte.nombre }}</option>
+          <div class="form-group">
+            <label class="form-label">Tipo de Reporte</label>
+            <select class="form-select" [(ngModel)]="tipoReporteSeleccionado">
+              <option value="" disabled selected>Seleccione un reporte...</option>
+              @for (rep of reportesDisponibles; track rep.id) {
+                <option [value]="rep.nombre">{{ rep.nombre }}</option>
               }
             </select>
+            @if (tipoReporteSeleccionado) {
+              <p class="report-desc">{{ reportesDisponibles.find(r => r.nombre === tipoReporteSeleccionado)?.descripcion }}</p>
+            }
           </div>
 
-          <div class="form-grid form-grid--2">
-            <div class="form-field">
-              <label>Desde</label>
-              <input
-                type="date"
-                class="form-control"
-                [(ngModel)]="fechaDesde"
-              />
+          <div class="form-row date-row">
+            <div class="form-group flex-1">
+              <label class="form-label">Desde</label>
+              <input type="date" class="form-input" [(ngModel)]="fechaDesde" />
             </div>
-
-            <div class="form-field">
-              <label>Hasta</label>
-              <input
-                type="date"
-                class="form-control"
-                [(ngModel)]="fechaHasta"
-              />
+            <div class="form-group flex-1">
+              <label class="form-label">Hasta</label>
+              <input type="date" class="form-input" [(ngModel)]="fechaHasta" />
             </div>
           </div>
 
-          <div class="form-field">
-            <label>Departamento (Opcional)</label>
-            <select
-              class="form-control"
-              [(ngModel)]="departamentoSeleccionado"
-            >
-              @for (departamento of departamentos; track departamento) {
-                <option [value]="departamento">{{ departamento }}</option>
+          <div class="form-group">
+            <label class="form-label">Departamento</label>
+            <select class="form-select" [(ngModel)]="departamentoSeleccionado">
+              @for (dep of departamentos; track $index) {
+                <option [value]="dep">{{ dep }}</option>
               }
             </select>
           </div>
 
-          <div class="form-field">
-            <label>Proyecto (Opcional)</label>
-            <select
-              class="form-control"
-              [(ngModel)]="proyectoSeleccionado"
-            >
-              @for (proyecto of proyectos; track proyecto) {
-                <option [value]="proyecto">{{ proyecto }}</option>
-              }
-            </select>
-          </div>
+          @if (tipoReporteSeleccionado === 'Horas por Proyecto') {
+            <div class="form-group">
+              <label class="form-label">Proyecto</label>
+              <select class="form-select" [(ngModel)]="proyectoSeleccionado">
+                @for (p of proyectosList; track $index) {
+                  <option [value]="p">{{ p }}</option>
+                }
+              </select>
+            </div>
+          }
 
-          <button
-            type="button"
-            class="preview-button"
-            (click)="generarVistaPrevia()"
-          >
-            <span class="button-icon">⌕</span>
-            <span>Generar Vista Previa</span>
+          <button class="btn-generate" (click)="generarVistaPrevia()">
+            Generar Vista Previa
           </button>
         </div>
       </section>
 
-      <section class="preview-card">
-        <div class="preview-card__header">
-          <h3 class="preview-title">
-            <span class="preview-title__icon">📄</span>
-            <span>Vista Previa</span>
-          </h3>
-
-          <div class="preview-actions">
-            <button
-              type="button"
-              class="export-button export-button--excel"
-              (click)="exportarExcel()"
-              [disabled]="!reporteVistaPrevia"
-            >
-              <span class="button-icon">▦</span>
-              <span>Excel</span>
-            </button>
-
-            <button
-              type="button"
-              class="export-button export-button--pdf"
-              (click)="exportarPdf()"
-              [disabled]="!reporteVistaPrevia"
-            >
-              <span class="button-icon">⤓</span>
-              <span>PDF</span>
-            </button>
+      <!-- Panel de Vista Previa -->
+      <section class="preview-panel">
+        <div class="panel-card flex-col">
+          <div class="preview-header">
+            <h3 class="panel-card__title">Vista Previa</h3>
+            @if (vistaPreviaGenerada && dataPreview.length > 0) {
+              <div class="export-actions">
+                <button class="btn-export btn-export--excel" (click)="exportarExcel()">Excel</button>
+                <button class="btn-export btn-export--pdf" (click)="exportarPdf()">PDF</button>
+              </div>
+            }
           </div>
-        </div>
 
-        <div class="preview-card__body" *ngIf="!vistaPreviaGenerada || !reporteVistaPrevia">
-          <div class="empty-preview">
-            <div class="empty-preview__icon">📄</div>
-            <h4>No hay datos generados</h4>
-            <p>
-              Configura los parámetros en el panel izquierdo y haz clic en
-              "Generar Vista Previa" para cargar los resultados.
-            </p>
-          </div>
-        </div>
-
-        <div class="preview-card__body preview-card__body--content" *ngIf="vistaPreviaGenerada && reporteVistaPrevia">
-          <div class="preview-result">
-            <div class="preview-result__section">
-              <p class="preview-result__label">Reporte seleccionado</p>
-              <h4 class="preview-result__title">{{ reporteVistaPrevia.nombre }}</h4>
-              <p class="preview-result__description">{{ reporteVistaPrevia.descripcion }}</p>
-            </div>
-
-            <div class="preview-summary-grid">
-              <div class="summary-item">
-                <span class="summary-item__label">Desde</span>
-                <span class="summary-item__value">{{ fechaDesde || 'No definido' }}</span>
+          <div class="preview-content">
+            @if (!vistaPreviaGenerada) {
+              <div class="empty-state">
+                <span class="empty-icon">📊</span>
+                <p>Seleccione los parámetros y genere el reporte para visualizar la data aquí.</p>
               </div>
-
-              <div class="summary-item">
-                <span class="summary-item__label">Hasta</span>
-                <span class="summary-item__value">{{ fechaHasta || 'No definido' }}</span>
+            } @else if (isLoading) {
+              <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Consultando base de datos...</p>
               </div>
-
-              <div class="summary-item">
-                <span class="summary-item__label">Departamento</span>
-                <span class="summary-item__value">{{ departamentoSeleccionado }}</span>
+            } @else if (dataPreview.length === 0) {
+              <div class="empty-state">
+                <p>No se encontraron registros para los filtros seleccionados.</p>
               </div>
-
-              <div class="summary-item">
-                <span class="summary-item__label">Proyecto</span>
-                <span class="summary-item__value">{{ proyectoSeleccionado }}</span>
+            } @else {
+              <div class="table-scroll">
+                <table class="preview-table">
+                  <thead>
+                    <tr>
+                      @for (header of headersPreview; track $index) {
+                        <th>{{ header }}</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of dataPreview; track $index) {
+                      <tr>
+                        @for (cell of row; track $index) {
+                          <td>{{ cell }}</td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
-            </div>
-
-            <div class="preview-note">
-              Esta es una vista previa simulada del reporte. Desde aquí puedes exportar la información en Excel o PDF.
-            </div>
+            }
           </div>
         </div>
       </section>

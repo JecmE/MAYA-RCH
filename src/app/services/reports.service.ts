@@ -4,34 +4,27 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface MonthlyAttendanceReport {
-  empleadoId: number;
   nombreCompleto: string;
-  codigoEmpleado: string;
   departamento: string;
-  diasTrabajados: number;
+  diasAsistidos: number;
   tardias: number;
-  faltas: number;
-  horasTrabajadas: number;
+  horasTrabajadasTotal: number;
 }
 
 export interface BonusEligibilityReport {
-  empleadoId: number;
   nombreCompleto: string;
   departamento: string;
-  reglaBonoId: number;
   reglaNombre: string;
   elegible: boolean;
+  cumplimientoPct: number;
   monto: number;
-  motivoNoElegible?: string;
 }
 
 export interface ProjectHoursReport {
-  proyectoId: number;
   proyectoNombre: string;
-  empleadoId: number;
+  proyectoCodigo: string;
   nombreEmpleado: string;
   horasTotales: number;
-  horasValidadas: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -40,25 +33,31 @@ export class ReportsService {
 
   constructor(private http: HttpClient) {}
 
-  getMonthlyAttendance(anio: number, mes: number): Observable<MonthlyAttendanceReport[]> {
+  getMonthlyAttendance(fechaInicio: string, fechaFin: string, departamento?: string): Observable<MonthlyAttendanceReport[]> {
     return this.http.get<MonthlyAttendanceReport[]>(`${this.apiUrl}/monthly-attendance`, {
-      params: { anio, mes },
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos' },
     });
   }
 
-  getBonusEligibility(anio: number, mes: number): Observable<BonusEligibilityReport[]> {
+  getBonusEligibility(anio: number, mes: number, departamento?: string): Observable<BonusEligibilityReport[]> {
     return this.http.get<BonusEligibilityReport[]>(`${this.apiUrl}/bonus-eligibility`, {
-      params: { anio, mes },
+      params: { anio, mes, departamento: departamento || 'Todos' },
     });
   }
 
-  getProjectHours(
-    proyectoId: number,
-    fechaInicio: string,
-    fechaFin: string,
-  ): Observable<ProjectHoursReport[]> {
+  getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<ProjectHoursReport[]> {
     return this.http.get<ProjectHoursReport[]>(`${this.apiUrl}/project-hours`, {
-      params: { proyectoId, fechaInicio, fechaFin },
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' },
     });
+  }
+
+  getVacationBalances(fechaInicio: string, fechaFin: string, departamento?: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/vacation-balances`, {
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos' }
+    });
+  }
+
+  getDepartments(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/departments`);
   }
 }

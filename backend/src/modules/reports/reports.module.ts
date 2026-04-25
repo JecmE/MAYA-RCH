@@ -8,6 +8,7 @@ import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { Empleado } from '../../entities/empleado.entity';
+import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Empleado } from '../../entities/empleado.entity';
       KpiMensual,
       BonoResultado,
       Empleado,
+      VacacionSaldo,
     ]),
   ],
   controllers: [ReportsController],

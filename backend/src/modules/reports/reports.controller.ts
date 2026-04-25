@@ -11,19 +11,48 @@ export class ReportsController {
 
   @Get('monthly-attendance')
   @Roles('RRHH', 'Administrador')
-  getMonthlyAttendance(@Query('mes') mes: number, @Query('anio') anio: number) {
-    return this.reportsService.getMonthlyAttendance(mes, anio);
+  getMonthlyAttendance(
+    @Query('fechaInicio') fechaInicio: string,
+    @Query('fechaFin') fechaFin: string,
+    @Query('departamento') departamento?: string
+  ) {
+    return this.reportsService.getMonthlyAttendance(fechaInicio, fechaFin, departamento);
   }
 
   @Get('bonus-eligibility')
   @Roles('RRHH', 'Administrador')
-  getBonusEligibility(@Query('mes') mes: number, @Query('anio') anio: number) {
-    return this.reportsService.getBonusEligibility(mes, anio);
+  getBonusEligibility(
+    @Query('mes') mes: number,
+    @Query('anio') anio: number,
+    @Query('departamento') departamento?: string
+  ) {
+    return this.reportsService.getBonusEligibility(mes, anio, departamento);
   }
 
   @Get('project-hours')
   @Roles('RRHH', 'Administrador')
-  getProjectHours(@Query('fechaInicio') fechaInicio: string, @Query('fechaFin') fechaFin: string) {
-    return this.reportsService.getProjectHours(fechaInicio, fechaFin);
+  getProjectHours(
+    @Query('fechaInicio') fechaInicio: string,
+    @Query('fechaFin') fechaFin: string,
+    @Query('departamento') departamento?: string,
+    @Query('proyecto') proyecto?: string
+  ) {
+    return this.reportsService.getProjectHours(fechaInicio, fechaFin, departamento, proyecto);
+  }
+
+  @Get('vacation-balances')
+  @Roles('RRHH', 'Administrador')
+  getVacationBalances(
+    @Query('fechaInicio') fechaInicio: string,
+    @Query('fechaFin') fechaFin: string,
+    @Query('departamento') departamento?: string
+  ) {
+    return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento);
+  }
+
+  @Get('departments')
+  @Roles('RRHH', 'Administrador')
+  getDepartments() {
+    return this.reportsService.getUniqueDepartments();
   }
 }

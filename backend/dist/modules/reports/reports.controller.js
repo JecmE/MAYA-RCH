@@ -22,24 +22,31 @@ let ReportsController = class ReportsController {
     constructor(reportsService) {
         this.reportsService = reportsService;
     }
-    getMonthlyAttendance(mes, anio) {
-        return this.reportsService.getMonthlyAttendance(mes, anio);
+    getMonthlyAttendance(fechaInicio, fechaFin, departamento) {
+        return this.reportsService.getMonthlyAttendance(fechaInicio, fechaFin, departamento);
     }
-    getBonusEligibility(mes, anio) {
-        return this.reportsService.getBonusEligibility(mes, anio);
+    getBonusEligibility(mes, anio, departamento) {
+        return this.reportsService.getBonusEligibility(mes, anio, departamento);
     }
-    getProjectHours(fechaInicio, fechaFin) {
-        return this.reportsService.getProjectHours(fechaInicio, fechaFin);
+    getProjectHours(fechaInicio, fechaFin, departamento, proyecto) {
+        return this.reportsService.getProjectHours(fechaInicio, fechaFin, departamento, proyecto);
+    }
+    getVacationBalances(fechaInicio, fechaFin, departamento) {
+        return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento);
+    }
+    getDepartments() {
+        return this.reportsService.getUniqueDepartments();
     }
 };
 exports.ReportsController = ReportsController;
 __decorate([
     (0, common_1.Get)('monthly-attendance'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
-    __param(0, (0, common_1.Query)('mes')),
-    __param(1, (0, common_1.Query)('anio')),
+    __param(0, (0, common_1.Query)('fechaInicio')),
+    __param(1, (0, common_1.Query)('fechaFin')),
+    __param(2, (0, common_1.Query)('departamento')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getMonthlyAttendance", null);
 __decorate([
@@ -47,8 +54,9 @@ __decorate([
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __param(0, (0, common_1.Query)('mes')),
     __param(1, (0, common_1.Query)('anio')),
+    __param(2, (0, common_1.Query)('departamento')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [Number, Number, String]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getBonusEligibility", null);
 __decorate([
@@ -56,10 +64,29 @@ __decorate([
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __param(0, (0, common_1.Query)('fechaInicio')),
     __param(1, (0, common_1.Query)('fechaFin')),
+    __param(2, (0, common_1.Query)('departamento')),
+    __param(3, (0, common_1.Query)('proyecto')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getProjectHours", null);
+__decorate([
+    (0, common_1.Get)('vacation-balances'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Query)('fechaInicio')),
+    __param(1, (0, common_1.Query)('fechaFin')),
+    __param(2, (0, common_1.Query)('departamento')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getVacationBalances", null);
+__decorate([
+    (0, common_1.Get)('departments'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ReportsController.prototype, "getDepartments", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, common_1.Controller)('reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
