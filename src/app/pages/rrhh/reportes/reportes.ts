@@ -4,8 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   ReportsService,
-  MonthlyAttendanceReport,
-  ProjectHoursReport,
 } from '../../../services/reports.service';
 import { ProjectsService } from '../../../services/projects.service';
 import jsPDF from 'jspdf';
@@ -81,23 +79,22 @@ export class Reportes implements OnInit {
     this.vistaPreviaGenerada = true;
     this.dataPreview = [];
 
-    const dDesde = new Date(this.fechaDesde);
-    const month = dDesde.getMonth() + 1;
-    const year = dDesde.getFullYear();
-
     if (rep?.id === 1) { // Asistencia
       this.headersPreview = ['Empleado', 'Dep.', 'Días Asis.', 'Tardías', 'Horas Totales'];
       this.reportsService.getMonthlyAttendance(this.fechaDesde, this.fechaHasta, this.departamentoSeleccionado).subscribe({
         next: (data) => {
-          this.dataPreview = data.map(r => [r.nombreCompleto, r.departamento, r.diasAsistidos, r.tardias, (r.horasTrabajadasTotal || 0) + 'h']);
+          const mapped = data.map(r => [r.nombreCompleto, r.departamento, r.diasAsistidos, r.tardias, (r.horasTrabajadasTotal || 0) + 'h']);
+          const totalHours = data.reduce((sum, r) => sum + Number(r.horasTrabajadasTotal || 0), 0);
+          mapped.push(['TOTAL GENERAL', '-', '-', '-', totalHours.toFixed(1) + 'h']);
+          this.dataPreview = mapped;
           this.isLoading = false;
           this.cdr.detectChanges();
         },
         error: () => this.isLoading = false
       });
-    } else if (rep?.id === 2) { // Vacaciones (USA RANGO REAL)
+    } else if (rep?.id === 2) { // Vacaciones
       this.headersPreview = ['Empleado', 'Departamento', 'Disponibles', 'Usados en Rango', 'Total Acum.'];
-      this.reportsService.getVacationBalances(this.fechaDesde, this.fechaHasta, this.departamentoSeleccionado).subscribe({
+      this.reportsService.getVacationBalances(this.fechaDesde, this.fechaHasta, this.departamentoSeleccionado, 'Todos los proyectos').subscribe({
         next: (data) => {
           this.dataPreview = data.map(r => [r.nombreCompleto, r.departamento, r.diasDisponibles, r.diasUsados, r.totalAcumulado]);
           this.isLoading = false;
@@ -107,19 +104,30 @@ export class Reportes implements OnInit {
       });
     } else if (rep?.id === 3) { // Proyectos
       this.headersPreview = ['Proyecto', 'Código', 'Empleado', 'Horas'];
-      this.reportsService.getProjectHours(this.fechaDesde, this.fechaHasta, this.departamentoSeleccionado, this.proyectoSeleccionado).subscribe({
+      this.reportsService.getProjectHours(this.fechaDesde, this.fechaHasta, 'Todos', this.proyectoSeleccionado).subscribe({
         next: (data) => {
-          this.dataPreview = data.map(r => [r.proyectoNombre, r.proyectoCodigo, r.nombreEmpleado, (r.horasTotales || 0) + 'h']);
+          const mapped = data.map(r => [r.proyectoNombre, r.proyectoCodigo, r.nombreEmpleado, (r.horasTotales || 0) + 'h']);
+          const totalHours = data.reduce((sum, r) => sum + Number(r.horasTotales || 0), 0);
+          if (mapped.length > 0) {
+            mapped.push(['TOTAL PROYECTO', '-', '-', totalHours.toFixed(2) + 'h']);
+          }
+          this.dataPreview = mapped;
           this.isLoading = false;
           this.cdr.detectChanges();
         },
         error: () => this.isLoading = false
       });
-    } else if (rep?.id === 4) { // Bonos
-      this.headersPreview = ['Empleado', 'Regla', 'Cumplimiento', 'Estado', 'Monto'];
-      this.reportsService.getBonusEligibility(month, year, this.departamentoSeleccionado).subscribe({
+    } else if (rep?.id === 4) { // Bonos (USA RANGO)
+      this.headersPreview = ['Empleado', 'Dep.', 'Cumplimiento', 'Estado', 'Monto'];
+      this.reportsService.getBonusEligibilityRange(this.fechaDesde, this.fechaHasta, this.departamentoSeleccionado).subscribe({
         next: (data) => {
-          this.dataPreview = data.map(r => [r.nombreCompleto, r.reglaNombre, r.cumplimientoPct + '%', r.elegible ? 'Elegible' : 'No', 'Q' + r.monto]);
+          this.dataPreview = data.map(r => [
+            r.nombreCompleto,
+            r.departamento,
+            Number(r.cumplimientoPct).toFixed(1) + '%',
+            r.elegible ? 'Elegible' : 'No elegible',
+            'Q' + Number(r.monto || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})
+          ]);
           this.isLoading = false;
           this.cdr.detectChanges();
         },
@@ -159,7 +167,11 @@ export class Reportes implements OnInit {
 
     this.dataPreview.forEach(row => {
       if (y > 270) { doc.addPage(); y = 20; }
-      row.forEach((cell:any, i:number) => doc.text(String(cell), 14 + (i * 38), y));
+      row.forEach((cell:any, i:number) => {
+        if (String(row[0]).includes('TOTAL')) doc.setFont("helvetica", "bold");
+        else doc.setFont("helvetica", "normal");
+        doc.text(String(cell), 14 + (i * 38), y);
+      });
       y += 8;
     });
 

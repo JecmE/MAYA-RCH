@@ -25,14 +25,17 @@ let ReportsController = class ReportsController {
     getMonthlyAttendance(fechaInicio, fechaFin, departamento) {
         return this.reportsService.getMonthlyAttendance(fechaInicio, fechaFin, departamento);
     }
-    getBonusEligibility(mes, anio, departamento) {
-        return this.reportsService.getBonusEligibility(mes, anio, departamento);
+    getBonusEligibility(mes, anio, fechaInicio, fechaFin, departamento, proyecto) {
+        if (fechaInicio && fechaFin) {
+            return this.reportsService.getBonusEligibilityByRange(fechaInicio, fechaFin, departamento, proyecto);
+        }
+        return this.reportsService.getBonusEligibility(Number(mes), Number(anio), departamento);
     }
     getProjectHours(fechaInicio, fechaFin, departamento, proyecto) {
         return this.reportsService.getProjectHours(fechaInicio, fechaFin, departamento, proyecto);
     }
-    getVacationBalances(fechaInicio, fechaFin, departamento) {
-        return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento);
+    getVacationBalances(fechaInicio, fechaFin, departamento, proyecto) {
+        return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento, proyecto);
     }
     getDepartments() {
         return this.reportsService.getUniqueDepartments();
@@ -54,9 +57,12 @@ __decorate([
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __param(0, (0, common_1.Query)('mes')),
     __param(1, (0, common_1.Query)('anio')),
-    __param(2, (0, common_1.Query)('departamento')),
+    __param(2, (0, common_1.Query)('fechaInicio')),
+    __param(3, (0, common_1.Query)('fechaFin')),
+    __param(4, (0, common_1.Query)('departamento')),
+    __param(5, (0, common_1.Query)('proyecto')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number, String]),
+    __metadata("design:paramtypes", [Number, Number, String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getBonusEligibility", null);
 __decorate([
@@ -76,8 +82,9 @@ __decorate([
     __param(0, (0, common_1.Query)('fechaInicio')),
     __param(1, (0, common_1.Query)('fechaFin')),
     __param(2, (0, common_1.Query)('departamento')),
+    __param(3, (0, common_1.Query)('proyecto')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", void 0)
 ], ReportsController.prototype, "getVacationBalances", null);
 __decorate([

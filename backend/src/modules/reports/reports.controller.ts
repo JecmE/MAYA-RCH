@@ -22,11 +22,17 @@ export class ReportsController {
   @Get('bonus-eligibility')
   @Roles('RRHH', 'Administrador')
   getBonusEligibility(
-    @Query('mes') mes: number,
-    @Query('anio') anio: number,
-    @Query('departamento') departamento?: string
+    @Query('mes') mes?: number,
+    @Query('anio') anio?: number,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+    @Query('departamento') departamento?: string,
+    @Query('proyecto') proyecto?: string
   ) {
-    return this.reportsService.getBonusEligibility(mes, anio, departamento);
+    if (fechaInicio && fechaFin) {
+      return this.reportsService.getBonusEligibilityByRange(fechaInicio, fechaFin, departamento, proyecto);
+    }
+    return this.reportsService.getBonusEligibility(Number(mes), Number(anio), departamento);
   }
 
   @Get('project-hours')
@@ -45,9 +51,10 @@ export class ReportsController {
   getVacationBalances(
     @Query('fechaInicio') fechaInicio: string,
     @Query('fechaFin') fechaFin: string,
-    @Query('departamento') departamento?: string
+    @Query('departamento') departamento?: string,
+    @Query('proyecto') proyecto?: string
   ) {
-    return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento);
+    return this.reportsService.getVacationReport(fechaInicio, fechaFin, departamento, proyecto);
   }
 
   @Get('departments')

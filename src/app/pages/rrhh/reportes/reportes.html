@@ -46,14 +46,16 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Departamento</label>
-            <select class="form-select" [(ngModel)]="departamentoSeleccionado">
-              @for (dep of departamentos; track $index) {
-                <option [value]="dep">{{ dep }}</option>
-              }
-            </select>
-          </div>
+          @if (tipoReporteSeleccionado !== 'Horas por Proyecto') {
+            <div class="form-group">
+              <label class="form-label">Departamento</label>
+              <select class="form-select" [(ngModel)]="departamentoSeleccionado">
+                @for (dep of departamentos; track $index) {
+                  <option [value]="dep">{{ dep }}</option>
+                }
+              </select>
+            </div>
+          }
 
           @if (tipoReporteSeleccionado === 'Horas por Proyecto') {
             <div class="form-group">

@@ -39,16 +39,13 @@ let ReportsService = class ReportsService {
         const fI = `${fechaInicio} 00:00:00`;
         const fF = `${fechaFin} 23:59:59`;
         let query = `
-      SELECT
-        e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+      SELECT e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
         ISNULL(stats.diasAsistidos, 0) as diasAsistidos,
         ISNULL(stats.tardias, 0) as tardias,
         ISNULL(stats.horasTotales, 0) as horasTrabajadasTotal
       FROM EMPLEADO e
       LEFT JOIN (
-        SELECT
-          ra.empleado_id,
-          COUNT(ra.asistencia_id) as diasAsistidos,
+        SELECT ra.empleado_id, COUNT(ra.asistencia_id) as diasAsistidos,
           SUM(CASE WHEN ra.minutos_tardia > 0 THEN 1 ELSE 0 END) as tardias,
           SUM(CAST(ISNULL(ra.horas_trabajadas, 0) AS DECIMAL(10,2))) as horasTotales
         FROM REGISTRO_ASISTENCIA ra
@@ -65,15 +62,70 @@ let ReportsService = class ReportsService {
         const res = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
         return res.map(r => ({ ...r, nombreCompleto: this.sanitizeString(r.nombreCompleto), departamento: this.sanitizeString(r.departamento), horasTrabajadasTotal: Number(r.horasTrabajadasTotal).toFixed(1) }));
     }
-    async getUniqueDepartments() {
-        const results = await this.dataSource.query(`SELECT DISTINCT departamento FROM EMPLEADO WHERE activo = 1 AND departamento IS NOT NULL`);
-        const sanitized = results.map(r => this.sanitizeString(r.departamento));
-        return [...new Set(sanitized)].sort();
+    async getVacationReport(fechaInicio, fechaFin, departamento, proyecto) {
+        const fI = `${fechaInicio} 00:00:00`;
+        const fF = `${fechaFin} 23:59:59`;
+        let query = `
+      SELECT e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+        ISNULL(vs.dias_disponibles, 0) as diasDisponibles,
+        (SELECT ISNULL(SUM(vm.dias), 0) FROM VACACION_MOVIMIENTO vm
+         WHERE vm.empleado_id = e.empleado_id AND vm.tipo = 'CONSUMO' AND vm.fecha >= @0 AND vm.fecha <= @1) as diasUsados
+      FROM EMPLEADO e
+      LEFT JOIN VACACION_SALDO vs ON e.empleado_id = vs.empleado_id
+      WHERE e.activo = 1
+    `;
+        const params = [fI, fF];
+        let pIdx = 2;
+        if (departamento && departamento !== 'Todos') {
+            query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`;
+            pIdx++;
+            params.push(departamento);
+        }
+        if (proyecto && proyecto !== 'Todos los proyectos') {
+            query += ` AND e.empleado_id IN (SELECT empleado_id FROM EMPLEADO_PROYECTO ep INNER JOIN PROYECTO p ON ep.proyecto_id = p.proyecto_id WHERE p.nombre = @${pIdx} AND ep.activo = 1)`;
+            params.push(proyecto);
+        }
+        const res = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
+        return res.map(s => ({ ...s, nombreCompleto: this.sanitizeString(s.nombreCompleto), departamento: this.sanitizeString(s.departamento), totalAcumulado: Number(s.diasDisponibles) + Number(s.diasUsados) }));
+    }
+    async getProjectHours(fechaInicio, fechaFin, departamento, proyectoNombre) {
+        const fI = `${fechaInicio} 00:00:00`;
+        const fF = `${fechaFin} 23:59:59`;
+        let query = `
+      SELECT
+        p.nombre as proyectoNombre,
+        p.codigo as proyectoCodigo,
+        ISNULL(e.nombres + ' ' + e.apellidos, '-') as nombreEmpleado,
+        e.departamento,
+        ISNULL(stats.horasTotales, 0) as horasTotales
+      FROM PROYECTO p
+      LEFT JOIN EMPLEADO_PROYECTO ep ON p.proyecto_id = ep.proyecto_id AND ep.activo = 1
+      LEFT JOIN EMPLEADO e ON ep.empleado_id = e.empleado_id
+      LEFT JOIN (
+        SELECT rt.proyecto_id, rt.empleado_id, SUM(CAST(rt.horas AS DECIMAL(10,2))) as horasTotales
+        FROM REGISTRO_TIEMPO rt
+        WHERE rt.fecha >= @0 AND rt.fecha <= @1 AND rt.estado = 'aprobado'
+        GROUP BY rt.proyecto_id, rt.empleado_id
+      ) stats ON p.proyecto_id = stats.proyecto_id AND e.empleado_id = stats.empleado_id
+      WHERE 1=1
+    `;
+        const params = [fI, fF];
+        let pIdx = 2;
+        if (proyectoNombre && proyectoNombre !== 'Todos los proyectos') {
+            query += ` AND p.nombre = @${pIdx++}`;
+            params.push(proyectoNombre);
+        }
+        if (departamento && departamento !== 'Todos') {
+            query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`;
+            pIdx++;
+            params.push(departamento);
+        }
+        const res = await this.dataSource.query(query + ` ORDER BY p.nombre ASC, e.nombres ASC`, params);
+        return res.map(r => ({ ...r, nombreEmpleado: this.sanitizeString(r.nombreEmpleado), proyectoNombre: this.sanitizeString(r.proyectoNombre) }));
     }
     async getBonusEligibility(mes, anio, departamento) {
         let query = `
-      SELECT
-        br.empleado_id, br.cumplimiento_pct, br.elegible, br.motivo_no_elegible,
+      SELECT br.empleado_id, br.cumplimiento_pct, br.elegible, br.motivo_no_elegible,
         br.dias_asistidos, br.dias_laborables, br.tardias_count, br.faltas_count, br.horas_count,
         e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
         rb.nombre as regla_nombre, rb.monto as monto_bono
@@ -97,25 +149,20 @@ let ReportsService = class ReportsService {
             monto: Number(r.monto_bono || 0),
             cumplimientoPct: Number(r.cumplimiento_pct || 0),
             motivoNoElegible: this.sanitizeString(r.motivo_no_elegible),
-            detalles: {
-                asistencias: r.dias_asistidos || 0,
-                laborables: r.dias_laborables || 0,
-                tardias: r.tardias_count || 0,
-                faltas: r.faltas_count || 0,
-                horas: Number(r.horas_count || 0).toFixed(1)
-            }
+            detalles: { asistencias: r.dias_asistidos || 0, laborables: r.dias_laborables || 0, tardias: r.tardias_count || 0, faltas: r.faltas_count || 0, horas: Number(r.horas_count || 0).toFixed(1) }
         }));
     }
-    async getProjectHours(fechaInicio, fechaFin, departamento, proyectoNombre) {
+    async getBonusEligibilityByRange(fechaInicio, fechaFin, departamento, proyecto) {
         const fI = `${fechaInicio} 00:00:00`;
         const fF = `${fechaFin} 23:59:59`;
         let query = `
-      SELECT p.nombre as proyectoNombre, p.codigo as proyectoCodigo, e.nombres + ' ' + e.apellidos as nombreEmpleado,
-             e.departamento, SUM(CAST(ISNULL(rt.horas, 0) AS DECIMAL(10,2))) as horasTotales
-      FROM REGISTRO_TIEMPO rt
-      INNER JOIN PROYECTO p ON rt.proyecto_id = p.proyecto_id
-      INNER JOIN EMPLEADO e ON rt.empleado_id = e.empleado_id
-      WHERE rt.fecha >= @0 AND rt.fecha <= @1 AND rt.estado = 'aprobado'
+      SELECT
+        e.empleado_id, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+        br.cumplimiento_pct, br.elegible, rb.nombre as reglaNombre, rb.monto as montoBono
+      FROM EMPLEADO e
+      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.fecha_calculo >= @0 AND br.fecha_calculo <= @1
+      LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
+      WHERE e.activo = 1
     `;
         const params = [fI, fF];
         let pIdx = 2;
@@ -124,37 +171,25 @@ let ReportsService = class ReportsService {
             pIdx++;
             params.push(departamento);
         }
-        if (proyectoNombre && proyectoNombre !== 'Todos los proyectos') {
-            query += ` AND p.nombre = @${pIdx++}`;
-            params.push(proyectoNombre);
+        if (proyecto && proyecto !== 'Todos los proyectos') {
+            query += ` AND e.empleado_id IN (SELECT empleado_id FROM EMPLEADO_PROYECTO ep INNER JOIN PROYECTO p ON ep.proyecto_id = p.proyecto_id WHERE p.nombre = @${pIdx} AND ep.activo = 1)`;
+            params.push(proyecto);
         }
-        const res = await this.dataSource.query(query + ` GROUP BY p.nombre, p.codigo, e.nombres, e.apellidos, e.departamento ORDER BY p.nombre ASC`, params);
-        return res.map(r => ({ ...r, nombreEmpleado: this.sanitizeString(r.nombreEmpleado), proyectoNombre: this.sanitizeString(r.proyectoNombre) }));
-    }
-    async getVacationReport(fechaInicio, fechaFin, departamento) {
-        const fI = `${fechaInicio} 00:00:00`;
-        const fF = `${fechaFin} 23:59:59`;
-        let query = `
-      SELECT e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento, vs.dias_disponibles,
-        (SELECT ISNULL(SUM(vm.dias), 0) FROM VACACION_MOVIMIENTO vm
-         WHERE vm.empleado_id = e.empleado_id AND vm.tipo = 'CONSUMO' AND vm.fecha >= @0 AND vm.fecha <= @1) as diasUsados
-      FROM EMPLEADO e
-      LEFT JOIN VACACION_SALDO vs ON e.empleado_id = vs.empleado_id
-      WHERE e.activo = 1
-    `;
-        const params = [fI, fF];
-        if (departamento && departamento !== 'Todos') {
-            query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`;
-            params.push(departamento);
-        }
-        const res = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
-        return res.map(s => ({
-            nombreCompleto: this.sanitizeString(s.nombreCompleto),
-            departamento: this.sanitizeString(s.departamento),
-            diasDisponibles: s.dias_disponibles || 0,
-            diasUsados: s.diasUsados || 0,
-            totalAcumulado: Number(s.dias_disponibles || 0) + Number(s.diasUsados || 0)
+        const results = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
+        return results.map(r => ({
+            empleadoId: r.empleado_id,
+            nombreCompleto: this.sanitizeString(r.nombreCompleto),
+            departamento: this.sanitizeString(r.departamento),
+            reglaNombre: this.sanitizeString(r.reglaNombre) || 'Sin Cálculo',
+            elegible: r.elegible || false,
+            monto: Number(r.montoBono || 0),
+            cumplimientoPct: Number(r.cumplimiento_pct || 0)
         }));
+    }
+    async getUniqueDepartments() {
+        const results = await this.dataSource.query(`SELECT DISTINCT departamento FROM EMPLEADO WHERE activo = 1 AND departamento IS NOT NULL`);
+        const sanitized = results.map(r => this.sanitizeString(r.departamento));
+        return [...new Set(sanitized)].sort();
     }
     sanitizeString(str) {
         if (!str)

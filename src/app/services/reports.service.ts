@@ -54,6 +54,12 @@ export class ReportsService {
     });
   }
 
+  getBonusEligibilityRange(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<BonusEligibilityReport[]> {
+    return this.http.get<BonusEligibilityReport[]>(`${this.apiUrl}/bonus-eligibility`, {
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' },
+    });
+  }
+
   getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<ProjectHoursReport[]> {
     return this.http.get<ProjectHoursReport[]>(`${this.apiUrl}/project-hours`, {
       params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' },
