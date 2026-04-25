@@ -53,9 +53,12 @@ export class ReportsService {
       WHERE e.activo = 1
     `;
     const params: any[] = [fI, fF];
-    if (departamento && departamento !== 'Todos') { query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`; params.push(departamento); }
-    const results = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
-    return results.map(r => ({ ...r, nombreCompleto: this.sanitizeString(r.nombreCompleto), departamento: this.sanitizeString(r.departamento), horasTrabajadasTotal: Number(r.horasTrabajadasTotal).toFixed(1) }));
+    if (departamento && departamento !== 'Todos') {
+      query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`;
+      params.push(departamento);
+    }
+    const res = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
+    return res.map(r => ({ ...r, nombreCompleto: this.sanitizeString(r.nombreCompleto), departamento: this.sanitizeString(r.departamento), horasTrabajadasTotal: Number(r.horasTrabajadasTotal).toFixed(1) }));
   }
 
   async getUniqueDepartments() {
@@ -65,21 +68,64 @@ export class ReportsService {
   }
 
   async getBonusEligibility(mes: number, anio: number, departamento?: string) {
-    let query = `SELECT br.cumplimiento_pct, br.elegible, br.motivo_no_elegible, e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento, rb.nombre as regla_nombre, rb.monto as monto_bono
-      FROM BONO_RESULTADO br INNER JOIN EMPLEADO e ON br.empleado_id = e.empleado_id LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id WHERE br.mes = @0 AND br.anio = @1`;
+    let query = `
+      SELECT
+        br.empleado_id, br.cumplimiento_pct, br.elegible, br.motivo_no_elegible,
+        br.dias_asistidos, br.dias_laborables, br.tardias_count, br.faltas_count, br.horas_count,
+        e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+        rb.nombre as regla_nombre, rb.monto as monto_bono
+      FROM BONO_RESULTADO br
+      INNER JOIN EMPLEADO e ON br.empleado_id = e.empleado_id
+      LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
+      WHERE br.mes = @0 AND br.anio = @1
+    `;
     const params: any[] = [mes, anio];
-    if (departamento && departamento !== 'Todos') { query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`; params.push(departamento); }
-    const res = await this.dataSource.query(query, params);
-    return res.map(r => ({ ...r, nombreCompleto: this.sanitizeString(r.nombreCompleto), departamento: this.sanitizeString(r.departamento), reglaNombre: this.sanitizeString(r.regla_nombre) || 'Sin Bono' }));
+    if (departamento && departamento !== 'Todos') {
+      query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`;
+      params.push(departamento);
+    }
+    const results = await this.dataSource.query(query, params);
+
+    return results.map((r) => ({
+      empleadoId: r.empleado_id,
+      nombreCompleto: this.sanitizeString(r.nombreCompleto),
+      departamento: this.sanitizeString(r.departamento),
+      reglaNombre: this.sanitizeString(r.regla_nombre) || 'Sin Bono',
+      elegible: r.elegible,
+      monto: Number(r.monto_bono || 0),
+      cumplimientoPct: Number(r.cumplimiento_pct || 0),
+      motivoNoElegible: this.sanitizeString(r.motivo_no_elegible),
+      detalles: {
+        asistencias: r.dias_asistidos || 0,
+        laborables: r.dias_laborables || 0,
+        tardias: r.tardias_count || 0,
+        faltas: r.faltas_count || 0,
+        horas: Number(r.horas_count || 0).toFixed(1)
+      }
+    }));
   }
 
   async getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyectoNombre?: string) {
-    const fI = `${fechaInicio} 00:00:00`; const fF = `${fechaFin} 23:59:59`;
-    let query = `SELECT p.nombre as proyectoNombre, p.codigo as proyectoCodigo, e.nombres + ' ' + e.apellidos as nombreEmpleado, e.departamento, SUM(CAST(ISNULL(rt.horas, 0) AS DECIMAL(10,2))) as horasTotales
-      FROM REGISTRO_TIEMPO rt INNER JOIN PROYECTO p ON rt.proyecto_id = p.proyecto_id INNER JOIN EMPLEADO e ON rt.empleado_id = e.empleado_id WHERE rt.fecha >= @0 AND rt.fecha <= @1 AND rt.estado = 'aprobado'`;
-    const params: any[] = [fI, fF]; let pIdx = 2;
-    if (departamento && departamento !== 'Todos') { query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`; pIdx++; params.push(departamento); }
-    if (proyectoNombre && proyectoNombre !== 'Todos los proyectos') { query += ` AND p.nombre = @${pIdx++}`; params.push(proyectoNombre); }
+    const fI = `${fechaInicio} 00:00:00`;
+    const fF = `${fechaFin} 23:59:59`;
+    let query = `
+      SELECT p.nombre as proyectoNombre, p.codigo as proyectoCodigo, e.nombres + ' ' + e.apellidos as nombreEmpleado,
+             e.departamento, SUM(CAST(ISNULL(rt.horas, 0) AS DECIMAL(10,2))) as horasTotales
+      FROM REGISTRO_TIEMPO rt
+      INNER JOIN PROYECTO p ON rt.proyecto_id = p.proyecto_id
+      INNER JOIN EMPLEADO e ON rt.empleado_id = e.empleado_id
+      WHERE rt.fecha >= @0 AND rt.fecha <= @1 AND rt.estado = 'aprobado'
+    `;
+    const params: any[] = [fI, fF];
+    let pIdx = 2;
+    if (departamento && departamento !== 'Todos') {
+      query += ` AND (e.departamento = @${pIdx} OR REPLACE(e.departamento, '?', 'í') = @${pIdx})`;
+      pIdx++; params.push(departamento);
+    }
+    if (proyectoNombre && proyectoNombre !== 'Todos los proyectos') {
+      query += ` AND p.nombre = @${pIdx++}`;
+      params.push(proyectoNombre);
+    }
     const res = await this.dataSource.query(query + ` GROUP BY p.nombre, p.codigo, e.nombres, e.apellidos, e.departamento ORDER BY p.nombre ASC`, params);
     return res.map(r => ({ ...r, nombreEmpleado: this.sanitizeString(r.nombreEmpleado), proyectoNombre: this.sanitizeString(r.proyectoNombre) }));
   }
@@ -87,34 +133,26 @@ export class ReportsService {
   async getVacationReport(fechaInicio: string, fechaFin: string, departamento?: string) {
     const fI = `${fechaInicio} 00:00:00`;
     const fF = `${fechaFin} 23:59:59`;
-
     let query = `
-      SELECT
-        e.nombres + ' ' + e.apellidos as nombreCompleto,
-        e.departamento,
-        ISNULL(vs.dias_disponibles, 0) as diasDisponibles,
+      SELECT e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento, vs.dias_disponibles,
         (SELECT ISNULL(SUM(vm.dias), 0) FROM VACACION_MOVIMIENTO vm
-         WHERE vm.empleado_id = e.empleado_id
-         AND vm.tipo = 'CONSUMO'
-         AND vm.fecha >= @0 AND vm.fecha <= @1) as diasUsados
+         WHERE vm.empleado_id = e.empleado_id AND vm.tipo = 'CONSUMO' AND vm.fecha >= @0 AND vm.fecha <= @1) as diasUsados
       FROM EMPLEADO e
       LEFT JOIN VACACION_SALDO vs ON e.empleado_id = vs.empleado_id
       WHERE e.activo = 1
     `;
-
     const params: any[] = [fI, fF];
     if (departamento && departamento !== 'Todos') {
       query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`;
       params.push(departamento);
     }
-
     const res = await this.dataSource.query(query + ` ORDER BY e.nombres ASC`, params);
     return res.map(s => ({
       nombreCompleto: this.sanitizeString(s.nombreCompleto),
       departamento: this.sanitizeString(s.departamento),
-      diasDisponibles: s.diasDisponibles,
-      diasUsados: s.diasUsados,
-      totalAcumulado: Number(s.diasDisponibles) + Number(s.diasUsados)
+      diasDisponibles: s.dias_disponibles || 0,
+      diasUsados: s.diasUsados || 0,
+      totalAcumulado: Number(s.dias_disponibles || 0) + Number(s.diasUsados || 0)
     }));
   }
 

@@ -12,12 +12,21 @@ export interface MonthlyAttendanceReport {
 }
 
 export interface BonusEligibilityReport {
+  empleadoId: number;
   nombreCompleto: string;
   departamento: string;
   reglaNombre: string;
   elegible: boolean;
   cumplimientoPct: number;
   monto: number;
+  detalles: {
+    asistencias: number;
+    laborables: number;
+    tardias: number;
+    faltas: number;
+    horas: string;
+  };
+  motivoNoElegible?: string;
 }
 
 export interface ProjectHoursReport {
@@ -39,9 +48,9 @@ export class ReportsService {
     });
   }
 
-  getBonusEligibility(anio: number, mes: number, departamento?: string): Observable<BonusEligibilityReport[]> {
+  getBonusEligibility(mes: number, anio: number, departamento?: string): Observable<BonusEligibilityReport[]> {
     return this.http.get<BonusEligibilityReport[]>(`${this.apiUrl}/bonus-eligibility`, {
-      params: { anio, mes, departamento: departamento || 'Todos' },
+      params: { mes, anio, departamento: departamento || 'Todos' },
     });
   }
 
@@ -51,9 +60,9 @@ export class ReportsService {
     });
   }
 
-  getVacationBalances(fechaInicio: string, fechaFin: string, departamento?: string): Observable<any[]> {
+  getVacationBalances(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/vacation-balances`, {
-      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos' }
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' }
     });
   }
 

@@ -3,7 +3,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AdminService } from '../../../services/admin.service';
-import { ReportsService } from '../../../services/reports.service';
+import { ReportsService, BonusEligibilityReport } from '../../../services/reports.service';
 import jsPDF from 'jspdf';
 
 interface BonoItem {
@@ -38,7 +38,7 @@ export class BonosIncentivos implements OnInit {
   modalDetalleBono = false;
   modoEdicion = false;
   isEvaluating = false;
-  isSaving = false; // Nuevo estado para el botón de guardar
+  isSaving = false;
 
   reglaForm: any = this.getReglaVacia();
   bonoDetalle: any = null;
@@ -85,8 +85,8 @@ export class BonosIncentivos implements OnInit {
       }
     });
 
-    this.reportsService.getBonusEligibility(this.anioActual, this.mesActual).subscribe({
-      next: (data: any[]) => {
+    this.reportsService.getBonusEligibility(this.mesActual, this.anioActual).subscribe({
+      next: (data: BonusEligibilityReport[]) => {
         this.bonosData = data.map(b => ({
           id: b.empleadoId,
           empleado: b.nombreCompleto,
@@ -95,7 +95,7 @@ export class BonosIncentivos implements OnInit {
           estado: b.elegible ? 'Elegible' : 'No elegible',
           periodo: this.filtroPeriodo,
           regla: b.reglaNombre,
-          bono: b.elegible ? `Q ${Number(b.monto).toLocaleString('es-GT', {minimumFractionDigits: 2})}` : 'Q 0.00',
+          bono: b.elegible ? `Q ${Number(b.monto || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}` : 'Q 0.00',
           motivo: b.motivoNoElegible || '-',
           detalles: b.detalles
         }));
@@ -148,13 +148,9 @@ export class BonosIncentivos implements OnInit {
           this.modalRegla = false;
           this.notificar('Regla guardada correctamente.');
           this.loadData();
-        }, 300); // Pequeño delay para suavizar la UI
+        }, 300);
       },
-      error: (err: any) => {
-        this.isSaving = false;
-        alert('Error al guardar');
-        this.cdr.detectChanges();
-      }
+      error: () => { this.isSaving = false; alert('Error al guardar'); }
     });
   }
 
@@ -174,15 +170,11 @@ export class BonosIncentivos implements OnInit {
       next: (res: any) => {
         setTimeout(() => {
           this.isEvaluating = false;
-          this.notificar(res.message || 'Evaluación completada.');
+          this.notificar(res.message);
           this.loadData();
         }, 500);
       },
-      error: (err: any) => {
-        this.isEvaluating = false;
-        this.cdr.detectChanges();
-        alert('Error al calcular');
-      }
+      error: () => { this.isEvaluating = false; alert('Error al calcular'); }
     });
   }
 
@@ -199,9 +191,9 @@ export class BonosIncentivos implements OnInit {
 
   exportarExcel(): void {
     if (this.bonosData.length === 0) return;
-    let csv = "Empleado,Departamento,Cumplimiento,Estado,Regla,Monto,Motivo\r\n";
+    let csv = "Empleado,Departamento,Cumplimiento,Estado,Regla,Monto\r\n";
     this.bonosFiltrados.forEach(b => {
-      csv += `"${b.empleado}","${b.departamento}","${b.cumplimiento}","${b.estado}","${b.regla}","${b.bono}","${b.motivo}"\r\n`;
+      csv += `"${b.empleado}","${b.departamento}","${b.cumplimiento}","${b.estado}","${b.regla}","${b.bono}"\r\n`;
     });
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
