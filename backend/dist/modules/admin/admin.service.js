@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const bcrypt = require("bcrypt");
 const typeorm_2 = require("typeorm");
 const turno_entity_1 = require("../../entities/turno.entity");
 const empleado_turno_entity_1 = require("../../entities/empleado-turno.entity");
@@ -147,8 +148,9 @@ let AdminService = class AdminService {
     async getAdminDashboardStats() {
         const now = new Date();
         const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000);
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const [usuariosActivos, usuariosInactivos, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([
             this.usuarioRepository.count({ where: { estado: 'activo' } }),
             this.usuarioRepository.count({ where: { estado: 'bloqueado' } }),
             this.auditRepository.count(),
@@ -157,7 +159,7 @@ let AdminService = class AdminService {
         ]);
         return {
             usuariosActivos,
-            usuariosBloqueados,
+            usuariosBloqueados: usuariosInactivos,
             eventosAuditoria,
             intentosFallidos,
             sesionesActivas: sesionesActivas || 1,
@@ -169,7 +171,7 @@ let AdminService = class AdminService {
     async getRoles() { return await this.rolRepository.find(); }
     async getUsers() {
         const users = await this.usuarioRepository.find({
-            relations: ['empleado', 'roles'],
+            relations: ['empleado', 'roles', 'empleado.supervisor'],
             order: { username: 'ASC' }
         });
         return users.map(u => ({
@@ -179,7 +181,10 @@ let AdminService = class AdminService {
             nombreCompleto: u.empleado ? `${u.empleado.nombres} ${u.empleado.apellidos}` : 'N/A',
             estado: u.estado,
             roles: u.roles?.map(r => r.nombre) || [],
-            empleadoCodigo: u.empleado?.codigoEmpleado
+            empleadoCodigo: u.empleado?.codigoEmpleado,
+            empleadoId: u.empleadoId,
+            supervisorId: u.empleado?.supervisorId,
+            supervisorNombre: u.empleado?.supervisor ? `${u.empleado.supervisor.nombres} ${u.empleado.supervisor.apellidos}` : 'No asignado'
         }));
     }
     async getKpiParameters() { const p = await this.parametroRepository.find({ where: { activo: true } }); const r = {}; p.forEach(x => r[x.clave] = x.valor); return r; }
@@ -188,6 +193,76 @@ let AdminService = class AdminService {
             await this.parametroRepository.update({ clave: k }, { valor: v });
         }
         return this.getKpiParameters();
+    }
+    async createUser(dto, uid) {
+        const existingUser = await this.usuarioRepository.findOne({ where: { username: dto.username } });
+        if (existingUser)
+            throw new common_1.BadRequestException(`El identificador @${dto.username} ya está en uso.`);
+        if (dto.empleadoId) {
+            const existingByEmp = await this.usuarioRepository.findOne({ where: { empleadoId: dto.empleadoId } });
+            if (existingByEmp)
+                throw new common_1.BadRequestException(`Esta persona ya cuenta con un acceso activo.`);
+        }
+        const passwordHash = await bcrypt.hash(dto.password || 'Test1234', 10);
+        const user = this.usuarioRepository.create({
+            username: dto.username,
+            passwordHash,
+            empleadoId: dto.empleadoId,
+            estado: dto.estado === 'inactivo' ? 'bloqueado' : 'activo'
+        });
+        const saved = await this.usuarioRepository.save(user);
+        if (dto.bossId) {
+            await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId });
+        }
+        if (dto.roleId) {
+            await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [saved.usuarioId, dto.roleId]);
+        }
+        await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: saved.usuarioId, detalle: `Creó cuenta: ${saved.username}` }, uid);
+        return this.getUsers();
+    }
+    async updateUser(id, dto, uid) {
+        const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
+        if (!user)
+            throw new common_1.NotFoundException('Cuenta no encontrada');
+        if (user.username !== dto.username) {
+            const existingUser = await this.usuarioRepository.findOne({ where: { username: dto.username, usuarioId: (0, typeorm_2.Not)(id) } });
+            if (existingUser)
+                throw new common_1.BadRequestException(`El identificador @${dto.username} ya está en uso.`);
+        }
+        if (user.empleadoId !== dto.empleadoId) {
+            const existingByEmp = await this.usuarioRepository.findOne({ where: { empleadoId: dto.empleadoId, usuarioId: (0, typeorm_2.Not)(id) } });
+            if (existingByEmp)
+                throw new common_1.BadRequestException(`La persona seleccionada ya tiene otra cuenta vinculada.`);
+        }
+        user.username = dto.username;
+        user.estado = dto.estado === 'inactivo' ? 'bloqueado' : 'activo';
+        user.empleadoId = dto.empleadoId;
+        if (dto.password) {
+            user.passwordHash = await bcrypt.hash(dto.password, 10);
+        }
+        await this.usuarioRepository.save(user);
+        if (dto.empleadoId) {
+            await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId || null });
+        }
+        if (dto.roleId) {
+            await this.dataSource.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [id]);
+            await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [id, dto.roleId]);
+        }
+        await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE', entidad: 'USUARIO', entidadId: id, detalle: `Actualizó cuenta: ${user.username}` }, uid);
+        return this.getUsers();
+    }
+    async updateUserStatus(id, status, uid) {
+        const dbStatus = status === 'inactivo' ? 'bloqueado' : 'activo';
+        await this.usuarioRepository.update(id, { estado: dbStatus });
+        await this.logAction({ modulo: 'ADMIN', accion: dbStatus === 'bloqueado' ? 'BLOCK' : 'ACTIVATE', entidad: 'USUARIO', entidadId: id, detalle: `Cambió estado a ${dbStatus}` }, uid);
+        return this.getUsers();
+    }
+    async resetPassword(id, uid) {
+        const hash = await bcrypt.hash('Test1234', 10);
+        await this.usuarioRepository.update(id, { passwordHash: hash });
+        const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
+        await this.logAction({ modulo: 'ADMIN', accion: 'RESET_PASSWORD', entidad: 'USUARIO', entidadId: id, detalle: `Reseteó clave de @${user?.username}` }, uid);
+        return { message: 'Contraseña restablecida correctamente.' };
     }
 };
 exports.AdminService = AdminService;

@@ -136,4 +136,35 @@ export class AdminController {
   getSupervisorDashboard(@Req() req: any) {
     return this.adminService.getSupervisorDashboardStats(req.user.empleadoId);
   }
+
+  // Gestión de Usuarios
+  @Get('users')
+  @Roles('Administrador')
+  getUsers() {
+    return this.adminService.getUsers();
+  }
+
+  @Post('users')
+  @Roles('Administrador')
+  createUser(@Body() dto: any, @Req() req: any) {
+    return this.adminService.createUser(dto, req.user.usuarioId);
+  }
+
+  @Put('users/:id')
+  @Roles('Administrador')
+  updateUser(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @Req() req: any) {
+    return this.adminService.updateUser(id, dto, req.user.usuarioId);
+  }
+
+  @Put('users/:id/status')
+  @Roles('Administrador')
+  toggleUserStatus(@Param('id', ParseIntPipe) id: number, @Body() body: { status: string }, @Req() req: any) {
+    return this.adminService.updateUserStatus(id, body.status, req.user.usuarioId);
+  }
+
+  @Post('users/:id/reset-password')
+  @Roles('Administrador')
+  resetPassword(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.adminService.resetPassword(id, req.user.usuarioId);
+  }
 }

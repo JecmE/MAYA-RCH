@@ -146,4 +146,25 @@ export class AdminService {
   getSupervisorDashboardStats(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/dashboard/supervisor`);
   }
+
+  // Gestión de Usuarios
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/users`);
+  }
+
+  createUser(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/users`, data);
+  }
+
+  updateUser(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/users/${id}`, data);
+  }
+
+  resetPassword(id: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/users/${id}/reset-password`, {});
+  }
+
+  toggleUserStatus(id: number, status: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/users/${id}/status`, { status });
+  }
 }

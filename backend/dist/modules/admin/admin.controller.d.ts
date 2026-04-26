@@ -60,4 +60,57 @@ export declare class AdminController {
         horasPendientes: number;
         kpiPromedio: number;
     }>;
+    getUsers(): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    createUser(dto: any, req: any): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    updateUser(id: number, dto: any, req: any): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    toggleUserStatus(id: number, body: {
+        status: string;
+    }, req: any): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    resetPassword(id: number, req: any): Promise<{
+        message: string;
+    }>;
 }

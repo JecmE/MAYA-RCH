@@ -110,7 +110,49 @@ export declare class AdminService implements OnModuleInit {
         estado: string;
         roles: string[];
         empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
     }[]>;
     getKpiParameters(): Promise<{}>;
     updateKpiParameters(dto: any, uid: number): Promise<{}>;
+    createUser(dto: any, uid: number): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    updateUser(id: number, dto: any, uid: number): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    updateUserStatus(id: number, status: string, uid: number): Promise<{
+        usuarioId: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+        estado: string;
+        roles: string[];
+        empleadoCodigo: string;
+        empleadoId: number;
+        supervisorId: number;
+        supervisorNombre: string;
+    }[]>;
+    resetPassword(id: number, uid: number): Promise<{
+        message: string;
+    }>;
 }

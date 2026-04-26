@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import {
   Repository,
   Between,
   DataSource,
   Like,
   MoreThan,
+  Not,
 } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
@@ -164,9 +166,10 @@ export class AdminService implements OnModuleInit {
   async getAdminDashboardStats() {
     const now = new Date();
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000);
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date();
+    startOfToday.setHours(0,0,0,0);
 
-    const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([
+    const [usuariosActivos, usuariosInactivos, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([
       this.usuarioRepository.count({ where: { estado: 'activo' } }),
       this.usuarioRepository.count({ where: { estado: 'bloqueado' } }),
       this.auditRepository.count(),
@@ -176,7 +179,7 @@ export class AdminService implements OnModuleInit {
 
     return {
       usuariosActivos,
-      usuariosBloqueados,
+      usuariosBloqueados: usuariosInactivos,
       eventosAuditoria,
       intentosFallidos,
       sesionesActivas: sesionesActivas || 1,
@@ -190,7 +193,7 @@ export class AdminService implements OnModuleInit {
 
   async getUsers() {
     const users = await this.usuarioRepository.find({
-      relations: ['empleado', 'roles'],
+      relations: ['empleado', 'roles', 'empleado.supervisor'],
       order: { username: 'ASC' }
     });
 
@@ -201,12 +204,106 @@ export class AdminService implements OnModuleInit {
       nombreCompleto: u.empleado ? `${u.empleado.nombres} ${u.empleado.apellidos}` : 'N/A',
       estado: u.estado,
       roles: u.roles?.map(r => r.nombre) || [],
-      empleadoCodigo: u.empleado?.codigoEmpleado
+      empleadoCodigo: u.empleado?.codigoEmpleado,
+      empleadoId: u.empleadoId,
+      supervisorId: u.empleado?.supervisorId,
+      supervisorNombre: u.empleado?.supervisor ? `${u.empleado.supervisor.nombres} ${u.empleado.supervisor.apellidos}` : 'No asignado'
     }));
   }
   async getKpiParameters() { const p = await this.parametroRepository.find({ where: { activo: true } }); const r = {}; p.forEach(x => r[x.clave] = x.valor); return r; }
   async updateKpiParameters(dto: any, uid: number) {
     for (const [k, v] of Object.entries(dto)) { await this.parametroRepository.update({ clave: k }, { valor: v as string }); }
     return this.getKpiParameters();
+  }
+
+  // Gestión de Usuarios
+  async createUser(dto: any, uid: number) {
+    // 1. Validar duplicidad de username
+    const existingUser = await this.usuarioRepository.findOne({ where: { username: dto.username } });
+    if (existingUser) throw new BadRequestException(`El identificador @${dto.username} ya está en uso.`);
+
+    // 2. Validar si el empleado ya tiene cuenta
+    if (dto.empleadoId) {
+      const existingByEmp = await this.usuarioRepository.findOne({ where: { empleadoId: dto.empleadoId } });
+      if (existingByEmp) throw new BadRequestException(`Esta persona ya cuenta con un acceso activo.`);
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password || 'Test1234', 10);
+    const user = this.usuarioRepository.create({
+      username: dto.username,
+      passwordHash,
+      empleadoId: dto.empleadoId,
+      estado: dto.estado === 'inactivo' ? 'bloqueado' : 'activo'
+    });
+
+    const saved = await this.usuarioRepository.save(user);
+
+    // 3. Vincular Supervisor
+    if (dto.bossId) {
+      await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId });
+    }
+
+    if (dto.roleId) {
+      await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [saved.usuarioId, dto.roleId]);
+    }
+
+    await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: saved.usuarioId, detalle: `Creó cuenta: ${saved.username}` }, uid);
+    return this.getUsers();
+  }
+
+  async updateUser(id: number, dto: any, uid: number) {
+    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
+    if (!user) throw new NotFoundException('Cuenta no encontrada');
+
+    // 1. Validar duplicidad de username
+    if (user.username !== dto.username) {
+        const existingUser = await this.usuarioRepository.findOne({ where: { username: dto.username, usuarioId: Not(id) } });
+        if (existingUser) throw new BadRequestException(`El identificador @${dto.username} ya está en uso.`);
+    }
+
+    // 2. Validar conflicto de dueño
+    if (user.empleadoId !== dto.empleadoId) {
+      const existingByEmp = await this.usuarioRepository.findOne({ where: { empleadoId: dto.empleadoId, usuarioId: Not(id) } });
+      if (existingByEmp) throw new BadRequestException(`La persona seleccionada ya tiene otra cuenta vinculada.`);
+    }
+
+    // 3. ACTUALIZACIÓN FÍSICA DE CAMPOS
+    user.username = dto.username;
+    user.estado = dto.estado === 'inactivo' ? 'bloqueado' : 'activo';
+    user.empleadoId = dto.empleadoId; // CAMBIO DE DUEÑO
+
+    if (dto.password) {
+      user.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    await this.usuarioRepository.save(user);
+
+    // 4. ACTUALIZAR SUPERVISOR DEL DUEÑO
+    if (dto.empleadoId) {
+       await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId || null });
+    }
+
+    if (dto.roleId) {
+      await this.dataSource.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [id]);
+      await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [id, dto.roleId]);
+    }
+
+    await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE', entidad: 'USUARIO', entidadId: id, detalle: `Actualizó cuenta: ${user.username}` }, uid);
+    return this.getUsers();
+  }
+
+  async updateUserStatus(id: number, status: string, uid: number) {
+    const dbStatus = status === 'inactivo' ? 'bloqueado' : 'activo';
+    await this.usuarioRepository.update(id, { estado: dbStatus });
+    await this.logAction({ modulo: 'ADMIN', accion: dbStatus === 'bloqueado' ? 'BLOCK' : 'ACTIVATE', entidad: 'USUARIO', entidadId: id, detalle: `Cambió estado a ${dbStatus}` }, uid);
+    return this.getUsers();
+  }
+
+  async resetPassword(id: number, uid: number) {
+    const hash = await bcrypt.hash('Test1234', 10);
+    await this.usuarioRepository.update(id, { passwordHash: hash });
+    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
+    await this.logAction({ modulo: 'ADMIN', accion: 'RESET_PASSWORD', entidad: 'USUARIO', entidadId: id, detalle: `Reseteó clave de @${user?.username}` }, uid);
+    return { message: 'Contraseña restablecida correctamente.' };
   }
 }
