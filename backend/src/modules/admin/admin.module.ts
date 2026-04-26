@@ -17,6 +17,7 @@ import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
+import { RolPermiso } from '../../entities/rol-permiso.entity';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { BonoResultado } from '../../entities/bono-resultado.entity';
       VacacionMovimiento,
       RegistroTiempo,
       BonoResultado,
+      RolPermiso,
     ]),
   ],
   controllers: [AdminController],

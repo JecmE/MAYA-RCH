@@ -120,6 +120,7 @@ export class AuthService {
         usuarioId: usuario.usuarioId,
         username: usuario.username,
         roles: usuario.roles.map((r) => r.nombre),
+        rolId: usuario.roles[0]?.rolId, // ID del primer rol para cargar permisos
         empleadoId: usuario.empleadoId,
         nombreCompleto: this.sanitizeString(
           usuario.empleado ? `${usuario.empleado.nombres} ${usuario.empleado.apellidos}` : '',

@@ -15,6 +15,7 @@ export interface LoginResponse {
     usuarioId: number;
     username: string;
     roles: string[];
+    rolId?: number; // Añadido para permisos
     empleadoId: number;
     nombreCompleto?: string;
     email?: string;

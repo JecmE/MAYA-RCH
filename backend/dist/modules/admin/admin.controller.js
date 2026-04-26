@@ -67,6 +67,18 @@ let AdminController = class AdminController {
     getRoles() {
         return this.adminService.getRoles();
     }
+    createRole(dto, req) {
+        return this.adminService.createRole(dto, req.user.usuarioId);
+    }
+    deleteRole(id, req) {
+        return this.adminService.deleteRole(id, req.user.usuarioId);
+    }
+    getRolePermissions(id) {
+        return this.adminService.getRolePermissions(id);
+    }
+    updateRolePermissions(id, perms, req) {
+        return this.adminService.updateRolePermissions(id, perms, req.user.usuarioId);
+    }
     getAdminDashboard() {
         return this.adminService.getAdminDashboardStats();
     }
@@ -221,6 +233,41 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getRoles", null);
+__decorate([
+    (0, common_1.Post)('roles'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createRole", null);
+__decorate([
+    (0, common_1.Delete)('roles/:id'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteRole", null);
+__decorate([
+    (0, common_1.Get)('roles/:id/permissions'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getRolePermissions", null);
+__decorate([
+    (0, common_1.Put)('roles/:id/permissions'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Array, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateRolePermissions", null);
 __decorate([
     (0, common_1.Get)('dashboard/admin'),
     (0, roles_decorator_1.Roles)('Administrador'),

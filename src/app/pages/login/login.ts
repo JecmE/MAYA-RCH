@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
+import { PermissionService } from '../../services/permission.service';
 
 @Component({
   selector: 'app-login',
@@ -19,6 +20,7 @@ export class Login {
 
   constructor(
     private authService: AuthService,
+    private permissionService: PermissionService,
     private router: Router,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object,
@@ -29,6 +31,12 @@ export class Login {
     this.error = false;
     this.errorMessage = '';
 
+    // LIMPIEZA DE SEGURIDAD: Antes de intentar loguear, borramos todo rastro de sesiones previas
+    if (isPlatformBrowser(this.platformId)) {
+        localStorage.clear();
+        this.permissionService.clearPermissions();
+    }
+
     this.authService.login({ username: this.username, password: this.password }).subscribe({
       next: (response) => {
         this.authService.setToken(response.token);
@@ -38,29 +46,29 @@ export class Login {
             rrhh: 'rrhh',
             supervisor: 'supervisor',
             empleado: 'empleado',
+            auditor: 'auditor'
           };
-          const backendRole = response.user.roles[0]?.toLowerCase() || 'empleado';
-          const mappedRole = roleMap[backendRole] || 'empleado';
+
+          const rawRole = response.user.roles[0] || 'Empleado';
+          const backendRoleKey = rawRole.toLowerCase();
+          const mappedRole = roleMap[backendRoleKey] || 'empleado';
+
           localStorage.setItem('userRole', mappedRole);
+          localStorage.setItem('userRoleName', rawRole);
           localStorage.setItem('usuarioId', response.user.usuarioId.toString());
           localStorage.setItem('empleadoId', response.user.empleadoId.toString());
+
+          // CARGAR PERMISOS: Solo si el rolId viene del backend
+          if (response.user.rolId) {
+            this.permissionService.loadPermissions(response.user.rolId);
+          }
         }
         this.router.navigate(['/']);
       },
       error: (err) => {
         console.error('Login error detail:', err);
         this.error = true;
-
-        // Extraer mensaje real del backend
-        if (err.error && err.error.message) {
-          this.errorMessage = err.error.message;
-        } else if (err.status === 401) {
-          this.errorMessage = 'Credenciales incorrectas o cuenta bloqueada.';
-        } else {
-          this.errorMessage = 'Error de conexión con el servidor.';
-        }
-
-        // Forzar a Angular a mostrar el error en pantalla
+        this.errorMessage = err.error?.message || 'Credenciales incorrectas o error de servidor.';
         this.cdr.detectChanges();
       },
     });

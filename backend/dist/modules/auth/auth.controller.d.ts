@@ -12,6 +12,7 @@ export declare class AuthController {
             usuarioId: number;
             username: string;
             roles: string[];
+            rolId: number;
             empleadoId: number;
             nombreCompleto: string;
             email: string;

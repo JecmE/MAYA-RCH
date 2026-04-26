@@ -48,6 +48,17 @@ export interface Rol {
   descripcion?: string;
 }
 
+export interface PermisoItem {
+  rolPermisoId?: number;
+  modulo: string;
+  ver: boolean;
+  crear: boolean;
+  editar: boolean;
+  aprobar: boolean;
+  exportar: boolean;
+  administrar: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private apiUrl = environment.apiUrl + '/admin';
@@ -132,6 +143,23 @@ export class AdminService {
   // Roles
   getRoles(): Observable<Rol[]> {
     return this.http.get<Rol[]>(`${this.apiUrl}/roles`);
+  }
+
+  createRole(data: any): Observable<Rol> {
+    return this.http.post<Rol>(`${this.apiUrl}/roles`, data);
+  }
+
+  deleteRole(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/roles/${id}`);
+  }
+
+  // Permisos por Rol
+  getRolePermissions(id: number): Observable<PermisoItem[]> {
+    return this.http.get<PermisoItem[]>(`${this.apiUrl}/roles/${id}/permissions`);
+  }
+
+  updateRolePermissions(id: number, perms: PermisoItem[]): Observable<PermisoItem[]> {
+    return this.http.put<PermisoItem[]>(`${this.apiUrl}/roles/${id}/permissions`, perms);
   }
 
   // Dashboard Stats

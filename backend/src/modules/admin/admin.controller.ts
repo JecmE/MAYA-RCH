@@ -119,6 +119,31 @@ export class AdminController {
     return this.adminService.getRoles();
   }
 
+  @Post('roles')
+  @Roles('Administrador')
+  createRole(@Body() dto: any, @Req() req: any) {
+    return this.adminService.createRole(dto, req.user.usuarioId);
+  }
+
+  @Delete('roles/:id')
+  @Roles('Administrador')
+  deleteRole(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.adminService.deleteRole(id, req.user.usuarioId);
+  }
+
+  @Get('roles/:id/permissions')
+  // Eliminamos @Roles('Administrador') para permitir que cualquier usuario logueado
+  // descargue sus propios permisos para construir su menú lateral.
+  getRolePermissions(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getRolePermissions(id);
+  }
+
+  @Put('roles/:id/permissions')
+  @Roles('Administrador')
+  updateRolePermissions(@Param('id', ParseIntPipe) id: number, @Body() perms: any[], @Req() req: any) {
+    return this.adminService.updateRolePermissions(id, perms, req.user.usuarioId);
+  }
+
   @Get('dashboard/admin')
   @Roles('Administrador')
   getAdminDashboard() {

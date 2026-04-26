@@ -17,6 +17,7 @@ import { KpiService, KpiDashboard } from '../../services/kpi.service';
 import { LeavesService } from '../../services/leaves.service';
 import { AdminService } from '../../services/admin.service';
 import { NoticesService, Notice } from '../../services/notices.service';
+import { PermissionService } from '../../services/permission.service';
 
 type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
 
@@ -30,6 +31,7 @@ type MarcaEstado = 'Pendiente' | 'Entrada' | 'Completa';
 export class Dashboard implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
   private statsInterval?: any;
+  private permsSub?: Subscription;
 
   marcaEstado: MarcaEstado = 'Pendiente';
   role = 'empleado';
@@ -77,16 +79,18 @@ export class Dashboard implements OnInit, OnDestroy {
     private leavesService: LeavesService,
     private adminService: AdminService,
     private noticesService: NoticesService,
+    private permissionService: PermissionService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object,
-  ) {
-    if (isPlatformBrowser(this.platformId)) {
-      this.role = localStorage.getItem('userRole') || 'empleado';
-    }
-  }
+  ) {}
 
   ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+        this.role = localStorage.getItem('userRole') || 'empleado';
+    }
+
     this.loadAllData();
+
     this.routerSubscription = this.router.events
       .pipe(filter((e) => e instanceof NavigationEnd))
       .subscribe((event) => {
@@ -98,7 +102,11 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       });
 
-    // Actualizar reloj y disponibilidad cada 5 segundos
+    // Suscribirse a permisos para actualizar el dashboard si cambian en caliente
+    this.permsSub = this.permissionService.permissions$.subscribe(() => {
+        this.cdr.detectChanges();
+    });
+
     setInterval(() => {
       this.updateDateTime();
       if (this.marcaEstado === 'Pendiente') {
@@ -109,7 +117,6 @@ export class Dashboard implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     }, 5000);
 
-    // Actualizar estadísticas de admin cada 15 segundos
     if (isPlatformBrowser(this.platformId) && this.role === 'admin') {
       this.statsInterval = setInterval(() => {
         this.loadDashboardStats();
@@ -119,7 +126,14 @@ export class Dashboard implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.routerSubscription?.unsubscribe();
+    this.permsSub?.unsubscribe();
     if (this.statsInterval) clearInterval(this.statsInterval);
+  }
+
+  // MÉTODO PARA EL TEMPLATE: Verifica permisos dinámicamente
+  canAccess(modulo: string): boolean {
+    if (this.role === 'admin' || this.role === 'administrador') return true;
+    return this.permissionService.hasPermission(modulo, 'ver');
   }
 
   private loadAllData(): void {
@@ -167,7 +181,6 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   private addDynamicNotices(): void {
-    // Evitar duplicados
     this.notices = this.notices.filter(n => n.persistent);
 
     if (this.marcaEstado === 'Entrada') {
@@ -476,7 +489,10 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    localStorage.clear();
+    if (isPlatformBrowser(this.platformId)) {
+        localStorage.clear();
+        this.permissionService.clearPermissions();
+    }
     this.router.navigate(['/login']);
   }
 }

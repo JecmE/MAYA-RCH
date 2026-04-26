@@ -38,6 +38,12 @@ export declare class AdminController {
     deleteBonusRule(id: number, req: any): Promise<import("../../entities").ReglaBono[]>;
     getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<import("../../entities").AuditLog[]>;
     getRoles(): Promise<import("../../entities").Rol[]>;
+    createRole(dto: any, req: any): Promise<any>;
+    deleteRole(id: number, req: any): Promise<{
+        message: string;
+    }>;
+    getRolePermissions(id: number): Promise<import("../../entities/rol-permiso.entity").RolPermiso[]>;
+    updateRolePermissions(id: number, perms: any[], req: any): Promise<import("../../entities/rol-permiso.entity").RolPermiso[]>;
     getAdminDashboard(): Promise<{
         usuariosActivos: number;
         usuariosBloqueados: number;

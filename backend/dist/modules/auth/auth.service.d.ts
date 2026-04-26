@@ -23,6 +23,7 @@ export declare class AuthService {
             usuarioId: number;
             username: string;
             roles: string[];
+            rolId: number;
             empleadoId: number;
             nombreCompleto: string;
             email: string;

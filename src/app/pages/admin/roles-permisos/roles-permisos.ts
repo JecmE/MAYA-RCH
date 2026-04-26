@@ -1,18 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AdminService, Rol } from '../../../services/admin.service';
-
-interface PermisoItem {
-  modulo: string;
-  ver: boolean;
-  crear: boolean;
-  editar: boolean;
-  aprobar: boolean;
-  exportar: boolean;
-  administrar: boolean;
-}
+import { AdminService, Rol, PermisoItem } from '../../../services/admin.service';
 
 type PermisoKey = 'ver' | 'crear' | 'editar' | 'aprobar' | 'exportar' | 'administrar';
 
@@ -24,390 +14,183 @@ type PermisoKey = 'ver' | 'crear' | 'editar' | 'aprobar' | 'exportar' | 'adminis
   styleUrl: './roles-permisos.css',
 })
 export class RolesPermisos implements OnInit {
-  roles: string[] = ['Administrador', 'Supervisor', 'RRHH', 'Empleado'];
-  activeRole = 'Administrador';
+  rolesList: Rol[] = [];
+  activeRolObj: Rol | null = null;
+  permisosData: PermisoItem[] = [];
 
   editandoMatriz = false;
+  isLoading = false;
+  isSaving = false;
+
   mostrarModalNuevoRol = false;
   mostrarModalEliminarRol = false;
   mostrarMensajeExito = false;
   mensajeExito = '';
 
-  nuevoRol = '';
-  rolAEliminar = '';
-
-  permisosPorRol: Record<string, PermisoItem[]> = {
-    Administrador: [
-      {
-        modulo: 'Usuarios',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: false,
-        exportar: true,
-        administrar: true,
-      },
-      {
-        modulo: 'Empleados',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: false,
-        exportar: true,
-        administrar: true,
-      },
-      {
-        modulo: 'Permisos',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: true,
-        exportar: true,
-        administrar: true,
-      },
-      {
-        modulo: 'Planilla',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: true,
-        exportar: true,
-        administrar: true,
-      },
-      {
-        modulo: 'Reportes',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: true,
-        administrar: true,
-      },
-    ],
-    Supervisor: [
-      {
-        modulo: 'Usuarios',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Empleados',
-        ver: true,
-        crear: false,
-        editar: true,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Permisos',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: true,
-        exportar: true,
-        administrar: false,
-      },
-      {
-        modulo: 'Planilla',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Reportes',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: true,
-        administrar: false,
-      },
-    ],
-    RRHH: [
-      {
-        modulo: 'Usuarios',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Empleados',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: false,
-        exportar: true,
-        administrar: false,
-      },
-      {
-        modulo: 'Permisos',
-        ver: true,
-        crear: true,
-        editar: true,
-        aprobar: true,
-        exportar: true,
-        administrar: false,
-      },
-      {
-        modulo: 'Planilla',
-        ver: true,
-        crear: false,
-        editar: true,
-        aprobar: false,
-        exportar: true,
-        administrar: false,
-      },
-      {
-        modulo: 'Reportes',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: true,
-        administrar: false,
-      },
-    ],
-    Empleado: [
-      {
-        modulo: 'Usuarios',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Empleados',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Permisos',
-        ver: true,
-        crear: true,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Planilla',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: true,
-        administrar: false,
-      },
-      {
-        modulo: 'Reportes',
-        ver: true,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: true,
-        administrar: false,
-      },
-    ],
-  };
+  nuevoRolNombre = '';
+  nuevoRolDesc = '';
+  rolAEliminar: Rol | null = null;
 
   constructor(
     private router: Router,
     private adminService: AdminService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.loadRoles();
+    this.loadInitialData();
   }
 
-  private loadRoles(): void {
+  private loadInitialData(): void {
+    this.isLoading = true;
     this.adminService.getRoles().subscribe({
-      next: (data: Rol[]) => {
-        const apiRoles = data.map((r) => r.nombre);
-        this.roles = [...new Set(['Administrador', 'Supervisor', 'RRHH', 'Empleado', ...apiRoles])];
+      next: (data) => {
+        this.rolesList = data;
+        if (this.rolesList.length > 0) {
+          const lastActive = localStorage.getItem('activeRolId');
+          const found = this.rolesList.find(r => r.rolId === Number(lastActive));
+          this.setActiveRole(found || this.rolesList[0]);
+        } else {
+          this.isLoading = false;
+        }
+        this.cdr.detectChanges();
       },
-      error: () => {},
+      error: () => this.isLoading = false
     });
   }
 
-  goBack(): void {
-    this.router.navigate(['/']);
-  }
-
-  setActiveRole(rol: string): void {
-    this.activeRole = rol;
+  setActiveRole(rol: Rol): void {
+    this.activeRolObj = rol;
+    localStorage.setItem('activeRolId', rol.rolId.toString());
     this.editandoMatriz = false;
+    this.loadPermissions(rol.rolId);
   }
 
-  get permisosData(): PermisoItem[] {
-    return this.permisosPorRol[this.activeRole] || [];
-  }
-
-  get puedeEliminarRolActivo(): boolean {
-    return !['Administrador', 'Supervisor', 'RRHH', 'Empleado'].includes(this.activeRole);
+  private loadPermissions(rolId: number): void {
+    this.isLoading = true;
+    this.adminService.getRolePermissions(rolId).subscribe({
+      next: (perms) => {
+        this.permisosData = perms;
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   toggleEditarMatriz(): void {
     if (this.editandoMatriz) {
-      this.editandoMatriz = false;
-      this.mostrarNotificacion(`Matriz de permisos actualizada para ${this.activeRole}.`);
+      this.guardarPermisos();
       return;
     }
-
     this.editandoMatriz = true;
   }
 
-  togglePermiso(row: PermisoItem, key: PermisoKey): void {
-    if (!this.editandoMatriz) {
-      return;
-    }
+  guardarPermisos(): void {
+    if (!this.activeRolObj) return;
 
+    this.isSaving = true;
+    this.adminService.updateRolePermissions(this.activeRolObj.rolId, this.permisosData).subscribe({
+      next: () => {
+        this.isSaving = false;
+        this.editandoMatriz = false;
+        this.mostrarNotificacion('Matriz de permisos actualizada correctamente.');
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isSaving = false;
+        this.mostrarNotificacion('Error al guardar cambios.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  togglePermiso(row: PermisoItem, key: PermisoKey): void {
+    if (!this.editandoMatriz) return;
     row[key] = !row[key];
+    this.cdr.detectChanges();
   }
 
   abrirModalNuevoRol(): void {
-    this.nuevoRol = '';
+    this.nuevoRolNombre = '';
+    this.nuevoRolDesc = '';
     this.mostrarModalNuevoRol = true;
   }
 
   cerrarModalNuevoRol(): void {
     this.mostrarModalNuevoRol = false;
-    this.nuevoRol = '';
   }
 
   crearNuevoRol(): void {
-    const nombreRol = this.nuevoRol.trim();
+    if (!this.nuevoRolNombre.trim()) return;
 
-    if (!nombreRol) {
-      return;
-    }
-
-    const yaExiste = this.roles.some((rol) => rol.toLowerCase() === nombreRol.toLowerCase());
-
-    if (yaExiste) {
-      this.mostrarNotificacion('Ese rol ya existe.');
-      return;
-    }
-
-    this.roles = [...this.roles, nombreRol];
-    this.permisosPorRol[nombreRol] = this.crearPermisosBase();
-    this.activeRole = nombreRol;
-
-    this.cerrarModalNuevoRol();
-    this.mostrarNotificacion(`Rol "${nombreRol}" creado correctamente.`);
+    this.isSaving = true;
+    this.adminService.createRole({
+      nombre: this.nuevoRolNombre,
+      descripcion: this.nuevoRolDesc
+    }).subscribe({
+      next: (newRol) => {
+        this.isSaving = false;
+        this.rolesList.push(newRol);
+        this.setActiveRole(newRol);
+        this.cerrarModalNuevoRol();
+        this.mostrarNotificacion(`Rol "${newRol.nombre}" creado exitosamente.`);
+      },
+      error: (err) => {
+        this.isSaving = false;
+        alert(err.error?.message || 'Fallo al crear rol.');
+      }
+    });
   }
 
   abrirModalEliminarRol(): void {
-    if (!this.puedeEliminarRolActivo) {
-      this.mostrarNotificacion('Este rol base no se puede eliminar.');
+    if (!this.activeRolObj) return;
+    if (['Administrador', 'Supervisor', 'RRHH', 'Empleado'].includes(this.activeRolObj.nombre)) {
+      alert('Restricción: Los roles base del sistema no pueden ser eliminados.');
       return;
     }
-
-    this.rolAEliminar = this.activeRole;
+    this.rolAEliminar = this.activeRolObj;
     this.mostrarModalEliminarRol = true;
   }
 
   cerrarModalEliminarRol(): void {
     this.mostrarModalEliminarRol = false;
-    this.rolAEliminar = '';
+    this.rolAEliminar = null;
   }
 
   eliminarRol(): void {
-    if (!this.rolAEliminar) {
-      return;
-    }
+    if (!this.rolAEliminar) return;
 
-    if (!this.puedeEliminarRolActivo) {
-      this.mostrarNotificacion('Este rol base no se puede eliminar.');
-      this.cerrarModalEliminarRol();
-      return;
-    }
-
-    const rolEliminado = this.rolAEliminar;
-
-    this.roles = this.roles.filter((rol) => rol !== rolEliminado);
-    delete this.permisosPorRol[rolEliminado];
-
-    this.activeRole = this.roles.length ? this.roles[0] : '';
-    this.editandoMatriz = false;
-
-    this.cerrarModalEliminarRol();
-    this.mostrarNotificacion(`Rol "${rolEliminado}" eliminado correctamente.`);
-  }
-
-  private crearPermisosBase(): PermisoItem[] {
-    return [
-      {
-        modulo: 'Usuarios',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
+    this.isSaving = true;
+    this.adminService.deleteRole(this.rolAEliminar.rolId).subscribe({
+      next: () => {
+        this.isSaving = false;
+        this.rolesList = this.rolesList.filter(r => r.rolId !== this.rolAEliminar?.rolId);
+        if (this.rolesList.length > 0) {
+          this.setActiveRole(this.rolesList[0]);
+        }
+        this.cerrarModalEliminarRol();
+        this.mostrarNotificacion('Rol eliminado de la base de datos.');
       },
-      {
-        modulo: 'Empleados',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Permisos',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Planilla',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-      {
-        modulo: 'Reportes',
-        ver: false,
-        crear: false,
-        editar: false,
-        aprobar: false,
-        exportar: false,
-        administrar: false,
-      },
-    ];
+      error: () => {
+        this.isSaving = false;
+        alert('Error al intentar eliminar el rol.');
+      }
+    });
   }
 
   private mostrarNotificacion(mensaje: string): void {
     this.mensajeExito = mensaje;
     this.mostrarMensajeExito = true;
-
     setTimeout(() => {
       this.mostrarMensajeExito = false;
-      this.mensajeExito = '';
     }, 3000);
+  }
+
+  goBack(): void {
+    this.router.navigate(['/']);
   }
 }

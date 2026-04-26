@@ -15,6 +15,7 @@ import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
+import { RolPermiso } from '../../entities/rol-permiso.entity';
 export declare class AdminService implements OnModuleInit {
     private turnoRepository;
     private empleadoTurnoRepository;
@@ -31,10 +32,19 @@ export declare class AdminService implements OnModuleInit {
     private vacacionMovimientoRepository;
     private registroTiempoRepository;
     private bonoResultadoRepository;
+    private rolPermisoRepository;
     private dataSource;
-    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>, bonoResultadoRepository: Repository<BonoResultado>, dataSource: DataSource);
+    private readonly DEFAULT_MODULES;
+    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, registroTiempoRepository: Repository<RegistroTiempo>, bonoResultadoRepository: Repository<BonoResultado>, rolPermisoRepository: Repository<RolPermiso>, dataSource: DataSource);
     onModuleInit(): Promise<void>;
     private ensureCorrectTableStructures;
+    getRoles(): Promise<Rol[]>;
+    getRolePermissions(rolId: number): Promise<RolPermiso[]>;
+    updateRolePermissions(rolId: number, perms: any[], uid: number): Promise<RolPermiso[]>;
+    createRole(dto: any, uid: number): Promise<any>;
+    deleteRole(id: number, uid: number): Promise<{
+        message: string;
+    }>;
     logAction(dto: {
         modulo: string;
         accion: string;
@@ -101,7 +111,8 @@ export declare class AdminService implements OnModuleInit {
         horasPendientes: number;
         kpiPromedio: number;
     }>;
-    getRoles(): Promise<Rol[]>;
+    getKpiParameters(): Promise<{}>;
+    updateKpiParameters(dto: any, uid: number): Promise<{}>;
     getUsers(): Promise<{
         usuarioId: number;
         username: string;
@@ -114,8 +125,6 @@ export declare class AdminService implements OnModuleInit {
         supervisorId: number;
         supervisorNombre: string;
     }[]>;
-    getKpiParameters(): Promise<{}>;
-    updateKpiParameters(dto: any, uid: number): Promise<{}>;
     createUser(dto: any, uid: number): Promise<{
         usuarioId: number;
         username: string;

@@ -122,6 +122,7 @@ let AuthService = class AuthService {
                 usuarioId: usuario.usuarioId,
                 username: usuario.username,
                 roles: usuario.roles.map((r) => r.nombre),
+                rolId: usuario.roles[0]?.rolId,
                 empleadoId: usuario.empleadoId,
                 nombreCompleto: this.sanitizeString(usuario.empleado ? `${usuario.empleado.nombres} ${usuario.empleado.apellidos}` : ''),
                 email: usuario.empleado?.email,
