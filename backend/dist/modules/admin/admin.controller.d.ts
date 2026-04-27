@@ -4,10 +4,8 @@ export declare class AdminController {
     constructor(adminService: AdminService);
     getShifts(): Promise<import("../../entities").Turno[]>;
     createShift(createDto: any, req: any): Promise<import("../../entities").Turno[]>;
-    updateShift(id: number, updateDto: any, req: any): Promise<import("../../entities").Turno[]>;
-    deactivateShift(id: number, req: any): Promise<{
-        message: string;
-    }>;
+    updateShift(id: number, updateDto: any, req: any): Promise<import("../../entities").Turno>;
+    deactivateShift(id: number, req: any): Promise<import("typeorm").UpdateResult>;
     getAssignments(): Promise<{
         id: number;
         empleadoNombre: string;
@@ -32,8 +30,8 @@ export declare class AdminController {
     }, req: any): Promise<{
         message: string;
     }>;
-    updateBonusRule(id: number, updateDto: any, req: any): Promise<import("../../entities").ReglaBono[]>;
-    deleteBonusRule(id: number, req: any): Promise<import("../../entities").ReglaBono[]>;
+    updateBonusRule(id: number, updateDto: any, req: any): Promise<import("../../entities").ReglaBono>;
+    deleteBonusRule(id: number, req: any): Promise<import("typeorm").UpdateResult>;
     getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<import("../../entities").AuditLog[]>;
     getRoles(): Promise<import("../../entities").Rol[]>;
     createRole(dto: any, req: any): Promise<import("../../entities").Rol[]>;
@@ -75,6 +73,7 @@ export declare class AdminController {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     createUser(dto: any, req: any): Promise<{
         usuarioId: number;
@@ -87,6 +86,7 @@ export declare class AdminController {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     updateUser(id: number, dto: any, req: any): Promise<{
         usuarioId: number;
@@ -99,6 +99,7 @@ export declare class AdminController {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     toggleUserStatus(id: number, body: {
         status: string;
@@ -113,8 +114,12 @@ export declare class AdminController {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     resetPassword(id: number, req: any): Promise<{
+        message: string;
+    }>;
+    invalidateSession(id: number, req: any): Promise<{
         message: string;
     }>;
 }

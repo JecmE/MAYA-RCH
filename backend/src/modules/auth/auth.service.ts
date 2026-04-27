@@ -8,6 +8,7 @@ import { Empleado } from '../../entities/empleado.entity';
 import { Rol } from '../../entities/rol.entity';
 import { ResetPasswordToken } from '../../entities/reset-password-token.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,6 +26,8 @@ export class AuthService {
     private resetTokenRepository: Repository<ResetPasswordToken>,
     @InjectRepository(AuditLog)
     private auditRepository: Repository<AuditLog>,
+    @InjectRepository(ParametroSistema)
+    private parametroRepository: Repository<ParametroSistema>,
     private jwtService: JwtService,
     private dataSource: DataSource,
   ) {}
@@ -98,9 +101,15 @@ export class AuthService {
       username: usuario.username,
       empleadoId: usuario.empleadoId,
       roles: usuario.roles.map((r) => r.nombre),
+      sessionVersion: usuario.sessionVersion,
     };
 
+    // LEER EXPIRACIÓN DINÁMICA DESDE PARÁMETROS
+    const expParam = await this.parametroRepository.findOne({ where: { clave: 'jwt_expiracion', activo: true } });
+    const expiresInMinutes = expParam ? parseInt(expParam.valor) : 60;
+
     usuario.ultimoLogin = new Date();
+    usuario.ultimoIp = ip;
     await this.usuarioRepository.save(usuario);
 
     const auditLog = this.auditRepository.create({
@@ -115,7 +124,7 @@ export class AuthService {
     await this.auditRepository.save(auditLog);
 
     return {
-      token: this.jwtService.sign(payload),
+      token: this.jwtService.sign(payload, { expiresIn: `${expiresInMinutes}m` }),
       user: {
         usuarioId: usuario.usuarioId,
         username: usuario.username,

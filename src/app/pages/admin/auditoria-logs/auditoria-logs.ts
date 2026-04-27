@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AdminService, AuditLog } from '../../../services/admin.service';
@@ -53,14 +53,9 @@ export class AuditoriaLogs implements OnInit {
   showDetalle = false;
 
   searchTerm = '';
-  filtroAccion = '';
-  filtroFecha = '';
-
   filtroModulo = '';
   filtroUsuario = '';
   filtroFechaInicio = '';
-  filtroFechaFin = '';
-  filtroTipoEvento = '';
   filtroSeveridad = '';
 
   eventoSeleccionado: AuditoriaLogItem | null = null;
@@ -73,220 +68,148 @@ export class AuditoriaLogs implements OnInit {
   constructor(
     private router: Router,
     private adminService: AdminService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadAuditLogs();
   }
 
-  private loadAuditLogs(): void {
+  loadAuditLogs(): void {
     this.adminService.getAuditLogs().subscribe({
       next: (data: AuditLog[]) => {
-        this.auditoriaData = data.map((log) => this.mapAuditLogToItem(log));
+        // Filtrar Logs Funcionales (Todo menos AUTH y errores técnicos puros)
+        this.auditoriaData = data
+            .filter(l => l.modulo !== 'AUTH')
+            .map(log => this.mapAuditLogToItem(log));
+
+        // Filtrar Logs de Acceso (Solo modulo AUTH)
+        this.accesosData = data
+            .filter(l => l.modulo === 'AUTH')
+            .map(log => ({
+                id: log.auditId,
+                fecha: this.formatDateTime(log.fechaHora),
+                usuario: this.extractUsername(log),
+                accion: log.accion === 'LOGIN' ? 'Login Exitoso' : (log.accion.includes('FAIL') ? 'Intento Fallido' : 'Cierre de Sesión'),
+                ip: this.extractIP(log.detalle),
+                dispositivo: 'PC / Navegador',
+                sesion: 'ID-' + log.auditId
+            }));
+
+        // Simulación de Errores (Si no hay tabla de errores técnicos, tomamos logins fallidos como críticos)
+        this.erroresData = data
+            .filter(l => l.accion.includes('FAIL') || l.modulo === 'ERROR')
+            .map(log => ({
+                id: log.auditId,
+                fecha: this.formatDateTime(log.fechaHora),
+                modulo: log.modulo,
+                error: log.accion,
+                mensaje: log.detalle,
+                severidad: 'Alta'
+            }));
+
+        this.cdr.detectChanges();
       },
       error: () => {
         this.auditoriaData = [];
+        this.cdr.detectChanges();
       },
     });
+  }
+
+  private extractUsername(log: any): string {
+    if (log.usuario && typeof log.usuario === 'object') return log.usuario.username;
+    if (log.usuario) return log.usuario;
+    return 'Desconocido';
+  }
+
+  private extractIP(detalle: string): string {
+    if (!detalle) return '127.0.0.1';
+    const match = detalle.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
+    return match ? match[0] : '127.0.0.1';
   }
 
   private mapAuditLogToItem(log: AuditLog): AuditoriaLogItem {
     return {
       id: log.auditId,
       fecha: this.formatDateTime(log.fechaHora),
-      usuario: log.usuario,
+      usuario: this.extractUsername(log),
       modulo: log.modulo,
-      evento: log.accion.toLowerCase().replace(/\s+/g, '.'),
+      evento: log.entidad,
       accion: log.accion,
       descripcion: log.detalle,
-      severidad: 'Media',
+      severidad: log.accion.includes('DELETE') ? 'Alta' : 'Media',
       anterior: null,
       nuevo: null,
-      ip: 'Sistema',
+      ip: this.extractIP(log.detalle),
     };
   }
 
-  private formatDateTime(dateStr: string): string {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  private formatDateTime(dateVal: any): string {
+    if (!dateVal) return '';
+    const date = new Date(dateVal);
+    return date.toLocaleString('es-GT', { hour12: false });
   }
 
-  goBack(): void {
-    this.router.navigate(['/']);
-  }
-
-  setTab(tab: TabType): void {
-    this.activeTab = tab;
-    this.searchTerm = '';
-    this.filtroFecha = '';
-  }
-
-  toggleFiltros(): void {
-    this.showFiltros = !this.showFiltros;
-  }
+  goBack(): void { this.router.navigate(['/']); }
+  setTab(tab: TabType): void { this.activeTab = tab; }
+  toggleFiltros(): void { this.showFiltros = !this.showFiltros; }
 
   abrirDetalle(evento: AuditoriaLogItem): void {
     this.eventoSeleccionado = evento;
     this.showDetalle = true;
-    this.observacion = '';
   }
 
-  cerrarDetalle(): void {
-    this.showDetalle = false;
-    this.eventoSeleccionado = null;
-    this.observacion = '';
-  }
+  cerrarDetalle(): void { this.showDetalle = false; this.eventoSeleccionado = null; }
+  guardarObservacion(): void { this.cerrarDetalle(); }
 
-  guardarObservacion(): void {
-    console.log('Observación guardada:', this.observacion, this.eventoSeleccionado);
-    this.cerrarDetalle();
-  }
-
+  // --- FILTRADO REACTIVO ---
   get filteredAuditoriaData(): AuditoriaLogItem[] {
-    return this.auditoriaData.filter((row) => {
-      const coincideBusqueda =
-        !this.searchTerm ||
+    return this.auditoriaData.filter(row => {
+      const matchSearch = !this.searchTerm ||
         row.usuario.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.modulo.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.descripcion.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.evento.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.accion.toLowerCase().includes(this.searchTerm.toLowerCase());
-
-      const coincideAccion = !this.filtroAccion || row.accion === this.filtroAccion;
-
-      const coincideFecha = !this.filtroFecha || row.fecha.startsWith(this.filtroFecha);
-
-      const coincideModulo = !this.filtroModulo || row.modulo === this.filtroModulo;
-
-      const coincideUsuario = !this.filtroUsuario || row.usuario === this.filtroUsuario;
-
-      const coincideTipoEvento = !this.filtroTipoEvento || row.evento === this.filtroTipoEvento;
-
-      const coincideSeveridad = !this.filtroSeveridad || row.severidad === this.filtroSeveridad;
-
-      const coincideFechaInicio = !this.filtroFechaInicio || row.fecha >= this.filtroFechaInicio;
-
-      const coincideFechaFin =
-        !this.filtroFechaFin || row.fecha <= `${this.filtroFechaFin} 23:59:59`;
-
-      return (
-        coincideBusqueda &&
-        coincideAccion &&
-        coincideFecha &&
-        coincideModulo &&
-        coincideUsuario &&
-        coincideTipoEvento &&
-        coincideSeveridad &&
-        coincideFechaInicio &&
-        coincideFechaFin
-      );
+        row.descripcion.toLowerCase().includes(this.searchTerm.toLowerCase());
+      const matchModulo = !this.filtroModulo || row.modulo === this.filtroModulo;
+      const matchUsuario = !this.filtroUsuario || row.usuario === this.filtroUsuario;
+      const matchSev = !this.filtroSeveridad || row.severidad === this.filtroSeveridad;
+      return matchSearch && matchModulo && matchUsuario && matchSev;
     });
   }
 
   get filteredAccesosData(): AccesoLogItem[] {
-    return this.accesosData.filter((row) => {
-      const coincideBusqueda =
-        !this.searchTerm ||
+    return this.accesosData.filter(row => {
+      return !this.searchTerm ||
         row.usuario.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.accion.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.ip.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.dispositivo.toLowerCase().includes(this.searchTerm.toLowerCase());
-
-      const coincideFecha = !this.filtroFecha || row.fecha.startsWith(this.filtroFecha);
-
-      return coincideBusqueda && coincideFecha;
+        row.ip.includes(this.searchTerm);
     });
   }
 
   get filteredErroresData(): ErrorLogItem[] {
-    return this.erroresData.filter((row) => {
-      const coincideBusqueda =
-        !this.searchTerm ||
-        row.modulo.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.error.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        row.mensaje.toLowerCase().includes(this.searchTerm.toLowerCase());
-
-      const coincideFecha = !this.filtroFecha || row.fecha.startsWith(this.filtroFecha);
-
-      return coincideBusqueda && coincideFecha;
+    return this.erroresData.filter(row => {
+        return !this.searchTerm || row.mensaje.toLowerCase().includes(this.searchTerm.toLowerCase());
     });
   }
 
-  get totalEventosHoy(): number {
-    return this.auditoriaData.length + this.accesosData.length + this.erroresData.length;
-  }
+  // --- MÉTODOS DE SOPORTE ---
+  get totalEventosHoy(): number { return this.auditoriaData.length; }
+  get totalLogins(): number { return this.accesosData.filter(x => x.accion.includes('Exitoso')).length; }
+  get totalCambios(): number { return this.auditoriaData.filter(x => x.modulo === 'ADMIN' || x.modulo === 'RRHH').length; }
+  get erroresAltos(): number { return this.erroresData.length; }
 
-  get totalLogins(): number {
-    return this.accesosData.filter((x) => x.accion.toLowerCase().includes('login exitoso')).length;
-  }
-
-  get totalCambios(): number {
-    return this.auditoriaData.filter((x) =>
-      ['Edición', 'Creación', 'Cierre', 'Bloqueo', 'Cálculo'].includes(x.accion),
-    ).length;
-  }
-
-  get totalExportaciones(): number {
-    return this.auditoriaData.filter((x) => x.evento.toLowerCase().includes('export')).length;
-  }
-
-  get erroresAltos(): number {
-    return this.erroresData.filter((x) => x.severidad === 'Alta').length;
-  }
-
-  getModulosUnicos(): string[] {
-    return [...new Set(this.auditoriaData.map((x) => x.modulo))];
-  }
-
-  getUsuariosUnicos(): string[] {
-    return [...new Set(this.auditoriaData.map((x) => x.usuario))];
-  }
-
-  getEventosUnicos(): string[] {
-    return [...new Set(this.auditoriaData.map((x) => x.evento))];
-  }
+  getModulosUnicos(): string[] { return [...new Set(this.auditoriaData.map(x => x.modulo))]; }
+  getUsuariosUnicos(): string[] { return [...new Set(this.auditoriaData.map(x => x.usuario))]; }
 
   getAccionClass(accion: string): string {
-    switch (accion) {
-      case 'Bloqueo':
-        return 'badge badge--red';
-      case 'Cálculo':
-        return 'badge badge--slate';
-      case 'Cierre':
-        return 'badge badge--amber';
-      case 'Creación':
-        return 'badge badge--green';
-      case 'Edición':
-        return 'badge badge--blue';
-      default:
-        return 'badge badge--purple';
-    }
+    const a = accion.toUpperCase();
+    if (a.includes('DELETE') || a.includes('BLOQUE')) return 'badge badge--red';
+    if (a.includes('CREATE') || a.includes('INSERT')) return 'badge badge--green';
+    if (a.includes('UPDATE') || a.includes('EDIT')) return 'badge badge--blue';
+    return 'badge badge--slate';
   }
 
-  getSeveridadClass(severidad: Severidad | 'Media'): string {
-    switch (severidad) {
-      case 'Alta':
-        return 'severity severity--high';
-      case 'Media':
-        return 'severity severity--medium';
-      default:
-        return 'severity severity--low';
-    }
-  }
-
-  limpiarFiltrosAvanzados(): void {
-    this.filtroModulo = '';
-    this.filtroUsuario = '';
-    this.filtroFechaInicio = '';
-    this.filtroFechaFin = '';
-    this.filtroTipoEvento = '';
-    this.filtroSeveridad = '';
+  getSeveridadClass(severidad: string): string {
+    if (severidad === 'Alta') return 'severity--high';
+    if (severidad === 'Media') return 'severity--medium';
+    return 'severity--low';
   }
 }

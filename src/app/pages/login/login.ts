@@ -1,6 +1,6 @@
-import { Component, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, ChangeDetectorRef, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { PermissionService } from '../../services/permission.service';
@@ -12,7 +12,7 @@ import { PermissionService } from '../../services/permission.service';
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
-export class Login {
+export class Login implements OnInit {
   error = false;
   errorMessage = '';
   username = '';
@@ -22,9 +22,21 @@ export class Login {
     private authService: AuthService,
     private permissionService: PermissionService,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: object,
   ) {}
+
+  ngOnInit(): void {
+    // Si viene de una redirección por expiración, mostrar mensaje
+    this.route.queryParams.subscribe(params => {
+      if (params['expired'] === 'true') {
+        this.error = true;
+        this.errorMessage = 'Su sesión ha expirado por inactividad o vencimiento de token.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
 
   handleLogin(event: Event) {
     event.preventDefault();

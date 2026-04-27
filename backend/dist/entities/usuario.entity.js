@@ -49,6 +49,14 @@ __decorate([
     __metadata("design:type", Date)
 ], Usuario.prototype, "ultimoLogin", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'ultimo_ip', length: 50, nullable: true }),
+    __metadata("design:type", String)
+], Usuario.prototype, "ultimoIp", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'session_version', default: 1 }),
+    __metadata("design:type", Number)
+], Usuario.prototype, "sessionVersion", void 0);
+__decorate([
     (0, typeorm_1.OneToOne)(() => empleado_entity_1.Empleado, (emp) => emp.usuario),
     (0, typeorm_1.JoinColumn)({ name: 'empleado_id' }),
     __metadata("design:type", empleado_entity_1.Empleado)

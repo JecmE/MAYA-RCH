@@ -59,13 +59,6 @@ export declare class AdminService implements OnModuleInit {
     } & AuditLog>;
     getKpiParameters(): Promise<{}>;
     updateKpiParameters(dto: any, uid: number): Promise<{}>;
-    getRoles(): Promise<Rol[]>;
-    getRolePermissions(rolId: number): Promise<RolPermiso[]>;
-    updateRolePermissions(rolId: number, perms: any[], uid: number): Promise<RolPermiso[]>;
-    createRole(dto: any, uid: number): Promise<Rol[]>;
-    deleteRole(id: number, uid: number): Promise<{
-        message: string;
-    }>;
     getUsers(): Promise<{
         usuarioId: number;
         username: string;
@@ -77,6 +70,7 @@ export declare class AdminService implements OnModuleInit {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     createUser(dto: any, uid: number): Promise<{
         usuarioId: number;
@@ -89,6 +83,7 @@ export declare class AdminService implements OnModuleInit {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     updateUser(id: number, dto: any, uid: number): Promise<{
         usuarioId: number;
@@ -101,6 +96,7 @@ export declare class AdminService implements OnModuleInit {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
     updateUserStatus(id: number, status: string, uid: number): Promise<{
         usuarioId: number;
@@ -113,16 +109,33 @@ export declare class AdminService implements OnModuleInit {
         empleadoId: number;
         supervisorId: number;
         supervisorNombre: string;
+        ultimoIp: string;
     }[]>;
+    invalidateUserSession(id: number, uid: number): Promise<{
+        message: string;
+    }>;
     resetPassword(id: number, uid: number): Promise<{
+        message: string;
+    }>;
+    getActiveSessions(): Promise<{
+        id: number;
+        usuario: string;
+        ip: string;
+        dispositivo: string;
+        ultimoAcceso: string;
+        estado: string;
+    }[]>;
+    getRoles(): Promise<Rol[]>;
+    getRolePermissions(rolId: number): Promise<RolPermiso[]>;
+    updateRolePermissions(rolId: number, perms: any[], uid: number): Promise<RolPermiso[]>;
+    createRole(dto: any, uid: number): Promise<Rol[]>;
+    deleteRole(id: number, uid: number): Promise<{
         message: string;
     }>;
     getShifts(): Promise<Turno[]>;
     createShift(dto: any, uid: number): Promise<Turno[]>;
-    updateShift(id: number, dto: any, uid: number): Promise<Turno[]>;
-    deactivateShift(id: number, uid: number): Promise<{
-        message: string;
-    }>;
+    updateShift(id: number, dto: any, uid: number): Promise<Turno>;
+    deactivateShift(id: number, uid: number): Promise<import("typeorm").UpdateResult>;
     getAssignments(): Promise<{
         id: number;
         empleadoNombre: string;
@@ -139,8 +152,8 @@ export declare class AdminService implements OnModuleInit {
     }[]>;
     getBonusRules(): Promise<ReglaBono[]>;
     createBonusRule(dto: any, uid: number): Promise<ReglaBono[]>;
-    updateBonusRule(id: number, dto: any, uid: number): Promise<ReglaBono[]>;
-    deleteBonusRule(id: number, uid: number): Promise<ReglaBono[]>;
+    updateBonusRule(id: number, dto: any, uid: number): Promise<ReglaBono>;
+    deleteBonusRule(id: number, uid: number): Promise<import("typeorm").UpdateResult>;
     runBonusEvaluation(mes: number, anio: number, uid: number): Promise<{
         message: string;
     }>;

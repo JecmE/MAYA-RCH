@@ -23,14 +23,16 @@ const empleado_entity_1 = require("../../entities/empleado.entity");
 const rol_entity_1 = require("../../entities/rol.entity");
 const reset_password_token_entity_1 = require("../../entities/reset-password-token.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 const uuid_1 = require("uuid");
 let AuthService = class AuthService {
-    constructor(usuarioRepository, empleadoRepository, rolRepository, resetTokenRepository, auditRepository, jwtService, dataSource) {
+    constructor(usuarioRepository, empleadoRepository, rolRepository, resetTokenRepository, auditRepository, parametroRepository, jwtService, dataSource) {
         this.usuarioRepository = usuarioRepository;
         this.empleadoRepository = empleadoRepository;
         this.rolRepository = rolRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.auditRepository = auditRepository;
+        this.parametroRepository = parametroRepository;
         this.jwtService = jwtService;
         this.dataSource = dataSource;
     }
@@ -103,8 +105,12 @@ let AuthService = class AuthService {
             username: usuario.username,
             empleadoId: usuario.empleadoId,
             roles: usuario.roles.map((r) => r.nombre),
+            sessionVersion: usuario.sessionVersion,
         };
+        const expParam = await this.parametroRepository.findOne({ where: { clave: 'jwt_expiracion', activo: true } });
+        const expiresInMinutes = expParam ? parseInt(expParam.valor) : 60;
         usuario.ultimoLogin = new Date();
+        usuario.ultimoIp = ip;
         await this.usuarioRepository.save(usuario);
         const auditLog = this.auditRepository.create({
             usuarioId: usuario.usuarioId,
@@ -117,7 +123,7 @@ let AuthService = class AuthService {
         });
         await this.auditRepository.save(auditLog);
         return {
-            token: this.jwtService.sign(payload),
+            token: this.jwtService.sign(payload, { expiresIn: `${expiresInMinutes}m` }),
             user: {
                 usuarioId: usuario.usuarioId,
                 username: usuario.username,
@@ -234,7 +240,9 @@ exports.AuthService = AuthService = __decorate([
     __param(2, (0, typeorm_1.InjectRepository)(rol_entity_1.Rol)),
     __param(3, (0, typeorm_1.InjectRepository)(reset_password_token_entity_1.ResetPasswordToken)),
     __param(4, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(5, (0, typeorm_1.InjectRepository)(parametro_sistema_entity_1.ParametroSistema)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

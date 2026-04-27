@@ -192,4 +192,10 @@ export class AdminController {
   resetPassword(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.adminService.resetPassword(id, req.user.usuarioId);
   }
+
+  @Post('users/:id/invalidate-session')
+  @Roles('Administrador')
+  invalidateSession(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.adminService.invalidateUserSession(id, req.user.usuarioId);
+  }
 }

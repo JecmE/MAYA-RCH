@@ -64,8 +64,11 @@ export class AuthService {
     return this.http.post<any>(`${this.apiUrl}/register`, request);
   }
 
-  logout(): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/logout`, {});
+  logout(): void {
+    if (this.isBrowser) {
+        localStorage.clear();
+    }
+    this.http.post<void>(`${this.apiUrl}/logout`, {}).subscribe();
   }
 
   forgotPassword(request: ForgotPasswordRequest): Observable<void> {

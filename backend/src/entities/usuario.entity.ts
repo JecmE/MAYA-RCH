@@ -36,6 +36,12 @@ export class Usuario {
   @Column({ name: 'ultimo_login', nullable: true })
   ultimoLogin: Date;
 
+  @Column({ name: 'ultimo_ip', length: 50, nullable: true })
+  ultimoIp: string;
+
+  @Column({ name: 'session_version', default: 1 })
+  sessionVersion: number;
+
   @OneToOne(() => Empleado, (emp) => emp.usuario)
   @JoinColumn({ name: 'empleado_id' })
   empleado: Empleado;

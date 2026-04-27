@@ -5,6 +5,7 @@ import { Empleado } from '../../entities/empleado.entity';
 import { Rol } from '../../entities/rol.entity';
 import { ResetPasswordToken } from '../../entities/reset-password-token.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 export declare class AuthService {
@@ -13,9 +14,10 @@ export declare class AuthService {
     private rolRepository;
     private resetTokenRepository;
     private auditRepository;
+    private parametroRepository;
     private jwtService;
     private dataSource;
-    constructor(usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, rolRepository: Repository<Rol>, resetTokenRepository: Repository<ResetPasswordToken>, auditRepository: Repository<AuditLog>, jwtService: JwtService, dataSource: DataSource);
+    constructor(usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, rolRepository: Repository<Rol>, resetTokenRepository: Repository<ResetPasswordToken>, auditRepository: Repository<AuditLog>, parametroRepository: Repository<ParametroSistema>, jwtService: JwtService, dataSource: DataSource);
     private sanitizeString;
     login(loginDto: LoginDto, ip: string): Promise<{
         token: string;

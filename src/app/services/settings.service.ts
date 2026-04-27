@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { AdminService, ParametroKpi } from './admin.service';
+import { BehaviorSubject } from 'rxjs';
+import { AdminService } from './admin.service';
 
 export interface GlobalSettings {
   currency: string;
@@ -9,6 +9,7 @@ export interface GlobalSettings {
   dateFormat: string;
   language: string;
   payrollCycle: string;
+  sessionInactivityMinutes: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -19,7 +20,8 @@ export class SettingsService {
     timezone: 'America/Guatemala',
     dateFormat: 'DD/MM/YYYY',
     language: 'Español',
-    payrollCycle: 'Mensual'
+    payrollCycle: 'Mensual',
+    sessionInactivityMinutes: 480
   });
 
   public settings$ = this.settingsSubject.asObservable();
@@ -38,7 +40,8 @@ export class SettingsService {
           timezone: params['zona_horaria'] || 'America/Guatemala',
           dateFormat: params['formato_fecha'] || 'DD/MM/YYYY',
           language: params['idioma_sistema'] || 'Español',
-          payrollCycle: params['ciclo_planilla'] || 'Mensual'
+          payrollCycle: params['ciclo_planilla'] || 'Mensual',
+          sessionInactivityMinutes: params['tiempo_sesion'] ? parseInt(params['tiempo_sesion']) : 480
         };
         this.settingsSubject.next(settings);
       }

@@ -103,6 +103,9 @@ let AdminController = class AdminController {
     resetPassword(id, req) {
         return this.adminService.resetPassword(id, req.user.usuarioId);
     }
+    invalidateSession(id, req) {
+        return this.adminService.invalidateUserSession(id, req.user.usuarioId);
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -335,6 +338,15 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Post)('users/:id/invalidate-session'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "invalidateSession", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

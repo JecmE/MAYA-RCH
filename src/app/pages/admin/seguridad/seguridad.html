@@ -7,49 +7,34 @@
   }
 
   <div class="security-header">
-    <button
-      (click)="goBack()"
-      class="back-button"
-      type="button"
-      aria-label="Regresar"
-    >
-      ←
-    </button>
-
-    <div class="security-header__content">
-      <h2 class="security-title">Seguridad</h2>
-      <p class="security-subtitle">
-        Controla incidentes de acceso, comportamiento de seguridad y sesiones activas.
-      </p>
-    </div>
+    <h2 class="security-title">Seguridad</h2>
+    <p class="security-subtitle">
+      Controla incidentes de acceso, comportamiento de seguridad y sesiones activas.
+    </p>
   </div>
 
   <div class="security-stats">
     <div class="security-stat-card">
       <div class="security-stat-card__icon security-stat-card__icon--red">⚠</div>
-      <div>
+      <div class="stat-content">
         <div class="security-stat-card__label">Intentos Fallidos</div>
         <div class="security-stat-card__value">{{ intentosFallidos }}</div>
-        <div class="security-stat-card__meta security-stat-card__meta--red">
-          Últimas 24h
-        </div>
+        <div class="security-stat-card__meta security-stat-card__meta--red">Últimas 24h</div>
       </div>
     </div>
 
     <div class="security-stat-card">
       <div class="security-stat-card__icon security-stat-card__icon--amber">🔒</div>
-      <div>
+      <div class="stat-content">
         <div class="security-stat-card__label">Usuarios Bloqueados</div>
         <div class="security-stat-card__value">{{ totalUsuariosBloqueados }}</div>
-        <div class="security-stat-card__meta security-stat-card__meta--amber">
-          Requieren atención
-        </div>
+        <div class="security-stat-card__meta security-stat-card__meta--amber">Requieren atención</div>
       </div>
     </div>
 
     <div class="security-stat-card">
       <div class="security-stat-card__icon security-stat-card__icon--green">👥</div>
-      <div>
+      <div class="stat-content">
         <div class="security-stat-card__label">Sesiones Activas</div>
         <div class="security-stat-card__value">{{ totalSesionesActivas }}</div>
         <div class="security-stat-card__meta">En este momento</div>
@@ -58,7 +43,7 @@
 
     <div class="security-stat-card">
       <div class="security-stat-card__icon security-stat-card__icon--blue">🔑</div>
-      <div>
+      <div class="stat-content">
         <div class="security-stat-card__label">Reseteos Password</div>
         <div class="security-stat-card__value">{{ reseteosPassword }}</div>
         <div class="security-stat-card__meta">Últimos 7 días</div>
@@ -67,7 +52,7 @@
 
     <div class="security-stat-card">
       <div class="security-stat-card__icon security-stat-card__icon--purple">🛡</div>
-      <div>
+      <div class="stat-content">
         <div class="security-stat-card__label">Tokens Expirados</div>
         <div class="security-stat-card__value">{{ tokensExpirados }}</div>
         <div class="security-stat-card__meta">Últimos 7 días</div>
@@ -76,153 +61,70 @@
   </div>
 
   <div class="security-grid">
-    <div class="blocked-users-panel">
+    <!-- Panel Usuarios Bloqueados -->
+    <div class="panel-card">
       <div class="panel-header">
-        <h3 class="panel-title">🔒 Usuarios Bloqueados</h3>
+        <h3 class="panel-title"><span class="icon-title">🔒</span> Usuarios Bloqueados</h3>
       </div>
-
-      <div class="blocked-users-list">
-        @if (usuariosBloqueados.length) {
+      <div class="panel-body">
+        <div class="blocked-users-list">
           @for (user of usuariosBloqueados; track user.id) {
             <div class="blocked-user-item">
-              <div>
+              <div class="blocked-user-info">
                 <p class="blocked-user-name">{{ user.usuario }}</p>
                 <p class="blocked-user-meta">{{ user.detalle }} • {{ user.fecha }}</p>
               </div>
-
-              <button
-                class="action-button action-button--outline"
-                type="button"
-                (click)="desbloquearUsuario(user.id)"
-              >
+              <button class="btn-unlock-premium" (click)="desbloquearUsuario(user.usuarioId)">
                 Desbloquear
               </button>
             </div>
+          } @empty {
+            <div class="empty-state">No hay usuarios bloqueados.</div>
           }
-        } @else {
-          <div class="section-empty">
-            No hay usuarios bloqueados en este momento.
-          </div>
-        }
+        </div>
       </div>
     </div>
 
-    <div class="sessions-panel">
+    <!-- Panel Sesiones Activas -->
+    <div class="panel-card">
       <div class="panel-header panel-header--between">
-        <h3 class="panel-title">💻 Sesiones Activas Recientes</h3>
-
-        <button
-          class="close-all-button"
-          type="button"
-          (click)="cerrarTodasSesiones()"
-          [disabled]="!sesionesActivas.length"
-        >
+        <h3 class="panel-title"><span class="icon-title">💻</span> Sesiones Activas Recientes</h3>
+        <button class="btn-kill-all" (click)="cerrarTodasSesiones()">
           ⏻ Cerrar todas
         </button>
       </div>
 
-      <div class="sessions-search">
+      <div class="sessions-toolbar">
         <div class="search-box">
-          <span class="search-box__icon">⌕</span>
-          <input
-            type="text"
-            [(ngModel)]="filtroSesion"
-            placeholder="Buscar sesión por usuario o IP..."
-            class="form-control form-control--with-icon"
-          />
+          <span class="search-icon">⌕</span>
+          <input type="text" class="search-input" [(ngModel)]="filtroSesion" placeholder="Buscar sesión por usuario o IP...">
         </div>
       </div>
 
-      <div class="sessions-table-wrapper">
+      <div class="table-container">
         <table class="sessions-table">
           <thead>
-            <tr class="sessions-table__head-row">
-              <th class="table-head table-head--first">Usuario</th>
-              <th class="table-head">IP Origen</th>
-              <th class="table-head">Dispositivo</th>
-              <th class="table-head table-head--center">Último Acceso</th>
-              <th class="table-head table-head--last table-head--center">Acciones</th>
+            <tr>
+              <th>USUARIO</th>
+              <th>IP ORIGEN</th>
+              <th>DISPOSITIVO</th>
+              <th>ÚLTIMO ACCESO</th>
+              <th style="text-align: center;">ACCIONES</th>
             </tr>
           </thead>
-
-          <tbody class="sessions-table__body">
-            @if (sesionesFiltradas.length) {
-              @for (row of sesionesFiltradas; track row.id) {
-                <tr class="sessions-table__row">
-                  <td class="table-cell table-cell--first table-cell--strong">
-                    <div class="user-cell">
-                      <span>{{ row.usuario }}</span>
-                      <span
-                        class="status-pill"
-                        [ngClass]="{
-                          'status-pill--success': row.estado === 'Activa',
-                          'status-pill--warning': row.estado === 'Inactiva (Expirando)',
-                          'status-pill--danger': row.estado === 'Bloqueada'
-                        }"
-                      >
-                        {{ row.estado }}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td class="table-cell table-cell--mono">
-                    {{ row.ip }}
-                  </td>
-
-                  <td class="table-cell table-cell--muted">
-                    {{ row.dispositivo }}
-                  </td>
-
-                  <td class="table-cell table-cell--center table-cell--tiny-muted">
-                    {{ row.ultimoAcceso }}
-                  </td>
-
-                  <td class="table-cell table-cell--last">
-                    <div class="session-actions">
-                      <button
-                        class="icon-action icon-action--green"
-                        type="button"
-                        title="Desbloquear usuario"
-                        (click)="desbloquearUsuarioPorNombre(row.usuario)"
-                        [disabled]="!usuarioEstaBloqueado(row.usuario)"
-                      >
-                        🔓
-                      </button>
-
-                      <button
-                        class="icon-action icon-action--red"
-                        type="button"
-                        title="Invalidar sesión"
-                        (click)="invalidarSesion(row.id)"
-                      >
-                        ✖
-                      </button>
-
-                      <button
-                        class="icon-action icon-action--amber"
-                        type="button"
-                        title="Forzar cierre de sesión"
-                        (click)="forzarCierreSesion(row.id)"
-                      >
-                        ⇦
-                      </button>
-
-                      <button
-                        class="icon-action icon-action--blue"
-                        type="button"
-                        title="Restablecer contraseña"
-                        (click)="restablecerPassword(row.usuario)"
-                      >
-                        ↻
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            } @else {
+          <tbody>
+            @for (row of sesionesFiltradas; track row.id) {
               <tr>
-                <td colspan="5" class="table-empty">
-                  No se encontraron sesiones con ese criterio.
+                <td class="fw-700">@{{ row.usuario }}</td>
+                <td class="mono-cell">{{ row.ip }}</td>
+                <td class="text-muted">{{ row.dispositivo }}</td>
+                <td class="text-muted" style="font-size: 0.75rem;">{{ row.ultimoAcceso }}</td>
+                <td>
+                  <div class="action-buttons-group">
+                    <button class="btn-action-icon btn-action-icon--red" (click)="invalidarSesion(row)" title="Invalidar sesión">✖</button>
+                    <button class="btn-action-icon btn-action-icon--amber" (click)="forzarCierreSesion(row)" title="Forzar salida">⇦</button>
+                    <button class="btn-action-icon btn-action-icon--blue" (click)="restablecerPassword(row)" title="Resetear Clave">↻</button>
+                  </div>
                 </td>
               </tr>
             }
@@ -232,57 +134,35 @@
     </div>
   </div>
 
-  <div class="token-config-card">
-    <div class="token-config-card__header">
-      <h3 class="token-config-title">🔑 Configuración de Expiración de Tokens</h3>
-      <p class="token-config-subtitle">
-        Define el tiempo de vida de las sesiones y tokens de autenticación
-      </p>
+  <!-- Configuración de Tokens -->
+  <div class="config-card">
+    <div class="config-header">
+      <h3 class="config-title"><span class="icon-title">🔑</span> Configuración de Expiración de Tokens</h3>
+      <p class="config-subtitle">Define el tiempo de vida de las sesiones y tokens de autenticación</p>
     </div>
-
-    <div class="token-config-card__body">
-      <div class="token-config-grid">
-        <div class="token-config-item">
-          <label class="form-label">Tiempo de Sesión Activa</label>
-          <div class="inline-field">
-            <input
-              type="number"
-              min="1"
-              [(ngModel)]="tiempoSesionActiva"
-              class="form-control form-control--short"
-            />
-            <span class="inline-field__text">minutos</span>
+    <div class="config-body">
+      <div class="config-form-grid">
+        <div class="config-field">
+          <label>TIEMPO DE SESIÓN ACTIVA</label>
+          <div class="inline-group">
+            <input type="number" class="input-premium" [(ngModel)]="tiempoSesionActiva">
+            <span class="unit-text">minutos</span>
           </div>
-          <p class="helper-text">
-            Duración máxima de una sesión activa antes de requerir reautenticación.
-          </p>
+          <p class="helper-text">Duración máxima de una sesión activa antes de requerir reautenticación.</p>
         </div>
-
-        <div class="token-config-item">
-          <label class="form-label">JWT Expiration</label>
-          <div class="inline-field">
-            <input
-              type="number"
-              min="1"
-              [(ngModel)]="jwtExpiration"
-              class="form-control form-control--short"
-            />
-            <span class="inline-field__text">minutos</span>
+        <div class="config-field">
+          <label>JWT EXPIRATION</label>
+          <div class="inline-group">
+            <input type="number" class="input-premium" [(ngModel)]="jwtExpiration">
+            <span class="unit-text">minutos</span>
           </div>
-          <p class="helper-text">
-            Tiempo de vida del token de autenticación JWT.
-          </p>
+          <p class="helper-text">Tiempo de vida del token de autenticación JWT.</p>
         </div>
       </div>
-
-      <div class="token-config-actions">
-        <button
-          class="save-button"
-          type="button"
-          (click)="guardarConfiguracion()"
-          [disabled]="!hayCambiosConfiguracion"
-        >
-          Guardar configuración
+      <div class="config-actions">
+        <button class="btn-save-security" (click)="guardarConfiguracion()" [disabled]="!hayCambiosConfiguracion || isSaving">
+          @if (isSaving) { <span class="spinner"></span> }
+          Guardar Configuración
         </button>
       </div>
     </div>
