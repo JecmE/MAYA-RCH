@@ -102,7 +102,6 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       });
 
-    // Suscribirse a permisos para actualizar el dashboard si cambian en caliente
     this.permsSub = this.permissionService.permissions$.subscribe(() => {
         this.cdr.detectChanges();
     });
@@ -118,6 +117,7 @@ export class Dashboard implements OnInit, OnDestroy {
     }, 5000);
 
     if (isPlatformBrowser(this.platformId) && this.role === 'admin') {
+      this.loadDashboardStats();
       this.statsInterval = setInterval(() => {
         this.loadDashboardStats();
       }, 15000);
@@ -130,7 +130,15 @@ export class Dashboard implements OnInit, OnDestroy {
     if (this.statsInterval) clearInterval(this.statsInterval);
   }
 
-  // MÉTODO PARA EL TEMPLATE: Verifica permisos dinámicamente
+  getClassificationClass(): string {
+    const c = this.clasificacion.toLowerCase();
+    if (c.includes('excelente')) return 'text-green';
+    if (c.includes('bueno')) return 'text-blue';
+    if (c.includes('regular') || c.includes('observacion')) return 'text-amber';
+    if (c.includes('riesgo')) return 'text-red';
+    return '';
+  }
+
   canAccess(modulo: string): boolean {
     if (this.role === 'admin' || this.role === 'administrador') return true;
     return this.permissionService.hasPermission(modulo, 'ver');
@@ -261,12 +269,7 @@ export class Dashboard implements OnInit, OnDestroy {
   private updateDateTime(): void {
     const now = new Date();
     this.time = now.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    };
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
     this.date = now.toLocaleDateString('es-GT', options);
   }
 
@@ -294,13 +297,9 @@ export class Dashboard implements OnInit, OnDestroy {
   private loadTodayStatus(): void {
     this.attendanceService.getTodayStatus().subscribe({
       next: (status: any) => {
-        if (status.tieneEntrada && status.tieneSalida) {
-          this.marcaEstado = 'Completa';
-        } else if (status.tieneEntrada) {
-          this.marcaEstado = 'Entrada';
-        } else {
-          this.marcaEstado = 'Pendiente';
-        }
+        if (status.tieneEntrada && status.tieneSalida) this.marcaEstado = 'Completa';
+        else if (status.tieneEntrada) this.marcaEstado = 'Entrada';
+        else this.marcaEstado = 'Pendiente';
 
         this.horaEntradaReal = status.horaEntradaReal ? this.formatTime(status.horaEntradaReal) : '--:--';
         this.horaSalidaReal = status.horaSalidaReal ? this.formatTime(status.horaSalidaReal) : '--:--';
@@ -316,19 +315,9 @@ export class Dashboard implements OnInit, OnDestroy {
           this.checkInDisabledReason = status.mensajeEstado || 'Hoy no es un día laborable.';
         } else {
           this.esDiaLaboral = true;
-          if (this.marcaEstado === 'Pendiente') {
-            this.calculateCheckInAvailability();
-            this.canCheckOut = false;
-          } else if (this.marcaEstado === 'Entrada') {
-            this.canCheckIn = false;
-            this.checkInDisabledReason = 'Entrada ya registrada.';
-            this.calculateCheckOutAvailability();
-          } else if (this.marcaEstado === 'Completa') {
-            this.canCheckIn = false;
-            this.canCheckOut = false;
-            this.checkInDisabledReason = 'Jornada finalizada por hoy.';
-            this.checkOutDisabledReason = 'Salida ya registrada.';
-          }
+          if (this.marcaEstado === 'Pendiente') { this.calculateCheckInAvailability(); this.canCheckOut = false; }
+          else if (this.marcaEstado === 'Entrada') { this.canCheckIn = false; this.checkInDisabledReason = 'Entrada ya registrada.'; this.calculateCheckOutAvailability(); }
+          else if (this.marcaEstado === 'Completa') { this.canCheckIn = false; this.canCheckOut = false; this.checkInDisabledReason = 'Jornada finalizada.'; this.checkOutDisabledReason = 'Salida ya registrada.'; }
         }
         this.cdr.detectChanges();
       }
@@ -340,33 +329,19 @@ export class Dashboard implements OnInit, OnDestroy {
     this.canCheckIn = false;
     this.checkInDisabledReason = '';
 
-    if (!this.esDiaLaboral) {
-      this.checkInDisabledReason = 'Hoy no es un día laborable.';
-      return;
-    }
-
-    if (!this.horaEntradaTurno) {
-      this.checkInDisabledReason = 'No tienes turno asignado.';
-      return;
-    }
+    if (!this.esDiaLaboral) { this.checkInDisabledReason = 'Día no laborable.'; return; }
+    if (!this.horaEntradaTurno) { this.checkInDisabledReason = 'Sin turno asignado.'; return; }
 
     const [h, m] = this.horaEntradaTurno.split(':').map(Number);
     const expected = new Date(now);
     expected.setHours(h, m, 0, 0);
 
-    const minTime = new Date(expected);
-    minTime.setMinutes(minTime.getMinutes() - 30);
+    const minTime = new Date(expected); minTime.setMinutes(minTime.getMinutes() - 30);
+    const maxTime = new Date(expected); maxTime.setMinutes(maxTime.getMinutes() + this.toleranciaMinutos);
 
-    const maxTime = new Date(expected);
-    maxTime.setMinutes(maxTime.getMinutes() + this.toleranciaMinutos);
-
-    if (now < minTime) {
-      this.checkInDisabledReason = `Marcaje disponible desde las ${this.formatShiftTime(this.getFormattedTime(minTime))}`;
-    } else if (now > maxTime) {
-      this.checkInDisabledReason = `Límite excedido (${this.formatShiftTime(this.getFormattedTime(maxTime))})`;
-    } else {
-      this.canCheckIn = true;
-    }
+    if (now < minTime) this.checkInDisabledReason = `Disponible desde las ${this.formatShiftTime(this.getFormattedTime(minTime))}`;
+    else if (now > maxTime) this.checkInDisabledReason = `Límite excedido (${this.formatShiftTime(this.getFormattedTime(maxTime))})`;
+    else this.canCheckIn = true;
   }
 
   private calculateCheckOutAvailability(): void {
@@ -374,31 +349,18 @@ export class Dashboard implements OnInit, OnDestroy {
     this.canCheckOut = false;
     this.checkOutDisabledReason = '';
 
-    if (!this.horaSalidaTurno) {
-      this.checkOutDisabledReason = 'No tienes turno asignado.';
-      return;
-    }
+    if (!this.horaSalidaTurno) { this.checkOutDisabledReason = 'Sin turno asignado.'; return; }
 
     const [hSal, mSal] = this.horaSalidaTurno.split(':').map(Number);
-    const [hEnt] = this.horaEntradaTurno.split(':').map(Number);
+    let expectedSal = new Date(now); expectedSal.setHours(hSal, mSal, 0, 0);
 
-    let expectedSal = new Date(now);
-    expectedSal.setHours(hSal, mSal, 0, 0);
+    if (this.isNocturnalShift() && now.getHours() >= Number(this.horaEntradaTurno.split(':')[0])) expectedSal.setDate(expectedSal.getDate() + 1);
 
-    if (this.isNocturnalShift() && now.getHours() >= hEnt) {
-      expectedSal.setDate(expectedSal.getDate() + 1);
-    }
-
-    if (now < expectedSal) {
-      this.checkOutDisabledReason = `Salida disponible desde las ${this.formatShiftTime(this.horaSalidaTurno)}`;
-    } else {
-      this.canCheckOut = true;
-    }
+    if (now < expectedSal) this.checkOutDisabledReason = `Salida disponible desde las ${this.formatShiftTime(this.horaSalidaTurno)}`;
+    else this.canCheckOut = true;
   }
 
-  private getFormattedTime(date: Date): string {
-    return date.toTimeString().substring(0, 8);
-  }
+  private getFormattedTime(date: Date): string { return date.toTimeString().substring(0, 8); }
 
   private loadKpiData(): void {
     this.kpiService.getEmployeeDashboard().subscribe({
@@ -433,9 +395,7 @@ export class Dashboard implements OnInit, OnDestroy {
     return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
   }
 
-  getWelcomeName(): string {
-    return this.userName || 'Usuario';
-  }
+  getWelcomeName(): string { return this.userName || 'Usuario'; }
 
   isNocturnalShift(): boolean {
     if (!this.horaEntradaTurno || !this.horaSalidaTurno) return false;
@@ -446,53 +406,21 @@ export class Dashboard implements OnInit, OnDestroy {
 
   marcarEntrada(): void {
     if (this.isCheckingIn) return;
-    this.isCheckingIn = true;
-    this.marcaError = '';
-    this.marcaSuccess = '';
-
+    this.isCheckingIn = true; this.marcaError = ''; this.marcaSuccess = '';
     this.attendanceService.checkIn().subscribe({
-      next: (response: any) => {
-        this.marcaEstado = 'Entrada';
-        this.marcaSuccess = 'Entrada registrada correctamente';
-        this.loadTodayStatus();
-        this.isCheckingIn = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.marcaError = err.error?.message || 'Error al marcar entrada';
-        this.isCheckingIn = false;
-        this.cdr.detectChanges();
-      },
+      next: () => { this.marcaEstado = 'Entrada'; this.marcaSuccess = 'Entrada registrada'; this.loadTodayStatus(); this.isCheckingIn = false; this.cdr.detectChanges(); },
+      error: (err) => { this.marcaError = err.error?.message || 'Error'; this.isCheckingIn = false; this.cdr.detectChanges(); },
     });
   }
 
   marcarSalida(): void {
     if (this.isCheckingOut) return;
-    this.isCheckingOut = true;
-    this.marcaError = '';
-    this.marcaSuccess = '';
-
+    this.isCheckingOut = true; this.marcaError = ''; this.marcaSuccess = '';
     this.attendanceService.checkOut().subscribe({
-      next: (response: any) => {
-        this.marcaEstado = 'Completa';
-        this.marcaSuccess = 'Salida registrada correctamente';
-        this.loadTodayStatus();
-        this.isCheckingOut = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.marcaError = err.error?.message || 'Error al marcar salida';
-        this.isCheckingOut = false;
-        this.cdr.detectChanges();
-      },
+      next: () => { this.marcaEstado = 'Completa'; this.marcaSuccess = 'Salida registrada'; this.loadTodayStatus(); this.isCheckingOut = false; this.cdr.detectChanges(); },
+      error: (err) => { this.marcaError = err.error?.message || 'Error'; this.isCheckingOut = false; this.cdr.detectChanges(); },
     });
   }
 
-  logout(): void {
-    if (isPlatformBrowser(this.platformId)) {
-        localStorage.clear();
-        this.permissionService.clearPermissions();
-    }
-    this.router.navigate(['/login']);
-  }
+  logout(): void { if (isPlatformBrowser(this.platformId)) { localStorage.clear(); this.permissionService.clearPermissions(); } this.router.navigate(['/login']); }
 }

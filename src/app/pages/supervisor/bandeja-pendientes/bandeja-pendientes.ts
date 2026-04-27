@@ -43,7 +43,7 @@ export class BandejaPendientes implements OnInit {
   tab: TabType = 'permisos';
   modalOpen = false;
   selectedItem: any = null;
-  filtroEstado = 'Pendiente';
+  filtroEstado = 'Todos';
   comentario = '';
 
   permisosData: PermisoItem[] = [];
@@ -159,7 +159,7 @@ export class BandejaPendientes implements OnInit {
 
   setTab(tab: TabType): void {
     this.tab = tab;
-    this.filtroEstado = 'Pendiente';
+    this.filtroEstado = 'Todos';
   }
 
   handleVerDetalle(item: any): void {
@@ -268,8 +268,8 @@ export class BandejaPendientes implements OnInit {
   getEstadoClass(estado: string): string {
     const e = estado.toLowerCase();
     if (e.includes('pendiente')) return 'estado estado-pendiente';
-    if (e.includes('aprobado') || e.includes('aprobada')) return 'estado estado-approved';
-    if (e.includes('rechazado') || e.includes('rechazada')) return 'estado estado-rejected';
+    if (e.includes('aprobado') || e.includes('aprobada')) return 'estado estado-aprobado';
+    if (e.includes('rechazado') || e.includes('rechazada')) return 'estado estado-rechazado';
     return 'estado';
   }
 

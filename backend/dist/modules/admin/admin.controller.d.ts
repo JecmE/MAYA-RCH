@@ -13,7 +13,6 @@ export declare class AdminController {
         empleadoNombre: string;
         turnoNombre: string;
         fechaInicio: Date;
-        fechaFin: Date;
         activo: boolean;
     }[]>;
     assignShift(assignDto: any, req: any): Promise<{
@@ -21,7 +20,6 @@ export declare class AdminController {
         empleadoNombre: string;
         turnoNombre: string;
         fechaInicio: Date;
-        fechaFin: Date;
         activo: boolean;
     }[]>;
     getKpiParameters(): Promise<{}>;
@@ -38,7 +36,7 @@ export declare class AdminController {
     deleteBonusRule(id: number, req: any): Promise<import("../../entities").ReglaBono[]>;
     getAuditLogs(fechaInicio?: string, fechaFin?: string, usuarioId?: number, modulo?: string): Promise<import("../../entities").AuditLog[]>;
     getRoles(): Promise<import("../../entities").Rol[]>;
-    createRole(dto: any, req: any): Promise<any>;
+    createRole(dto: any, req: any): Promise<import("../../entities").Rol[]>;
     deleteRole(id: number, req: any): Promise<{
         message: string;
     }>;

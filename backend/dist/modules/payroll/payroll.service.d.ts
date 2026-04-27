@@ -7,6 +7,7 @@ import { Empleado } from '../../entities/empleado.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 export declare class PayrollService {
     private periodoRepository;
     private planillaEmpleadoRepository;
@@ -16,7 +17,10 @@ export declare class PayrollService {
     private bonoRepository;
     private asistenciaRepository;
     private auditRepository;
-    constructor(periodoRepository: Repository<PeriodoPlanilla>, planillaEmpleadoRepository: Repository<PlanillaEmpleado>, conceptoRepository: Repository<ConceptoPlanilla>, movimientoRepository: Repository<MovimientoPlanilla>, empleadoRepository: Repository<Empleado>, bonoRepository: Repository<BonoResultado>, asistenciaRepository: Repository<RegistroAsistencia>, auditRepository: Repository<AuditLog>);
+    private parametroRepository;
+    constructor(periodoRepository: Repository<PeriodoPlanilla>, planillaEmpleadoRepository: Repository<PlanillaEmpleado>, conceptoRepository: Repository<ConceptoPlanilla>, movimientoRepository: Repository<MovimientoPlanilla>, empleadoRepository: Repository<Empleado>, bonoRepository: Repository<BonoResultado>, asistenciaRepository: Repository<RegistroAsistencia>, auditRepository: Repository<AuditLog>, parametroRepository: Repository<ParametroSistema>);
+    private getPayrollParameters;
+    private calculateIsr;
     createPeriod(createDto: any, usuarioId: number): Promise<{
         periodoId: number;
         nombre: string;
@@ -59,5 +63,4 @@ export declare class PayrollService {
     seedTestData(): Promise<{
         message: string;
     }>;
-    private dataSourceQuery;
 }

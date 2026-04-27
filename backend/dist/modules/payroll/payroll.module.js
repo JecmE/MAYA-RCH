@@ -20,6 +20,7 @@ const empleado_entity_1 = require("../../entities/empleado.entity");
 const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 let PayrollModule = class PayrollModule {
 };
 exports.PayrollModule = PayrollModule;
@@ -36,6 +37,7 @@ exports.PayrollModule = PayrollModule = __decorate([
                 bono_resultado_entity_1.BonoResultado,
                 registro_asistencia_entity_1.RegistroAsistencia,
                 audit_log_entity_1.AuditLog,
+                parametro_sistema_entity_1.ParametroSistema,
             ]),
         ],
         controllers: [payroll_controller_1.PayrollController],

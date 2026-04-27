@@ -5,6 +5,7 @@ import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { Turno } from '../../entities/turno.entity';
 import { AjusteAsistencia } from '../../entities/ajuste-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { KpiService } from '../kpi/kpi.service';
 export declare class AttendanceService {
     private asistenciaRepository;
@@ -13,9 +14,12 @@ export declare class AttendanceService {
     private turnoRepository;
     private ajusteRepository;
     private auditRepository;
+    private parametroRepository;
     private dataSource;
     private kpiService;
-    constructor(asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, empleadoTurnoRepository: Repository<EmpleadoTurno>, turnoRepository: Repository<Turno>, ajusteRepository: Repository<AjusteAsistencia>, auditRepository: Repository<AuditLog>, dataSource: DataSource, kpiService: KpiService);
+    constructor(asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, empleadoTurnoRepository: Repository<EmpleadoTurno>, turnoRepository: Repository<Turno>, ajusteRepository: Repository<AjusteAsistencia>, auditRepository: Repository<AuditLog>, parametroRepository: Repository<ParametroSistema>, dataSource: DataSource, kpiService: KpiService);
+    private getGlobalTolerance;
+    private getEffectiveTolerance;
     registerEntry(empleadoId: number, usuarioId: number): Promise<{
         message: string;
         asistencia: RegistroAsistencia;

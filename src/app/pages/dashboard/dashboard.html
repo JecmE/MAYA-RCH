@@ -169,7 +169,7 @@
 
               <div class="classification-box">
                 <p class="classification-label">Clasificación general</p>
-                <p class="classification-value">{{ clasificacion }}</p>
+                <p class="classification-value" [ngClass]="getClassificationClass()">{{ clasificacion }}</p>
               </div>
             </div>
           </div>

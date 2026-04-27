@@ -367,8 +367,12 @@
   margin: 0;
   font-size: 2rem;
   font-weight: 600;
-  color: #10b981;
 }
+
+.text-green { color: #10b981; }
+.text-blue { color: #3b82f6; }
+.text-amber { color: #f59e0b; }
+.text-red { color: #ef4444; }
 
 /* Supervisor summary */
 .team-summary-card {

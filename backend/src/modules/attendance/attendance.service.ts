@@ -13,6 +13,7 @@ import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
 import { Turno } from '../../entities/turno.entity';
 import { AjusteAsistencia } from '../../entities/ajuste-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { KpiService } from '../kpi/kpi.service';
 
 @Injectable()
@@ -30,10 +31,25 @@ export class AttendanceService {
     private ajusteRepository: Repository<AjusteAsistencia>,
     @InjectRepository(AuditLog)
     private auditRepository: Repository<AuditLog>,
+    @InjectRepository(ParametroSistema)
+    private parametroRepository: Repository<ParametroSistema>,
     private dataSource: DataSource,
     @Inject(forwardRef(() => KpiService))
     private kpiService: KpiService,
   ) {}
+
+  private async getGlobalTolerance(): Promise<number> {
+    const param = await this.parametroRepository.findOne({ where: { clave: 'tolerancia_minutos', activo: true } });
+    return param ? parseInt(param.valor, 10) : 10; // Default 10 if not found
+  }
+
+  private async getEffectiveTolerance(turno: Turno): Promise<number> {
+    // Si el turno tiene 0, heredamos el global del sistema
+    if (!turno || turno.toleranciaMinutos === 0) {
+      return await this.getGlobalTolerance();
+    }
+    return turno.toleranciaMinutos;
+  }
 
   async registerEntry(empleadoId: number, usuarioId: number) {
     const today = new Date();
@@ -66,6 +82,7 @@ export class AttendanceService {
       throw new BadRequestException(`Hoy (${hoyNombre}) no es un día laborable según tu turno (${turno.nombre}).`);
     }
 
+    const effectiveTolerance = await this.getEffectiveTolerance(turno);
     const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
 
     const horaEntradaMin = new Date(now);
@@ -77,7 +94,7 @@ export class AttendanceService {
     );
 
     const horaEntradaMax = new Date(horaEntradaEsperada);
-    horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + turno.toleranciaMinutos);
+    horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + effectiveTolerance);
 
     if (now < horaEntradaMin) {
       throw new BadRequestException(
@@ -94,7 +111,7 @@ export class AttendanceService {
     let minutosTardia = 0;
     if (now > horaEntradaEsperada) {
       const diff = now.getTime() - horaEntradaEsperada.getTime();
-      minutosTardia = Math.floor(diff / 60000) - turno.toleranciaMinutos;
+      minutosTardia = Math.floor(diff / 60000) - effectiveTolerance;
       if (minutosTardia < 0) minutosTardia = 0;
     }
 
@@ -192,7 +209,13 @@ export class AttendanceService {
     const empleadoTurno = await this.getShiftForDate(empleadoId, today);
 
     const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
-    const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+    let toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+
+    // Si el turno tiene 0, mostramos la global en el estado del Dashboard
+    if (empleadoTurno?.turno && toleranciaMinutos === 0) {
+      toleranciaMinutos = await this.getGlobalTolerance();
+    }
+
     const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
     const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
 
@@ -310,7 +333,8 @@ export class AttendanceService {
           const actualIn = new Date(asistencia.horaEntradaReal);
           if (actualIn > expectedIn) {
             const diffMin = Math.floor((actualIn.getTime() - expectedIn.getTime()) / 60000);
-            asistencia.minutosTardia = Math.max(0, diffMin - shift.turno.toleranciaMinutos);
+            const effectiveTolerance = await this.getEffectiveTolerance(shift.turno);
+            asistencia.minutosTardia = Math.max(0, diffMin - effectiveTolerance);
           } else {
             asistencia.minutosTardia = 0;
           }

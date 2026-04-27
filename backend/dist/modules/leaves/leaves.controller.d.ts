@@ -61,7 +61,26 @@ export declare class LeavesController {
         estado: string;
     }>;
     getMyRequests(req: any): Promise<import("../../entities").SolicitudPermiso[]>;
-    getPending(req: any): Promise<import("../../entities").SolicitudPermiso[]>;
+    getPending(req: any): Promise<{
+        empleadoNombre: string;
+        tipoPermisoNombre: string;
+        diasSolicitados: number;
+        solicitudId: number;
+        empleadoId: number;
+        tipoPermisoId: number;
+        fechaInicio: Date;
+        fechaFin: Date;
+        horasInicio: string;
+        horasFin: string;
+        motivo: string;
+        estado: string;
+        fechaSolicitud: Date;
+        empleado: import("../../entities").Empleado;
+        tipoPermiso: import("../../entities").TipoPermiso;
+        decisiones: import("../../entities").DecisionPermiso[];
+        adjuntos: import("../../entities").AdjuntoSolicitud[];
+        vacacionMovimientos: import("../../entities").VacacionMovimiento[];
+    }[]>;
     approve(id: number, body: any, req: any): Promise<{
         message: string;
     }>;

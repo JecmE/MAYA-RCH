@@ -53,16 +53,32 @@ export declare class LeavesService {
         adjuntos: AdjuntoSolicitud[];
         vacacionMovimientos: VacacionMovimiento[];
     }[]>;
-    getAllBalances(): Promise<{
+    getPendingRequests(supervisorEmpleadoId: number, estado?: string): Promise<{
         empleadoNombre: string;
-        departamento: string;
-        saldoId: number;
+        tipoPermisoNombre: string;
+        diasSolicitados: number;
+        solicitudId: number;
         empleadoId: number;
-        diasDisponibles: number;
-        diasUsados: number;
-        fechaCorte: Date;
+        tipoPermisoId: number;
+        fechaInicio: Date;
+        fechaFin: Date;
+        horasInicio: string;
+        horasFin: string;
+        motivo: string;
+        estado: string;
+        fechaSolicitud: Date;
         empleado: Empleado;
+        tipoPermiso: TipoPermiso;
+        decisiones: DecisionPermiso[];
+        adjuntos: AdjuntoSolicitud[];
+        vacacionMovimientos: VacacionMovimiento[];
     }[]>;
+    approveRequest(solicitudId: number, comentario: string, usuarioId: number): Promise<{
+        message: string;
+    }>;
+    rejectRequest(solicitudId: number, comentario: string, usuarioId: number): Promise<{
+        message: string;
+    }>;
     getVacationMovements(): Promise<{
         empleadoNombre: string;
         movimientoId: number;
@@ -78,26 +94,28 @@ export declare class LeavesService {
     adjustVacationBalance(dto: any, usuarioId: number): Promise<{
         message: string;
     }>;
+    getAttachment(fileName: string, res: any): Promise<void>;
     private sanitizeString;
     private calculateDays;
-    createRequest(createDto: any, empleadoId: number): Promise<{
-        solicitudId: number;
-        estado: string;
-    }>;
-    private saveAttachment;
-    getMyRequests(empleadoId: number): Promise<SolicitudPermiso[]>;
-    getPendingRequests(supervisorEmpleadoId: number): Promise<SolicitudPermiso[]>;
-    approveRequest(solicitudId: number, comentario: string, usuarioId: number): Promise<{
-        message: string;
-    }>;
-    rejectRequest(solicitudId: number, comentario: string, usuarioId: number): Promise<{
-        message: string;
-    }>;
     getVacationBalance(empleadoId: number): Promise<{
         empleadoId: number;
         diasDisponibles: number;
         diasUsados: number;
         diasTotales: number;
     }>;
-    getAttachment(fileName: string, res: any): Promise<void>;
+    getAllBalances(): Promise<{
+        empleadoNombre: string;
+        departamento: string;
+        saldoId: number;
+        empleadoId: number;
+        diasDisponibles: number;
+        diasUsados: number;
+        fechaCorte: Date;
+        empleado: Empleado;
+    }[]>;
+    createRequest(createDto: any, empleadoId: number): Promise<{
+        solicitudId: number;
+        estado: string;
+    }>;
+    getMyRequests(empleadoId: number): Promise<SolicitudPermiso[]>;
 }

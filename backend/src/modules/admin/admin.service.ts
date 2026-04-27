@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import {
@@ -22,350 +22,126 @@ import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
+import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { RolPermiso } from '../../entities/rol-permiso.entity';
+import { KpiService } from '../kpi/kpi.service';
 
 @Injectable()
 export class AdminService implements OnModuleInit {
   private readonly DEFAULT_MODULES = [
-    'Auditoria',
-    'Configuración',
-    'Empleados',
-    'Permisos',
-    'Planilla',
-    'Proyectos',
-    'Reportes',
-    'Usuarios'
+    'Auditoria', 'Configuración', 'Empleados', 'Permisos',
+    'Planilla', 'Proyectos', 'Reportes', 'Usuarios'
   ];
 
   constructor(
-    @InjectRepository(Turno)
-    private turnoRepository: Repository<Turno>,
-    @InjectRepository(EmpleadoTurno)
-    private empleadoTurnoRepository: Repository<EmpleadoTurno>,
-    @InjectRepository(TipoPermiso)
-    private tipoPermisoRepository: Repository<TipoPermiso>,
-    @InjectRepository(ParametroSistema)
-    private parametroRepository: Repository<ParametroSistema>,
-    @InjectRepository(AuditLog)
-    private auditRepository: Repository<AuditLog>,
-    @InjectRepository(Rol)
-    private rolRepository: Repository<Rol>,
-    @InjectRepository(ReglaBono)
-    private reglaBonoRepository: Repository<ReglaBono>,
-    @InjectRepository(Usuario)
-    private usuarioRepository: Repository<Usuario>,
-    @InjectRepository(Empleado)
-    private empleadoRepository: Repository<Empleado>,
-    @InjectRepository(SolicitudPermiso)
-    private solicitudPermisoRepository: Repository<SolicitudPermiso>,
-    @InjectRepository(RegistroAsistencia)
-    private registroAsistenciaRepository: Repository<RegistroAsistencia>,
-    @InjectRepository(KpiMensual)
-    private kpiMensualRepository: Repository<KpiMensual>,
-    @InjectRepository(VacacionMovimiento)
-    private vacacionMovimientoRepository: Repository<VacacionMovimiento>,
-    @InjectRepository(RegistroTiempo)
-    private registroTiempoRepository: Repository<RegistroTiempo>,
-    @InjectRepository(BonoResultado)
-    private bonoResultadoRepository: Repository<BonoResultado>,
-    @InjectRepository(RolPermiso)
-    private rolPermisoRepository: Repository<RolPermiso>,
+    @InjectRepository(Turno) private turnoRepository: Repository<Turno>,
+    @InjectRepository(EmpleadoTurno) private empleadoTurnoRepository: Repository<EmpleadoTurno>,
+    @InjectRepository(TipoPermiso) private tipoPermisoRepository: Repository<TipoPermiso>,
+    @InjectRepository(ParametroSistema) private parametroRepository: Repository<ParametroSistema>,
+    @InjectRepository(AuditLog) private auditRepository: Repository<AuditLog>,
+    @InjectRepository(Rol) private rolRepository: Repository<Rol>,
+    @InjectRepository(ReglaBono) private reglaBonoRepository: Repository<ReglaBono>,
+    @InjectRepository(Usuario) private usuarioRepository: Repository<Usuario>,
+    @InjectRepository(Empleado) private empleadoRepository: Repository<Empleado>,
+    @InjectRepository(SolicitudPermiso) private solicitudPermisoRepository: Repository<SolicitudPermiso>,
+    @InjectRepository(RegistroAsistencia) private registroAsistenciaRepository: Repository<RegistroAsistencia>,
+    @InjectRepository(KpiMensual) private kpiMensualRepository: Repository<KpiMensual>,
+    @InjectRepository(VacacionMovimiento) private vacacionMovimientoRepository: Repository<VacacionMovimiento>,
+    @InjectRepository(VacacionSaldo) private vacacionSaldoRepository: Repository<VacacionSaldo>,
+    @InjectRepository(RegistroTiempo) private registroTiempoRepository: Repository<RegistroTiempo>,
+    @InjectRepository(BonoResultado) private bonoResultadoRepository: Repository<BonoResultado>,
+    @InjectRepository(RolPermiso) private rolPermisoRepository: Repository<RolPermiso>,
     private dataSource: DataSource,
+    @Inject(forwardRef(() => KpiService))
+    private kpiService: KpiService,
   ) {}
 
   async onModuleInit() {
-    await this.ensureCorrectTableStructures();
+    try { await this.ensureCorrectTableStructures(); } catch (e) {}
   }
 
   private async ensureCorrectTableStructures() {
-    try {
-      await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[REGLA_BONO]') AND name = 'monto') BEGIN ALTER TABLE [dbo].[REGLA_BONO] ADD [monto] DECIMAL(10, 2) DEFAULT 0; END`);
-
-      await this.dataSource.query(`
-        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ROL_PERMISO]') AND type in (N'U'))
-        BEGIN
-          CREATE TABLE [dbo].[ROL_PERMISO] (
-            [rol_permiso_id] INT PRIMARY KEY IDENTITY(1,1),
-            [rol_id] INT NOT NULL,
-            [modulo] NVARCHAR(100) NOT NULL,
-            [ver] BIT DEFAULT 0,
-            [crear] BIT DEFAULT 0,
-            [editar] BIT DEFAULT 0,
-            [aprobar] BIT DEFAULT 0,
-            [exportar] BIT DEFAULT 0,
-            [administrar] BIT DEFAULT 0,
-            CONSTRAINT [FK_ROL_PERMISO_ROL] FOREIGN KEY ([rol_id]) REFERENCES [dbo].[ROL] ([rol_id])
-          );
-        END
-      `);
-    } catch (e) {}
+    try { await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[REGLA_BONO]') AND name = 'monto') BEGIN ALTER TABLE [dbo].[REGLA_BONO] ADD [monto] DECIMAL(10, 2) DEFAULT 0; END`); } catch (e) {}
   }
 
-  // --- ROLES Y PERMISOS ---
-
-  async getRoles() {
-    return await this.rolRepository.find({ order: { nombre: 'ASC' } });
-  }
-
-  async getRolePermissions(rolId: number) {
-    const rol = await this.rolRepository.findOne({ where: { rolId } });
-    if (!rol) throw new NotFoundException('Rol no encontrado');
-
-    const rName = rol.nombre.toLowerCase();
-    let dbPerms = await this.rolPermisoRepository.find({ where: { rolId } });
-
-    // Si el rol tiene registros pero están todos en false, o le faltan módulos, los reseteamos/creamos
-    const finalPerms: RolPermiso[] = [];
-
-    for (const modName of this.DEFAULT_MODULES) {
-      let p = dbPerms.find(x => x.modulo.toLowerCase() === modName.toLowerCase());
-
-      const isNew = !p;
-      if (isNew) {
-        p = new RolPermiso();
-        p.rolId = rolId;
-        p.modulo = modName;
-      }
-
-      // Si es nuevo O si es un rol base que vino vacío (error de seeding previo)
-      const isBaseRole = ['administrador', 'rrhh', 'supervisor', 'empleado'].includes(rName);
-      const isAuditor = rName.includes('auditor');
-      const isEmpty = !p.ver && !p.crear && !p.editar && !p.aprobar && !p.exportar && !p.administrar;
-
-      if (isNew || (isBaseRole && isEmpty) || (isAuditor && isEmpty)) {
-        if (rName === 'administrador') {
-          p.ver = p.crear = p.editar = p.aprobar = p.exportar = p.administrar = true;
-        } else if (rName === 'rrhh') {
-          if (['Empleados', 'Planilla', 'Permisos', 'Reportes', 'Usuarios'].includes(modName)) {
-            p.ver = p.crear = p.editar = p.exportar = true;
-            if (modName === 'Permisos') p.aprobar = true;
-          }
-        } else if (rName === 'supervisor') {
-          if (['Empleados', 'Permisos', 'Reportes', 'Proyectos'].includes(modName)) {
-            p.ver = true;
-            if (modName === 'Permisos' || modName === 'Proyectos') p.aprobar = true;
-          }
-        } else if (rName === 'empleado') {
-          if (['Permisos', 'Proyectos', 'Reportes'].includes(modName)) {
-              p.ver = true;
-              if (modName !== 'Reportes') p.crear = true;
-          }
-        } else if (isAuditor) {
-          if (modName === 'Auditoria' || modName === 'Reportes') p.ver = p.exportar = true;
-        }
-
-        p = await this.rolPermisoRepository.save(p);
-      } else {
-          // Blindaje extra Administrador
-          if (rName === 'administrador' && !p.ver) {
-             p.ver = p.crear = p.editar = p.aprobar = p.exportar = p.administrar = true;
-             await this.rolPermisoRepository.save(p);
-          }
-      }
-      finalPerms.push(p);
-    }
-
-    return finalPerms.sort((a, b) => a.modulo.localeCompare(b.modulo));
-  }
-
-  async updateRolePermissions(rolId: number, perms: any[], uid: number) {
-    for (const p of perms) {
-      await this.rolPermisoRepository.update({ rolId, modulo: p.modulo }, {
-        ver: p.ver, crear: p.crear, editar: p.editar, aprobar: p.aprobar, exportar: p.exportar, administrar: p.administrar
-      });
-    }
-    const rol = await this.rolRepository.findOne({ where: { rolId } });
-    await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE_PERMISSIONS', entidad: 'ROL', entidadId: rolId, detalle: `Actualizó permisos para el perfil: ${rol?.nombre}` }, uid);
-    return this.getRolePermissions(rolId);
-  }
-
-  async createRole(dto: any, uid: number) {
-    const rol: any = await this.rolRepository.save(this.rolRepository.create(dto));
-    await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'ROL', entidadId: rol.rolId, detalle: `Creó rol: ${rol.nombre}` }, uid);
-    return rol;
-  }
-
-  async deleteRole(id: number, uid: number) {
-    const rol = await this.rolRepository.findOne({ where: { rolId: id } });
-    if (!rol) throw new NotFoundException('Rol no encontrado');
-    const rName = rol.nombre.toLowerCase();
-    if (['administrador', 'supervisor', 'rrhh', 'empleado'].includes(rName)) {
-      throw new BadRequestException('No se pueden eliminar los roles base del sistema.');
-    }
-    await this.rolPermisoRepository.delete({ rolId: id });
-    await this.rolRepository.delete(id);
-    await this.logAction({ modulo: 'ADMIN', accion: 'DELETE', entidad: 'ROL', entidadId: id, detalle: `Eliminó rol: ${rol.nombre}` }, uid);
-    return { message: 'OK' };
-  }
-
-  // --- LOG ACCION ---
   async logAction(dto: { modulo: string, accion: string, entidad: string, entidadId?: number, detalle: string }, uid: number) {
-    return await this.auditRepository.save({ ...dto, usuarioId: uid });
-  }
-
-  // --- OTROS MÓDULOS ---
-
-  async getShifts() { return await this.turnoRepository.find({ order: { nombre: 'ASC' } }); }
-  async createShift(dto: any, uid: number) {
-    const s: any = await this.turnoRepository.save(this.turnoRepository.create(dto));
-    await this.logAction({ modulo: 'RRHH', accion: 'CREATE', entidad: 'TURNO', entidadId: s.turnoId, detalle: `Creó turno: ${s.nombre}` }, uid);
-    return this.getShifts();
-  }
-  async updateShift(id: number, dto: any, uid: number) {
-    const existing = await this.turnoRepository.findOne({ where: { turnoId: id } });
-    if (!existing) throw new NotFoundException('No encontrado');
-    Object.assign(existing, dto);
-    await this.turnoRepository.save(existing);
-    await this.logAction({ modulo: 'RRHH', accion: 'UPDATE', entidad: 'TURNO', entidadId: id, detalle: `Actualizó turno: ${existing.nombre}` }, uid);
-    return this.getShifts();
-  }
-  async deactivateShift(id: number, uid: number) {
-    await this.turnoRepository.update(id, { activo: false });
-    await this.logAction({ modulo: 'RRHH', accion: 'DEACTIVATE', entidad: 'TURNO', entidadId: id, detalle: 'Desactivó turno' }, uid);
-    return { message: 'OK' };
-  }
-
-  async getAssignments() {
-    const assignments = await this.empleadoTurnoRepository.find({ relations: ['empleado', 'turno'], where: { activo: true }, order: { fechaInicio: 'DESC' } });
-    return assignments.map(a => ({ id: a.empleadoTurnoId, empleadoNombre: `${a.empleado?.nombres} ${a.empleado?.apellidos}`, turnoNombre: a.turno?.nombre, fechaInicio: a.fechaInicio, fechaFin: a.fechaFin, activo: a.activo }));
-  }
-
-  async assignShift(dto: any, uid: number) {
-    if (dto.id && dto.activo === false) {
-      await this.empleadoTurnoRepository.update(dto.id, { activo: false, fechaFin: new Date() });
-      await this.logAction({ modulo: 'RRHH', accion: 'FINALIZE', entidad: 'ASIGNACION_TURNO', entidadId: dto.id, detalle: 'Finalizó asignación de turno' }, uid);
-      return this.getAssignments();
-    }
-    const fInicio = dto.fechaInicio || new Date().toISOString().split('T')[0];
-    const fFin = dto.fechaFin === '' ? null : dto.fechaFin;
-    await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId }, { activo: false });
-    const s: any = await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({ ...dto, fechaInicio: fInicio, fechaFin: fFin, activo: true }));
-    await this.logAction({ modulo: 'RRHH', accion: 'ASSIGN', entidad: 'ASIGNACION_TURNO', entidadId: s.empleadoTurnoId, detalle: `Asignó turno a empleado` }, uid);
-    return this.getAssignments();
-  }
-
-  async getBonusRules() { return await this.reglaBonoRepository.find({ order: { monto: 'DESC' } }); }
-  async createBonusRule(dto: any, uid: number) {
-    const r: any = await this.reglaBonoRepository.save(this.reglaBonoRepository.create(dto));
-    await this.logAction({ modulo: 'RRHH', accion: 'CREATE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: r.reglaBonoId, detalle: `Creó regla: ${r.nombre}` }, uid);
-    return this.getBonusRules();
-  }
-  async updateBonusRule(id: number, dto: any, uid: number) {
-    const existing = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } });
-    if (!existing) throw new NotFoundException('No encontrado');
-    Object.assign(existing, dto);
-    await this.reglaBonoRepository.save(existing);
-    await this.logAction({ modulo: 'RRHH', accion: 'UPDATE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: id, detalle: `Actualizó regla: ${existing.nombre}` }, uid);
-    return this.getBonusRules();
-  }
-  async deleteBonusRule(id: number, uid: number) {
-    await this.reglaBonoRepository.update(id, { activo: false });
-    await this.logAction({ modulo: 'RRHH', accion: 'DELETE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: id, detalle: 'Desactivó regla de bono' }, uid);
-    return this.getBonusRules();
-  }
-
-  async runBonusEvaluation(mes: number, anio: number, uid: number) {
-    await this.logAction({ modulo: 'RRHH', accion: 'RUN_EVALUATION', entidad: 'BONOS', detalle: `Ejecutó evaluación de bonos para ${mes}/${anio}` }, uid);
-    return { message: 'Evaluación exitosa.' };
-  }
-
-  async getAuditLogs(fi?: string, ff?: string, uid?: number, mod?: string) {
-    const where: any = {};
-    if (fi && ff) where.fechaHora = Between(new Date(fi + ' 00:00:00'), new Date(ff + ' 23:59:59'));
-    if (uid) where.usuarioId = uid;
-    if (mod && mod !== 'Todos los módulos') where.modulo = mod;
-    return await this.auditRepository.find({ relations: ['usuario'], order: { fechaHora: 'DESC' }, take: 1000, where });
-  }
-
-  async getAdminDashboardStats() {
     const now = new Date();
-    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000);
-    const startOfToday = new Date();
-    startOfToday.setHours(0,0,0,0);
-    const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([
-      this.usuarioRepository.count({ where: { estado: 'activo' } }),
-      this.usuarioRepository.count({ where: { estado: 'bloqueado' } }),
-      this.auditRepository.count(),
-      this.auditRepository.count({ where: { accion: Like('%FAIL%'), fechaHora: MoreThan(startOfToday) } }),
-      this.usuarioRepository.count({ where: { ultimoLogin: MoreThan(thirtyMinutesAgo), estado: 'activo' } })
-    ]);
-    return { usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas: sesionesActivas || 1, estadoSistema: 'Óptimo' };
+    const guateOffset = -6 * 60 * 60 * 1000;
+    const guateTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + guateOffset);
+    return await this.auditRepository.save({ ...dto, usuarioId: uid, fechaHora: guateTime });
   }
-  async getRrhhDashboardStats() { return { empleadosActivos: await this.empleadoRepository.count({ where: { activo: true } }), tardiasHoy: 0, permisosPendientes: await this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }), vacacionesActivas: 0, empleadosEnRiesgo: 0, elegiblesBono: 0 }; }
-  async getSupervisorDashboardStats(sid: number) { return { empleadosACargo: await this.empleadoRepository.count({ where: { supervisorId: sid, activo: true } }), permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
 
-  async getKpiParameters() { const p = await this.parametroRepository.find({ where: { activo: true } }); const r = {}; p.forEach(x => r[x.clave] = x.valor); return r; }
+  // --- PARAMETROS GLOBALES CON IMPACTO REAL ---
+
+  async getKpiParameters() {
+    const p = await this.parametroRepository.find({ where: { activo: true } });
+    const r = {}; p.forEach(x => r[x.clave] = x.valor); return r;
+  }
+
   async updateKpiParameters(dto: any, uid: number) {
-    for (const [k, v] of Object.entries(dto)) { await this.parametroRepository.update({ clave: k }, { valor: v as string }); }
+    const category = dto.categoryName || 'Configuración';
+    const isKpiUpdate = category === 'KPIs y Metas';
+    delete dto.categoryName;
+
+    // LÓGICA DE VACACIONES ABSOLUTA
+    if (dto.dias_vacaciones !== undefined) {
+        const newVal = parseInt(dto.dias_vacaciones);
+        const empleados = await this.empleadoRepository.find({ where: { activo: true } });
+        for (const emp of empleados) {
+            let saldo = await this.vacacionSaldoRepository.findOne({ where: { empleadoId: emp.empleadoId } });
+            if (!saldo) {
+                saldo = this.vacacionSaldoRepository.create({ empleadoId: emp.empleadoId, diasDisponibles: newVal, diasUsados: 0, fechaCorte: new Date() });
+            } else {
+                saldo.diasDisponibles = newVal;
+                saldo.diasUsados = 0;
+            }
+            await this.vacacionSaldoRepository.save(saldo);
+            await this.vacacionMovimientoRepository.save({ empleadoId: emp.empleadoId, tipo: VacacionMovimiento.TIPO_AJUSTE, dias: newVal, fecha: new Date(), comentario: `POLÍTICA CORPORATIVA: Ajuste general a ${newVal} días disponibles.` });
+        }
+    }
+
+    // Persistencia física de los parámetros
+    for (const [clave, valor] of Object.entries(dto)) {
+        let param = await this.parametroRepository.findOne({ where: { clave } });
+        if (param) { param.valor = valor as string; param.usuarioIdActualiza = uid; await this.parametroRepository.save(param); }
+        else { await this.parametroRepository.save(this.parametroRepository.create({ clave, valor: valor as string, usuarioIdActualiza: uid, activo: true })); }
+    }
+
+    // SI ES KPI, RECALCULAR TODO EL MES AL INSTANTE
+    if (isKpiUpdate) {
+        await this.kpiService.globalRecalculateCurrentMonth();
+    }
+
+    await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE_KPI_PARAMETERS', entidad: 'PARAMETROS', detalle: `Sincronización de ${category}.` }, uid);
     return this.getKpiParameters();
   }
 
-  async getUsers() {
-    const users = await this.usuarioRepository.find({ relations: ['empleado', 'roles', 'empleado.supervisor'], order: { username: 'ASC' } });
-    return users.map(u => ({
-      usuarioId: u.usuarioId, username: u.username, email: u.empleado?.email,
-      nombreCompleto: u.empleado ? `${u.empleado.nombres} ${u.empleado.apellidos}` : 'N/A',
-      estado: u.estado, roles: u.roles?.map(r => r.nombre) || [], empleadoCodigo: u.empleado?.codigoEmpleado,
-      empleadoId: u.empleadoId, supervisorId: u.empleado?.supervisorId,
-      supervisorNombre: u.empleado?.supervisor ? `${u.empleado.supervisor.nombres} ${u.empleado.supervisor.apellidos}` : 'No asignado'
-    }));
-  }
-
-  async createUser(dto: any, uid: number) {
-    const existingUser = await this.usuarioRepository.findOne({ where: { username: dto.username } });
-    if (existingUser) throw new BadRequestException(`El identificador @${dto.username} ya está en uso.`);
-    if (dto.empleadoId) {
-      const existingByEmp = await this.usuarioRepository.findOne({ where: { empleadoId: dto.empleadoId } });
-      if (existingByEmp) throw new BadRequestException(`Esta persona ya cuenta con un acceso activo.`);
-    }
-    const passwordHash = await bcrypt.hash(dto.password || 'Test1234', 10);
-    const user = this.usuarioRepository.create({ username: dto.username, passwordHash, empleadoId: dto.empleadoId, estado: dto.estado === 'inactivo' ? 'bloqueado' : 'activo' });
-    const saved = await this.usuarioRepository.save(user);
-    if (dto.bossId) await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId });
-    if (dto.roleId) await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [saved.usuarioId, dto.roleId]);
-    await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: saved.usuarioId, detalle: `Creó cuenta: ${saved.username}` }, uid);
-    return this.getUsers();
-  }
-
-  async updateUser(id: number, dto: any, uid: number) {
-    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
-    if (!user) throw new NotFoundException('Cuenta no encontrada');
-    if (user.username !== dto.username) {
-        const existingUser = await this.usuarioRepository.findOne({ where: { username: dto.username, usuarioId: Not(id) } });
-        if (existingUser) throw new BadRequestException(`El identificador @${dto.username} ya está en uso.`);
-    }
-    if (user.empleadoId !== dto.empleadoId) {
-      const existingByEmp = await this.usuarioRepository.findOne({ where: { empleadoId: dto.empleadoId, usuarioId: Not(id) } });
-      if (existingByEmp) throw new BadRequestException(`La persona seleccionada ya tiene otra cuenta vinculada.`);
-    }
-    user.username = dto.username;
-    user.estado = dto.estado === 'inactivo' ? 'bloqueado' : 'activo';
-    user.empleadoId = dto.empleadoId;
-    if (dto.password) user.passwordHash = await bcrypt.hash(dto.password, 10);
-    await this.usuarioRepository.save(user);
-    if (dto.empleadoId) await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId || null });
-    if (dto.roleId) {
-      await this.dataSource.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [id]);
-      await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [id, dto.roleId]);
-    }
-    await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE', entidad: 'USUARIO', entidadId: id, detalle: `Actualizó cuenta: ${user.username}` }, uid);
-    return this.getUsers();
-  }
-
-  async updateUserStatus(id: number, status: string, uid: number) {
-    const dbStatus = status === 'inactivo' ? 'bloqueado' : 'activo';
-    await this.usuarioRepository.update(id, { estado: dbStatus });
-    await this.logAction({ modulo: 'ADMIN', accion: dbStatus === 'bloqueado' ? 'BLOCK' : 'ACTIVATE', entidad: 'USUARIO', entidadId: id, detalle: `Cambió estado a ${dbStatus}` }, uid);
-    return this.getUsers();
-  }
-
-  async resetPassword(id: number, uid: number) {
-    const hash = await bcrypt.hash('Test1234', 10);
-    await this.usuarioRepository.update(id, { passwordHash: hash });
-    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
-    await this.logAction({ modulo: 'ADMIN', accion: 'RESET_PASSWORD', entidad: 'USUARIO', entidadId: id, detalle: `Reseteó clave de @${user?.username}` }, uid);
-    return { message: 'Contraseña restablecida correctamente.' };
-  }
+  // --- OTROS MÉTODOS ---
+  async getRoles() { return await this.rolRepository.find({ order: { nombre: 'ASC' } }); }
+  async getRolePermissions(rolId: number) { const rol = await this.rolRepository.findOne({ where: { rolId } }); if (!rol) throw new NotFoundException('Rol no encontrado'); const dbPerms = await this.rolPermisoRepository.find({ where: { rolId } }); const finalPerms: RolPermiso[] = []; for (const modName of this.DEFAULT_MODULES) { let p = dbPerms.find(x => x.modulo.toLowerCase() === modName.toLowerCase()); if (!p) { p = new RolPermiso(); p.rolId = rolId; p.modulo = modName; p = await this.rolPermisoRepository.save(p); } finalPerms.push(p); } return finalPerms.sort((a, b) => a.modulo.localeCompare(b.modulo)); }
+  async updateRolePermissions(rolId: number, perms: any[], uid: number) { for (const p of perms) { await this.rolPermisoRepository.update({ rolId, modulo: p.modulo }, { ver: p.ver, crear: p.crear, editar: p.editar, aprobar: p.aprobar, exportar: p.exportar, administrar: p.administrar }); } return this.getRolePermissions(rolId); }
+  async createRole(dto: any, uid: number) { return await this.rolRepository.save(this.rolRepository.create(dto)); }
+  async deleteRole(id: number, uid: number) { const rol = await this.rolRepository.findOne({ where: { rolId: id } }); if (!rol) throw new NotFoundException('Rol no encontrado'); if (['administrador', 'supervisor', 'rrhh', 'empleado'].includes(rol.nombre.toLowerCase())) throw new BadRequestException('No se pueden eliminar roles base.'); await this.rolPermisoRepository.delete({ rolId: id }); await this.rolRepository.delete(id); await this.logAction({ modulo: 'ADMIN', accion: 'DELETE', entidad: 'ROL', entidadId: id, detalle: `Eliminó rol: ${rol.nombre}` }, uid); return { message: 'OK' }; }
+  async getUsers() { const users = await this.usuarioRepository.find({ relations: ['empleado', 'roles', 'empleado.supervisor'], order: { username: 'ASC' } }); return users.map(u => ({ usuarioId: u.usuarioId, username: u.username, email: u.empleado?.email, nombreCompleto: u.empleado ? `${u.empleado.nombres} ${u.empleado.apellidos}` : 'N/A', estado: u.estado, roles: u.roles?.map(r => r.nombre) || [], empleadoCodigo: u.empleado?.codigoEmpleado, empleadoId: u.empleadoId, supervisorId: u.empleado?.supervisorId, supervisorNombre: u.empleado?.supervisor ? `${u.empleado.supervisor.nombres} ${u.empleado.supervisor.apellidos}` : 'No asignado' })); }
+  async createUser(dto: any, uid: number) { const passwordHash = await bcrypt.hash(dto.password || 'Test1234', 10); const user = await this.usuarioRepository.save(this.usuarioRepository.create({ username: dto.username, passwordHash, empleadoId: dto.empleadoId, estado: 'activo' })); if (dto.roleId) await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [user.usuarioId, dto.roleId]); await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: user.usuarioId, detalle: `Creó cuenta: ${user.username}` }, uid); return this.getUsers(); }
+  async updateUser(id: number, dto: any, uid: number) { const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } }); if (!user) throw new NotFoundException('No encontrado'); user.username = dto.username; user.estado = dto.estado === 'inactivo' ? 'bloqueado' : 'activo'; user.empleadoId = dto.empleadoId; if (dto.password) user.passwordHash = await bcrypt.hash(dto.password, 10); await this.usuarioRepository.save(user); if (dto.roleId) { await this.dataSource.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [id]); await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [id, dto.roleId]); } await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE', entidad: 'USUARIO', entidadId: id, detalle: `Actualizó cuenta: ${user.username}` }, uid); return this.getUsers(); }
+  async updateUserStatus(id: number, status: string, uid: number) { await this.usuarioRepository.update(id, { estado: status === 'inactivo' ? 'bloqueado' : 'activo' }); await this.logAction({ modulo: 'ADMIN', accion: 'STATUS', entidad: 'USUARIO', entidadId: id, detalle: `Cambio estado a ${status}` }, uid); return this.getUsers(); }
+  async resetPassword(id: number, uid: number) { const hash = await bcrypt.hash('Test1234', 10); await this.usuarioRepository.update(id, { passwordHash: hash }); const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } }); await this.logAction({ modulo: 'ADMIN', accion: 'RESET', entidad: 'USUARIO', entidadId: id, detalle: `Clave reseteada: @${user?.username}` }, uid); return { message: 'OK' }; }
+  async getShifts() { return await this.turnoRepository.find({ order: { nombre: 'ASC' } }); }
+  async createShift(dto: any, uid: number) { if (!dto.toleranciaMinutos) { const g = await this.parametroRepository.findOne({ where: { clave: 'tolerancia_minutos' } }); dto.toleranciaMinutos = g ? parseInt(g.valor) : 10; } const s: any = await this.turnoRepository.save(this.turnoRepository.create(dto)); await this.logAction({ modulo: 'RRHH', accion: 'CREATE', entidad: 'TURNO', entidadId: s.turnoId, detalle: `Creó turno: ${s.nombre}` }, uid); return this.getShifts(); }
+  async updateShift(id: number, dto: any, uid: number) { const existing = await this.turnoRepository.findOne({ where: { turnoId: id } }); if (!existing) throw new NotFoundException('No encontrado'); if (!dto.toleranciaMinutos) { const g = await this.parametroRepository.findOne({ where: { clave: 'tolerancia_minutos' } }); dto.toleranciaMinutos = g ? parseInt(g.valor) : 10; } Object.assign(existing, dto); await this.turnoRepository.save(existing); await this.logAction({ modulo: 'RRHH', accion: 'UPDATE', entidad: 'TURNO', entidadId: id, detalle: `Actualizó turno: ${existing.nombre}` }, uid); return this.getShifts(); }
+  async deactivateShift(id: number, uid: number) { await this.turnoRepository.update(id, { activo: false }); await this.logAction({ modulo: 'RRHH', accion: 'DEACTIVATE', entidad: 'TURNO', entidadId: id, detalle: 'Desactivó turno' }, uid); return { message: 'OK' }; }
+  async getAssignments() { const assignments = await this.empleadoTurnoRepository.find({ relations: ['empleado', 'turno'], where: { activo: true }, order: { fechaInicio: 'DESC' } }); return assignments.map(a => ({ id: a.empleadoTurnoId, empleadoNombre: `${a.empleado?.nombres} ${a.empleado?.apellidos}`, turnoNombre: a.turno?.nombre, fechaInicio: a.fechaInicio, activo: a.activo })); }
+  async assignShift(dto: any, uid: number) { if (dto.id && dto.activo === false) { await this.empleadoTurnoRepository.update(dto.id, { activo: false, fechaFin: new Date() }); await this.logAction({ modulo: 'RRHH', accion: 'FINALIZE', entidad: 'ASIGNACION_TURNO', entidadId: dto.id, detalle: 'Finalizó asignación' }, uid); return this.getAssignments(); } const fInicio = dto.fechaInicio || new Date().toISOString().split('T')[0]; await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId }, { activo: false }); const s: any = await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({ ...dto, fechaInicio: fInicio, activo: true })); await this.logAction({ modulo: 'RRHH', accion: 'ASSIGN', entidad: 'ASIGNACION_TURNO', entidadId: s.empleadoTurnoId, detalle: `Asignó turno` }, uid); return this.getAssignments(); }
+  async getBonusRules() { return await this.reglaBonoRepository.find({ order: { monto: 'DESC' } }); }
+  async createBonusRule(dto: any, uid: number) { const r: any = await this.reglaBonoRepository.save(this.reglaBonoRepository.create(dto)); await this.logAction({ modulo: 'RRHH', accion: 'CREATE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: r.reglaBonoId, detalle: `Creó regla: ${r.nombre}` }, uid); return this.getBonusRules(); }
+  async updateBonusRule(id: number, dto: any, uid: number) { const existing = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } }); if (!existing) throw new NotFoundException('No encontrado'); Object.assign(existing, dto); await this.reglaBonoRepository.save(existing); await this.logAction({ modulo: 'RRHH', accion: 'UPDATE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: id, detalle: `Actualizó regla: ${existing.nombre}` }, uid); return this.getBonusRules(); }
+  async deleteBonusRule(id: number, uid: number) { await this.reglaBonoRepository.update(id, { activo: false }); await this.logAction({ modulo: 'RRHH', accion: 'DELETE_BONUS_RULE', entidad: 'REGLA_BONO', entidadId: id, detalle: 'Desactivó regla de bono' }, uid); return this.getBonusRules(); }
+  async runBonusEvaluation(mes: number, anio: number, uid: number) { await this.logAction({ modulo: 'RRHH', accion: 'RUN_EVALUATION', entidad: 'BONOS', detalle: `Ejecutó evaluación de bonos para ${mes}/${anio}` }, uid); return { message: 'Evaluación exitosa.' }; }
+  async getAuditLogs(fi?: string, ff?: string, uid?: number, mod?: string) { const where: any = {}; if (fi && ff) where.fechaHora = Between(new Date(fi + ' 00:00:00'), new Date(ff + ' 23:59:59')); if (uid) where.usuarioId = uid; if (mod && mod !== 'Todos los módulos') where.modulo = mod; return await this.auditRepository.find({ relations: ['usuario'], order: { fechaHora: 'DESC' }, take: 1000, where }); }
+  async getAdminDashboardStats() { const now = new Date(); const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000); const startOfToday = new Date(); startOfToday.setHours(0,0,0,0); const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([ this.usuarioRepository.count({ where: { estado: 'activo' } }), this.usuarioRepository.count({ where: { estado: 'bloqueado' } }), this.auditRepository.count(), this.auditRepository.count({ where: { accion: Like('%FAIL%'), fechaHora: MoreThan(startOfToday) } }), this.usuarioRepository.count({ where: { ultimoLogin: MoreThan(thirtyMinutesAgo), estado: 'activo' } }) ]); return { usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas: sesionesActivas || 1, estadoSistema: 'Óptimo' }; }
+  async getRrhhDashboardStats() { return { empleadosActivos: await this.empleadoRepository.count({ where: { activo: true } }), tardiasHoy: 0, permisosPendientes: await this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }), vacacionesActivas: 0, empleadosEnRiesgo: 0, elegiblesBono: 0 }; }
+  async getSupervisorDashboardStats(sid: number) { return { empleadosACargo: await this.empleadoRepository.count({ where: { supervisorId: sid, activo: true } }), permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
 }

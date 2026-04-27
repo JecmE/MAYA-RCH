@@ -22,17 +22,29 @@ const empleado_turno_entity_1 = require("../../entities/empleado-turno.entity");
 const turno_entity_1 = require("../../entities/turno.entity");
 const ajuste_asistencia_entity_1 = require("../../entities/ajuste-asistencia.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 const kpi_service_1 = require("../kpi/kpi.service");
 let AttendanceService = class AttendanceService {
-    constructor(asistenciaRepository, empleadoRepository, empleadoTurnoRepository, turnoRepository, ajusteRepository, auditRepository, dataSource, kpiService) {
+    constructor(asistenciaRepository, empleadoRepository, empleadoTurnoRepository, turnoRepository, ajusteRepository, auditRepository, parametroRepository, dataSource, kpiService) {
         this.asistenciaRepository = asistenciaRepository;
         this.empleadoRepository = empleadoRepository;
         this.empleadoTurnoRepository = empleadoTurnoRepository;
         this.turnoRepository = turnoRepository;
         this.ajusteRepository = ajusteRepository;
         this.auditRepository = auditRepository;
+        this.parametroRepository = parametroRepository;
         this.dataSource = dataSource;
         this.kpiService = kpiService;
+    }
+    async getGlobalTolerance() {
+        const param = await this.parametroRepository.findOne({ where: { clave: 'tolerancia_minutos', activo: true } });
+        return param ? parseInt(param.valor, 10) : 10;
+    }
+    async getEffectiveTolerance(turno) {
+        if (!turno || turno.toleranciaMinutos === 0) {
+            return await this.getGlobalTolerance();
+        }
+        return turno.toleranciaMinutos;
     }
     async registerEntry(empleadoId, usuarioId) {
         const today = new Date();
@@ -57,11 +69,12 @@ let AttendanceService = class AttendanceService {
         if (!diasPermitidos.includes(hoyNombre)) {
             throw new common_1.BadRequestException(`Hoy (${hoyNombre}) no es un día laborable según tu turno (${turno.nombre}).`);
         }
+        const effectiveTolerance = await this.getEffectiveTolerance(turno);
         const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
         const horaEntradaMin = new Date(now);
         horaEntradaMin.setHours(horaEntradaEsperada.getHours(), horaEntradaEsperada.getMinutes() - 30, 0, 0);
         const horaEntradaMax = new Date(horaEntradaEsperada);
-        horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + turno.toleranciaMinutos);
+        horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + effectiveTolerance);
         if (now < horaEntradaMin) {
             throw new common_1.BadRequestException(`Aún no puedes marcar entrada. Puedes hacerlo a partir de las ${this.formatTimeToString(horaEntradaMin)}`);
         }
@@ -71,7 +84,7 @@ let AttendanceService = class AttendanceService {
         let minutosTardia = 0;
         if (now > horaEntradaEsperada) {
             const diff = now.getTime() - horaEntradaEsperada.getTime();
-            minutosTardia = Math.floor(diff / 60000) - turno.toleranciaMinutos;
+            minutosTardia = Math.floor(diff / 60000) - effectiveTolerance;
             if (minutosTardia < 0)
                 minutosTardia = 0;
         }
@@ -150,7 +163,10 @@ let AttendanceService = class AttendanceService {
         });
         const empleadoTurno = await this.getShiftForDate(empleadoId, today);
         const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
-        const toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+        let toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
+        if (empleadoTurno?.turno && toleranciaMinutos === 0) {
+            toleranciaMinutos = await this.getGlobalTolerance();
+        }
         const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
         const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
         const diasSemanaMap = {
@@ -255,7 +271,8 @@ let AttendanceService = class AttendanceService {
                     const actualIn = new Date(asistencia.horaEntradaReal);
                     if (actualIn > expectedIn) {
                         const diffMin = Math.floor((actualIn.getTime() - expectedIn.getTime()) / 60000);
-                        asistencia.minutosTardia = Math.max(0, diffMin - shift.turno.toleranciaMinutos);
+                        const effectiveTolerance = await this.getEffectiveTolerance(shift.turno);
+                        asistencia.minutosTardia = Math.max(0, diffMin - effectiveTolerance);
                     }
                     else {
                         asistencia.minutosTardia = 0;
@@ -451,8 +468,10 @@ exports.AttendanceService = AttendanceService = __decorate([
     __param(3, (0, typeorm_1.InjectRepository)(turno_entity_1.Turno)),
     __param(4, (0, typeorm_1.InjectRepository)(ajuste_asistencia_entity_1.AjusteAsistencia)),
     __param(5, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
-    __param(7, (0, common_1.Inject)((0, common_1.forwardRef)(() => kpi_service_1.KpiService))),
+    __param(6, (0, typeorm_1.InjectRepository)(parametro_sistema_entity_1.ParametroSistema)),
+    __param(8, (0, common_1.Inject)((0, common_1.forwardRef)(() => kpi_service_1.KpiService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

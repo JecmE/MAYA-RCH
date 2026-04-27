@@ -11,6 +11,7 @@ import { Empleado } from '../../entities/empleado.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AuditLog } from '../../entities/audit-log.entity';
       BonoResultado,
       RegistroAsistencia,
       AuditLog,
+      ParametroSistema,
     ]),
   ],
   controllers: [PayrollController],

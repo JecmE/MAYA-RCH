@@ -24,8 +24,9 @@ const empleado_entity_1 = require("../../entities/empleado.entity");
 const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 let PayrollService = class PayrollService {
-    constructor(periodoRepository, planillaEmpleadoRepository, conceptoRepository, movimientoRepository, empleadoRepository, bonoRepository, asistenciaRepository, auditRepository) {
+    constructor(periodoRepository, planillaEmpleadoRepository, conceptoRepository, movimientoRepository, empleadoRepository, bonoRepository, asistenciaRepository, auditRepository, parametroRepository) {
         this.periodoRepository = periodoRepository;
         this.planillaEmpleadoRepository = planillaEmpleadoRepository;
         this.conceptoRepository = conceptoRepository;
@@ -34,6 +35,28 @@ let PayrollService = class PayrollService {
         this.bonoRepository = bonoRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.auditRepository = auditRepository;
+        this.parametroRepository = parametroRepository;
+    }
+    async getPayrollParameters() {
+        const params = await this.parametroRepository.find({
+            where: { clave: (0, typeorm_2.In)(['igss_laboral', 'igss_patronal', 'bono_decreto']), activo: true }
+        });
+        const map = new Map(params.map(p => [p.clave, p.valor]));
+        return {
+            igssLaboral: Number(map.get('igss_laboral') || 4.83) / 100,
+            igssPatronal: Number(map.get('igss_patronal') || 12.67) / 100,
+            bonoDecreto: Number(map.get('bono_decreto') || 250)
+        };
+    }
+    calculateIsr(montoGravable) {
+        if (montoGravable <= 5000)
+            return 0;
+        if (montoGravable <= 15000) {
+            return (montoGravable - 5000) * 0.05;
+        }
+        const isrTramo2 = (15000 - 5000) * 0.05;
+        const isrTramo3 = (montoGravable - 15000) * 0.07;
+        return isrTramo2 + isrTramo3;
     }
     async createPeriod(createDto, usuarioId) {
         const periodo = this.periodoRepository.create({ ...createDto, estado: periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_ABIERTO });
@@ -45,6 +68,7 @@ let PayrollService = class PayrollService {
         const periodo = await this.periodoRepository.findOne({ where: { periodoId } });
         if (!periodo)
             throw new common_1.NotFoundException('Periodo no encontrado');
+        const config = await this.getPayrollParameters();
         const empleados = await this.empleadoRepository.find({ where: { activo: true } });
         const resultados = [];
         const dateFin = new Date(periodo.fechaFin);
@@ -61,27 +85,29 @@ let PayrollService = class PayrollService {
                 relations: ['reglaBono'],
                 order: { fechaCalculo: 'DESC' }
             });
-            const montoBonos = bonoReal && bonoReal.elegible ? Number(bonoReal.reglaBono?.monto || 0) : 0;
-            const igss = montoSalario * 0.0483;
-            const neto = (montoSalario + montoBonos) - igss;
+            const montoBonoDesempeno = bonoReal && bonoReal.elegible ? Number(bonoReal.reglaBono?.monto || 0) : 0;
+            const montoBonoDecreto = config.bonoDecreto;
+            const igss = Math.round(montoSalario * config.igssLaboral * 100) / 100;
+            const isr = Math.round(this.calculateIsr(montoSalario - igss) * 100) / 100;
+            const neto = (montoSalario + montoBonoDesempeno + montoBonoDecreto) - (igss + isr);
             resultados.push({
                 empleadoId: emp.empleadoId,
                 nombreCompleto: `${emp.nombres} ${emp.apellidos}`,
                 horasTrabajadas: horas,
                 montoBruto: montoSalario,
-                totalBonificaciones: montoBonos,
-                totalDeducciones: igss,
+                totalBonificaciones: montoBonoDesempeno + montoBonoDecreto,
+                totalDeducciones: igss + isr,
                 montoNeto: neto
             });
         }
         return {
-            mensaje: 'Cálculo de nómina completado exitosamente (Modo Pro-forma)',
+            mensaje: 'Cálculo de nómina completado exitosamente (Sincronizado con Parámetros)',
             resultados
         };
     }
     async closePeriod(periodoId, usuarioId) {
         await this.periodoRepository.update(periodoId, { estado: periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_CERRADO });
-        return { message: 'Periodo cerrado correctamente. Boletas publicadas para los empleados.' };
+        return { message: 'Periodo cerrado correctamente. Boletas publicadas.' };
     }
     async getMyPaycheck(empleadoId, periodoId) {
         const periodo = periodoId
@@ -89,6 +115,7 @@ let PayrollService = class PayrollService {
             : await this.periodoRepository.findOne({ order: { fechaInicio: 'DESC' } });
         if (!periodo)
             return { message: 'Periodo no encontrado' };
+        const config = await this.getPayrollParameters();
         const emp = await this.empleadoRepository.findOne({ where: { empleadoId } });
         const dateFin = new Date(periodo.fechaFin);
         const year = dateFin.getFullYear();
@@ -103,35 +130,32 @@ let PayrollService = class PayrollService {
             relations: ['reglaBono'],
             order: { fechaCalculo: 'DESC' }
         });
-        let montoBonos = 0;
+        let montoBonoDesempeno = 0;
         let nombreBono = 'Sin Bonificación (Eval. Pendiente)';
         if (bonoReal) {
             if (bonoReal.elegible) {
-                montoBonos = Number(bonoReal.reglaBono?.monto || 0);
+                montoBonoDesempeno = Number(bonoReal.reglaBono?.monto || 0);
                 nombreBono = bonoReal.reglaBono?.nombre || 'Bono Desempeño';
             }
             else {
-                nombreBono = 'Bono Incentivo (No califica)';
+                nombreBono = 'Bono Desempeño (No califica)';
             }
         }
-        else {
-            const reglasActivas = await this.dataSourceQuery(`SELECT COUNT(*) as total FROM REGLA_BONO WHERE activo = 1`);
-            if (reglasActivas[0].total === 0) {
-                nombreBono = 'Sin Bonificaciones (No hay reglas)';
-            }
-        }
-        const igss = montoSalario * 0.0483;
-        const neto = (montoSalario + montoBonos) - igss;
+        const igss = Math.round(montoSalario * config.igssLaboral * 100) / 100;
+        const isr = Math.round(this.calculateIsr(montoSalario - igss) * 100) / 100;
+        const neto = (montoSalario + montoBonoDesempeno + config.bonoDecreto) - (igss + isr);
         return {
             periodo: { nombre: periodo.nombre, fechaInicio: periodo.fechaInicio, fechaFin: periodo.fechaFin },
             montoBruto: montoSalario,
-            totalBonificaciones: montoBonos,
-            totalDeducciones: igss,
+            totalBonificaciones: montoBonoDesempeno + config.bonoDecreto,
+            totalDeducciones: igss + isr,
             montoNeto: neto,
             movimientos: [
                 { concepto: 'Salario Base (Horas marcadas)', tipo: 'ingreso', monto: montoSalario },
-                { concepto: nombreBono, tipo: 'ingreso', monto: montoBonos },
-                { concepto: 'IGSS Laboral (4.83%)', tipo: 'deduccion', monto: igss }
+                { concepto: 'Bonificación Decreto 37-2001', tipo: 'ingreso', monto: config.bonoDecreto },
+                { concepto: nombreBono, tipo: 'ingreso', monto: montoBonoDesempeno },
+                { concepto: `IGSS Laboral (${(config.igssLaboral * 100).toFixed(2)}%)`, tipo: 'deduccion', monto: igss },
+                { concepto: 'ISR (Retención Mensual)', tipo: 'deduccion', monto: isr }
             ]
         };
     }
@@ -141,15 +165,6 @@ let PayrollService = class PayrollService {
     async getPeriods() { return await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } }); }
     async getConcepts() { return await this.conceptoRepository.find({ where: { activo: true } }); }
     async seedTestData() { return { message: 'OK' }; }
-    async dataSourceQuery(query) {
-        try {
-            const ds = this.periodoRepository.manager.connection;
-            return await ds.query(query);
-        }
-        catch {
-            return [{ total: 0 }];
-        }
-    }
 };
 exports.PayrollService = PayrollService;
 exports.PayrollService = PayrollService = __decorate([
@@ -162,7 +177,9 @@ exports.PayrollService = PayrollService = __decorate([
     __param(5, (0, typeorm_1.InjectRepository)(bono_resultado_entity_1.BonoResultado)),
     __param(6, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
     __param(7, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(8, (0, typeorm_1.InjectRepository)(parametro_sistema_entity_1.ParametroSistema)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
