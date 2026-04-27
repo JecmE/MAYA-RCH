@@ -137,12 +137,12 @@ export declare class AdminController {
             ramMB: number;
             totalRamMB: number;
         };
-        lastIncident: {
+        incidents: {
             id: number;
             titulo: string;
             descripcion: string;
-            fecha: Date;
-        };
+            hora: Date;
+        }[];
         tasks: any[];
     }>;
     forceSync(req: any): Promise<{

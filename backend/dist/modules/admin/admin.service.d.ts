@@ -195,12 +195,12 @@ export declare class AdminService implements OnModuleInit {
             ramMB: number;
             totalRamMB: number;
         };
-        lastIncident: {
+        incidents: {
             id: number;
             titulo: string;
             descripcion: string;
-            fecha: Date;
-        };
+            hora: Date;
+        }[];
         tasks: any[];
     }>;
     private getInternalTasksStatus;

@@ -64,9 +64,8 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
     { id: 3, nombre: 'Sincronización Asistencia', programacion: 'Cada 15 min', ultimoEstado: 'Pendiente', ultimaEjecucion: '--' },
   ];
 
-  incidenciaCritica = { titulo: 'Sin incidencias críticas', descripcion: 'El sistema opera con normalidad según el rastro de auditoría.' };
-  mostrarDetalleError = false;
-  detalleError = { proceso: '--', hora: '--', causa: 'Ninguna detectada', impacto: 'Ninguno', accionRecomendada: 'N/A', estado: 'Limpio' };
+  incidencias: any[] = [];
+  modalIncidencias = false;
 
   correoPrueba = '';
   modoEdicionCorreo = false;
@@ -116,13 +115,9 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
             this.integraciones[0].meta = `Latencia: ${data.db.latency}ms`;
             this.integraciones[0].descripcion = data.db.type;
 
-            // 2. INCIDENCIA
-            if (data.lastIncident) {
-                this.incidenciaCritica = { titulo: data.lastIncident.titulo, descripcion: data.lastIncident.descripcion };
-                this.detalleError = { proceso: data.lastIncident.titulo, hora: new Date(data.lastIncident.fecha).toLocaleString(), causa: data.lastIncident.descripcion, impacto: 'Error técnico registrado', accionRecomendada: 'Revisar logs en Auditoría', estado: 'Alerta' };
-            } else {
-                this.incidenciaCritica = { titulo: 'Sin incidencias críticas', descripcion: 'El sistema opera con normalidad.' };
-            }
+            // 2. INCIDENCIAS (REALES DEL DÍA)
+            const dismissed = JSON.parse(localStorage.getItem('dismissed_incidents') || '[]');
+            this.incidencias = (data.incidents || []).filter((i: any) => !dismissed.includes(i.id));
 
             // 3. MONITOR CARDS (PORCENTAJES Y HARDWARE REAL)
             this.monitoreoCards[0].valor = data.server.cpuPercent.toString();
@@ -199,8 +194,19 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
     });
   }
 
+  eliminarIncidencia(id: number): void {
+    const dismissed = JSON.parse(localStorage.getItem('dismissed_incidents') || '[]');
+    dismissed.push(id);
+    localStorage.setItem('dismissed_incidents', JSON.stringify(dismissed));
+    this.incidencias = this.incidencias.filter(i => i.id !== id);
+    this.mostrarMensaje('Incidencia descartada.', 'success');
+  }
+
+  abrirIncidencias(): void {
+    this.modalIncidencias = true;
+  }
+
   probarConexionCorreo(): void { this.mostrarMensaje('Servicio SMTP en espera.', 'warning'); }
-  verDetalleError(): void { this.mostrarDetalleError = !this.mostrarDetalleError; }
   enviarCorreoPrueba(): void { this.mostrarMensaje('SMTP en espera.', 'warning'); }
   editarConfiguracion(): void { this.modoEdicionCorreo = true; }
   guardarConfiguracionCorreo(): void { this.modoEdicionCorreo = false; this.mostrarMensaje('Guardado.', 'success'); }

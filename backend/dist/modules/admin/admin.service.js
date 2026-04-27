@@ -333,8 +333,13 @@ let AdminService = class AdminService {
         const cpu = process.cpuUsage();
         const totalMemBytes = os.totalmem();
         const cpuCores = os.cpus().length;
-        const lastError = await this.auditRepository.findOne({
-            where: [{ modulo: 'ERROR' }, { accion: (0, typeorm_2.Like)('%FAIL%') }],
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const todayIncidents = await this.auditRepository.find({
+            where: [
+                { modulo: 'ERROR', fechaHora: (0, typeorm_2.MoreThan)(startOfToday) },
+                { accion: (0, typeorm_2.Like)('%FAIL%'), fechaHora: (0, typeorm_2.MoreThan)(startOfToday) }
+            ],
             order: { fechaHora: 'DESC' }
         });
         return {
@@ -352,12 +357,12 @@ let AdminService = class AdminService {
                 ramMB: Math.round(memory.rss / 1024 / 1024),
                 totalRamMB: Math.round(totalMemBytes / 1024 / 1024)
             },
-            lastIncident: lastError ? {
-                id: lastError.auditId,
-                titulo: `Incidencia en ${lastError.modulo}`,
-                descripcion: lastError.detalle,
-                fecha: lastError.fechaHora
-            } : null,
+            incidents: todayIncidents.map(i => ({
+                id: i.auditId,
+                titulo: i.modulo === 'ERROR' ? 'Error de Sistema' : 'Fallo de Seguridad',
+                descripcion: i.detalle,
+                hora: i.fechaHora
+            })),
             tasks: await this.getInternalTasksStatus()
         };
     }
