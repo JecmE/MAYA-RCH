@@ -1,6 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 import { AdminService } from './admin.service';
+import { AuthService } from './auth.service';
 
 export interface GlobalSettings {
   currency: string;
@@ -25,12 +27,23 @@ export class SettingsService {
   });
 
   public settings$ = this.settingsSubject.asObservable();
+  private isBrowser: boolean;
 
-  constructor(private adminService: AdminService) {
-    this.refreshSettings();
+  constructor(
+    private adminService: AdminService,
+    private authService: AuthService,
+    @Inject(PLATFORM_ID) platformId: object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+    if (this.isBrowser && this.authService.isAuthenticated()) {
+        this.refreshSettings();
+    }
   }
 
   refreshSettings(): void {
+    // Solo pedir parámetros si hay sesión. Esto evita el error 401 en la terminal (SSR)
+    if (!this.isBrowser || !this.authService.isAuthenticated()) return;
+
     this.adminService.getKpiParameters().subscribe({
       next: (params) => {
         const currencyStr = params['moneda_sistema'] || 'GTQ';
@@ -44,6 +57,9 @@ export class SettingsService {
           sessionInactivityMinutes: params['tiempo_sesion'] ? parseInt(params['tiempo_sesion']) : 480
         };
         this.settingsSubject.next(settings);
+      },
+      error: () => {
+        // Fallback silencioso si falla la petición inicial
       }
     });
   }
