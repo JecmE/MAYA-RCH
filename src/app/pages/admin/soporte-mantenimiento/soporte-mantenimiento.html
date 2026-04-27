@@ -29,9 +29,15 @@
       class="sync-button"
       type="button"
       (click)="forzarSincronizacion()"
+      [disabled]="isSyncing"
     >
-      <span class="button-icon">↻</span>
-      Forzar Sincronización
+      @if (isSyncing) {
+        <span class="spinner"></span>
+        Sincronizando...
+      } @else {
+        <span class="button-icon">↻</span>
+        Forzar Sincronización
+      }
     </button>
   </div>
 
@@ -402,13 +408,15 @@
                 ></div>
               </div>
             } @else {
-              <div class="network-stats">
-                <span>{{ metric.extraIzquierda }}</span>
-                <span>{{ metric.extraDerecha }}</span>
+            <div class="network-stats" style="margin-top: 0.5rem; font-size: 0.8rem; font-weight: 600; color: #64748b; display: flex; gap: 1rem;">
+                <span style="color: #059669;">{{ metric.extraIzquierda }}</span>
+                <span style="color: #2563eb;">{{ metric.extraDerecha }}</span>
               </div>
             }
 
-            <p class="monitor-card__detail">{{ metric.detalle }}</p>
+            <p class="monitor-card__detail" style="margin-top: 0.75rem; border-top: 1px solid #f1f5f9; padding-top: 0.5rem;">
+              {{ metric.detalle }}
+            </p>
           </div>
         }
       </div>

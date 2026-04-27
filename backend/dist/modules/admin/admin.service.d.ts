@@ -180,4 +180,31 @@ export declare class AdminService implements OnModuleInit {
         horasPendientes: number;
         kpiPromedio: number;
     }>;
+    getSystemHealth(): Promise<{
+        db: {
+            status: string;
+            latency: number;
+            type: string;
+            sizeMB: number;
+            maxSizeMB: number;
+        };
+        server: {
+            uptimeSeconds: number;
+            cpuPercent: number;
+            cpuCores: number;
+            ramMB: number;
+            totalRamMB: number;
+        };
+        lastIncident: {
+            id: number;
+            titulo: string;
+            descripcion: string;
+            fecha: Date;
+        };
+        tasks: any[];
+    }>;
+    private getInternalTasksStatus;
+    forceSync(uid: number): Promise<{
+        message: string;
+    }>;
 }

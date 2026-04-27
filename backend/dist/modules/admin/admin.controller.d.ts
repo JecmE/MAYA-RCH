@@ -122,4 +122,30 @@ export declare class AdminController {
     invalidateSession(id: number, req: any): Promise<{
         message: string;
     }>;
+    getSystemHealth(): Promise<{
+        db: {
+            status: string;
+            latency: number;
+            type: string;
+            sizeMB: number;
+            maxSizeMB: number;
+        };
+        server: {
+            uptimeSeconds: number;
+            cpuPercent: number;
+            cpuCores: number;
+            ramMB: number;
+            totalRamMB: number;
+        };
+        lastIncident: {
+            id: number;
+            titulo: string;
+            descripcion: string;
+            fecha: Date;
+        };
+        tasks: any[];
+    }>;
+    forceSync(req: any): Promise<{
+        message: string;
+    }>;
 }

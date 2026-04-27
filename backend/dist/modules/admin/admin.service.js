@@ -16,6 +16,7 @@ exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const bcrypt = require("bcrypt");
+const os = require("os");
 const typeorm_2 = require("typeorm");
 const turno_entity_1 = require("../../entities/turno.entity");
 const empleado_turno_entity_1 = require("../../entities/empleado-turno.entity");
@@ -248,7 +249,62 @@ let AdminService = class AdminService {
     async createBonusRule(dto, uid) { return await this.reglaBonoRepository.save(this.reglaBonoRepository.create(dto)); }
     async updateBonusRule(id, dto, uid) { const existing = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } }); Object.assign(existing, dto); return await this.reglaBonoRepository.save(existing); }
     async deleteBonusRule(id, uid) { return await this.reglaBonoRepository.update(id, { activo: false }); }
-    async runBonusEvaluation(mes, anio, uid) { return { message: 'OK' }; }
+    async runBonusEvaluation(mes, anio, uid) {
+        const rules = await this.reglaBonoRepository.find({ where: { activo: true }, order: { monto: 'DESC' } });
+        const kpis = await this.kpiMensualRepository.find({ where: { mes, anio } });
+        if (kpis.length === 0) {
+            await this.kpiService.globalRecalculateCurrentMonth();
+        }
+        const updatedKpis = await this.kpiMensualRepository.find({ where: { mes, anio } });
+        for (const kpi of updatedKpis) {
+            for (const rule of rules) {
+                let elegible = true;
+                let motivo = 'Cumple con todos los criterios';
+                if (rule.maxTardias !== null && kpi.tardias > rule.maxTardias) {
+                    elegible = false;
+                    motivo = `Excede límite de tardías (${kpi.tardias} > ${rule.maxTardias})`;
+                }
+                else if (rule.maxFaltas !== null && kpi.faltas > rule.maxFaltas) {
+                    elegible = false;
+                    motivo = `Excede límite de faltas (${kpi.faltas} > ${rule.maxFaltas})`;
+                }
+                else if (rule.minHoras !== null && kpi.horasTrabajadas < rule.minHoras) {
+                    elegible = false;
+                    motivo = `No alcanza horas mínimas (${kpi.horasTrabajadas} < ${rule.minHoras})`;
+                }
+                else if (rule.minDiasTrabajados !== null && kpi.cumplimientoPct < rule.minDiasTrabajados) {
+                    elegible = false;
+                    motivo = `Cumplimiento insuficiente (${kpi.cumplimientoPct}% < ${rule.minDiasTrabajados}%)`;
+                }
+                let bono = await this.bonoResultadoRepository.findOne({
+                    where: { empleadoId: kpi.empleadoId, reglaBonoId: rule.reglaBonoId, mes, anio }
+                });
+                const data = {
+                    empleadoId: kpi.empleadoId,
+                    reglaBonoId: rule.reglaBonoId,
+                    mes,
+                    anio,
+                    elegible,
+                    monto: elegible ? rule.monto : 0,
+                    motivo,
+                    diasAsistidos: kpi.diasTrabajados,
+                    diasLaborables: kpi.diasEsperados,
+                    tardiasCount: kpi.tardias,
+                    faltasCount: kpi.faltas,
+                    horasCount: kpi.horasTrabajadas,
+                    cumplimientoPct: kpi.cumplimientoPct,
+                    fechaCalculo: new Date()
+                };
+                if (bono)
+                    Object.assign(bono, data);
+                else
+                    bono = this.bonoResultadoRepository.create(data);
+                await this.bonoResultadoRepository.save(bono);
+            }
+        }
+        await this.logAction({ modulo: 'RRHH', accion: 'RUN_EVALUATION', entidad: 'BONOS', detalle: `Evaluación de bonos completada para ${mes}/${anio}.` }, uid);
+        return { message: 'Evaluación de bonos procesada con éxito.' };
+    }
     async getAuditLogs(fi, ff, uid, mod) { const where = {}; if (fi && ff)
         where.fechaHora = (0, typeorm_2.Between)(new Date(fi + ' 00:00:00'), new Date(ff + ' 23:59:59')); if (uid)
         where.usuarioId = uid; if (mod && mod !== 'Todos los módulos')
@@ -256,6 +312,83 @@ let AdminService = class AdminService {
     async getAdminDashboardStats() { const now = new Date(); const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000); const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0); const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([this.usuarioRepository.count({ where: { estado: 'activo' } }), this.usuarioRepository.count({ where: { estado: 'bloqueado' } }), this.auditRepository.count(), this.auditRepository.count({ where: { accion: (0, typeorm_2.Like)('%FAIL%'), fechaHora: (0, typeorm_2.MoreThan)(startOfToday) } }), this.usuarioRepository.count({ where: { ultimoLogin: (0, typeorm_2.MoreThan)(thirtyMinutesAgo), estado: 'activo' } })]); return { usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas: sesionesActivas || 1, estadoSistema: 'Óptimo' }; }
     async getRrhhDashboardStats() { return { empleadosActivos: 0, tardiasHoy: 0, permisosPendientes: 0, vacacionesActivas: 0, empleadosEnRiesgo: 0, elegiblesBono: 0 }; }
     async getSupervisorDashboardStats(sid) { return { empleadosACargo: 0, permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
+    async getSystemHealth() {
+        const start = Date.now();
+        let dbStatus = 'Conectado';
+        let dbLatency = 0;
+        let dbSizeMB = 0;
+        try {
+            await this.dataSource.query('SELECT 1');
+            dbLatency = Date.now() - start;
+            const sizeQuery = await this.dataSource.query(`
+            SELECT SUM(reserved_page_count) * 8.0 / 1024 as size_mb
+            FROM sys.dm_db_partition_stats
+        `);
+            dbSizeMB = Math.round(sizeQuery[0]?.size_mb || 0);
+        }
+        catch (e) {
+            dbStatus = 'Error de conexión';
+        }
+        const memory = process.memoryUsage();
+        const cpu = process.cpuUsage();
+        const totalMemBytes = os.totalmem();
+        const cpuCores = os.cpus().length;
+        const lastError = await this.auditRepository.findOne({
+            where: [{ modulo: 'ERROR' }, { accion: (0, typeorm_2.Like)('%FAIL%') }],
+            order: { fechaHora: 'DESC' }
+        });
+        return {
+            db: {
+                status: dbStatus,
+                latency: dbLatency,
+                type: 'Azure SQL Database',
+                sizeMB: dbSizeMB,
+                maxSizeMB: 2048
+            },
+            server: {
+                uptimeSeconds: Math.round(process.uptime()),
+                cpuPercent: Math.round((cpu.user + cpu.system) / 1000000) % 100,
+                cpuCores: cpuCores,
+                ramMB: Math.round(memory.rss / 1024 / 1024),
+                totalRamMB: Math.round(totalMemBytes / 1024 / 1024)
+            },
+            lastIncident: lastError ? {
+                id: lastError.auditId,
+                titulo: `Incidencia en ${lastError.modulo}`,
+                descripcion: lastError.detalle,
+                fecha: lastError.fechaHora
+            } : null,
+            tasks: await this.getInternalTasksStatus()
+        };
+    }
+    async getInternalTasksStatus() {
+        const tasks = [
+            { name: 'Cálculo de KPIs', action: 'UPDATE_KPI_PARAMETERS' },
+            { name: 'Evaluación de Bonos', action: 'RUN_EVALUATION' },
+            { name: 'Sincronización Asistencia', action: 'SYNC_ATTENDANCE' }
+        ];
+        const results = [];
+        for (const t of tasks) {
+            const last = await this.auditRepository.findOne({
+                where: { accion: (0, typeorm_2.Like)(`%${t.action}%`) },
+                order: { fechaHora: 'DESC' }
+            });
+            results.push({
+                nombre: t.name,
+                ultimaEjecucion: last ? last.fechaHora : null,
+                estado: last ? (last.accion.includes('FAIL') ? 'Error' : 'Éxito') : 'Pendiente'
+            });
+        }
+        return results;
+    }
+    async forceSync(uid) {
+        await this.logAction({ modulo: 'SISTEMA', accion: 'SYNC_ATTENDANCE', entidad: 'ASISTENCIA', detalle: 'Sincronización manual de marcajes ejecutada.' }, uid);
+        await this.kpiService.globalRecalculateCurrentMonth();
+        await this.logAction({ modulo: 'SISTEMA', accion: 'UPDATE_KPI_PARAMETERS', entidad: 'KPI', detalle: 'Robot de KPIs: Recálculo masivo completado.' }, uid);
+        const now = new Date();
+        await this.runBonusEvaluation(now.getMonth() + 1, now.getFullYear(), uid);
+        return { message: 'Robots ejecutados con éxito.' };
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([

@@ -123,18 +123,25 @@ let ReportsService = class ReportsService {
     }
     async getBonusEligibility(mes, anio, departamento) {
         let query = `
-      SELECT br.empleado_id, br.cumplimiento_pct, br.elegible, br.motivo_no_elegible,
-        br.dias_asistidos, br.dias_laborables, br.tardias_count, br.faltas_count, br.horas_count,
-        e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
-        rb.nombre as regla_nombre, rb.monto as monto_bono
-      FROM BONO_RESULTADO br
-      INNER JOIN EMPLEADO e ON br.empleado_id = e.empleado_id
-      LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
-      WHERE br.mes = @0 AND br.anio = @1
+      WITH RankedBonos AS (
+        SELECT br.empleado_id, br.cumplimiento_pct, br.elegible, br.motivo_no_elegible,
+          br.dias_asistidos, br.dias_laborables, br.tardias_count, br.faltas_count, br.horas_count,
+          e.nombres + ' ' + e.apellidos as nombreCompleto, e.departamento,
+          rb.nombre as regla_nombre, rb.monto as monto_bono,
+          ROW_NUMBER() OVER (
+            PARTITION BY br.empleado_id
+            ORDER BY br.elegible DESC, rb.monto DESC
+          ) as rank
+        FROM BONO_RESULTADO br
+        INNER JOIN EMPLEADO e ON br.empleado_id = e.empleado_id
+        LEFT JOIN REGLA_BONO rb ON br.regla_bono_id = rb.regla_bono_id
+        WHERE br.mes = @0 AND br.anio = @1
+      )
+      SELECT * FROM RankedBonos WHERE rank = 1
     `;
         const params = [mes, anio];
         if (departamento && departamento !== 'Todos') {
-            query += ` AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`;
+            query = query.replace('WHERE br.mes = @0 AND br.anio = @1', `WHERE br.mes = @0 AND br.anio = @1 AND (e.departamento = @2 OR REPLACE(e.departamento, '?', 'í') = @2)`);
             params.push(departamento);
         }
         const results = await this.dataSource.query(query, params);

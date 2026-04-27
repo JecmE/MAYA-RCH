@@ -199,4 +199,12 @@ export class AdminService {
   invalidateSession(id: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/users/${id}/invalidate-session`, {});
   }
+
+  getSystemHealth(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/system-health`);
+  }
+
+  forceSystemSync(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/system-health/sync`, {});
+  }
 }

@@ -63,7 +63,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (row of bonosFiltrados; track row.id) {
+              @for (row of bonosFiltrados; track row.id + '-' + row.regla) {
                 <tr class="table-row">
                   <td><span class="font-bold">{{ row.empleado }}</span></td>
                   <td class="text-xs text-slate-500">{{ row.departamento }}</td>

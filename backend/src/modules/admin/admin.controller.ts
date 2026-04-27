@@ -198,4 +198,16 @@ export class AdminController {
   invalidateSession(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.adminService.invalidateUserSession(id, req.user.usuarioId);
   }
+
+  @Get('system-health')
+  @Roles('Administrador')
+  getSystemHealth() {
+    return this.adminService.getSystemHealth();
+  }
+
+  @Post('system-health/sync')
+  @Roles('Administrador')
+  forceSync(@Req() req: any) {
+    return this.adminService.forceSync(req.user.usuarioId);
+  }
 }
