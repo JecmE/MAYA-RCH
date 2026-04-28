@@ -189,7 +189,7 @@ export class Usuarios implements OnInit {
   }
 
   guardarUsuario(): void {
-    if (!this.usuarioForm.username || (!this.modoEdicion && !this.usuarioForm.password) || !this.usuarioForm.empleadoId || !this.usuarioForm.roleId) {
+    if (!this.usuarioForm.username || !this.usuarioForm.empleadoId || !this.usuarioForm.roleId) {
       alert('Error: Debe seleccionar la persona, el identificador y el rol de acceso.');
       return;
     }
@@ -220,9 +220,9 @@ export class Usuarios implements OnInit {
   }
 
   resetPassword(u: UsuarioItem): void {
-    if (confirm(`¿Restablecer clave para @${u.usuario}?\nClave temporal: Test1234`)) {
+    if (confirm(`¿Restablecer clave para @${u.usuario}?\nSe enviará una nueva contraseña aleatoria a su correo.`)) {
       this.adminService.resetPassword(u.usuarioId).subscribe(res => {
-        alert('Contraseña restablecida correctamente.');
+        alert('Contraseña restablecida y enviada por correo correctamente.');
       });
     }
   }

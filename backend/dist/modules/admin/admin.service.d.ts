@@ -18,6 +18,7 @@ import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { RolPermiso } from '../../entities/rol-permiso.entity';
 import { KpiService } from '../kpi/kpi.service';
+import { MailService } from '../mail/mail.service';
 export declare class AdminService implements OnModuleInit {
     private turnoRepository;
     private empleadoTurnoRepository;
@@ -38,8 +39,9 @@ export declare class AdminService implements OnModuleInit {
     private rolPermisoRepository;
     private dataSource;
     private kpiService;
+    private mailService;
     private readonly DEFAULT_MODULES;
-    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, vacacionSaldoRepository: Repository<VacacionSaldo>, registroTiempoRepository: Repository<RegistroTiempo>, bonoResultadoRepository: Repository<BonoResultado>, rolPermisoRepository: Repository<RolPermiso>, dataSource: DataSource, kpiService: KpiService);
+    constructor(turnoRepository: Repository<Turno>, empleadoTurnoRepository: Repository<EmpleadoTurno>, tipoPermisoRepository: Repository<TipoPermiso>, parametroRepository: Repository<ParametroSistema>, auditRepository: Repository<AuditLog>, rolRepository: Repository<Rol>, reglaBonoRepository: Repository<ReglaBono>, usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroAsistenciaRepository: Repository<RegistroAsistencia>, kpiMensualRepository: Repository<KpiMensual>, vacacionMovimientoRepository: Repository<VacacionMovimiento>, vacacionSaldoRepository: Repository<VacacionSaldo>, registroTiempoRepository: Repository<RegistroTiempo>, bonoResultadoRepository: Repository<BonoResultado>, rolPermisoRepository: Repository<RolPermiso>, dataSource: DataSource, kpiService: KpiService, mailService: MailService);
     onModuleInit(): Promise<void>;
     private ensureCorrectTableStructures;
     logAction(dto: {
@@ -85,6 +87,7 @@ export declare class AdminService implements OnModuleInit {
         supervisorNombre: string;
         ultimoIp: string;
     }[]>;
+    private generateRandomPassword;
     updateUser(id: number, dto: any, uid: number): Promise<{
         usuarioId: number;
         username: string;

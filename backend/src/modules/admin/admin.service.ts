@@ -28,6 +28,7 @@ import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { RolPermiso } from '../../entities/rol-permiso.entity';
 import { KpiService } from '../kpi/kpi.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AdminService implements OnModuleInit {
@@ -57,6 +58,7 @@ export class AdminService implements OnModuleInit {
     private dataSource: DataSource,
     @Inject(forwardRef(() => KpiService))
     private kpiService: KpiService,
+    private mailService: MailService,
   ) {}
 
   async onModuleInit() {
@@ -144,17 +146,43 @@ export class AdminService implements OnModuleInit {
   async createUser(dto: any, uid: number) {
     const existing = await this.usuarioRepository.findOne({ where: { username: dto.username } });
     if (existing) throw new BadRequestException('El identificador ya está en uso.');
-    const passwordHash = await bcrypt.hash(dto.password || 'Test1234', 10);
+
+    // GENERAR CONTRASEÑA ALEATORIA
+    const randomPassword = this.generateRandomPassword(10);
+    const passwordHash = await bcrypt.hash(randomPassword, 10);
+
     const user = await this.usuarioRepository.save(this.usuarioRepository.create({
       username: dto.username,
       passwordHash,
       empleadoId: dto.empleadoId,
       estado: dto.estado === 'inactivo' ? 'bloqueado' : 'activo'
     }));
+
     if (dto.bossId) await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId });
     if (dto.roleId) await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [user.usuarioId, dto.roleId]);
-    await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: user.usuarioId, detalle: `Creó cuenta: ${user.username}` }, uid);
+
+    // ENVIAR CORREO DE BIENVENIDA
+    const empleado = await this.empleadoRepository.findOne({ where: { empleadoId: dto.empleadoId } });
+    if (empleado && empleado.email) {
+      await this.mailService.sendWelcomeEmail(
+        empleado.email,
+        `${empleado.nombres} ${empleado.apellidos}`,
+        dto.username,
+        randomPassword
+      );
+    }
+
+    await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: user.usuarioId, detalle: `Creó cuenta: ${user.username} (Password enviado por email)` }, uid);
     return this.getUsers();
+  }
+
+  private generateRandomPassword(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   }
 
   async updateUser(id: number, dto: any, uid: number) {
@@ -195,10 +223,25 @@ export class AdminService implements OnModuleInit {
   }
 
   async resetPassword(id: number, uid: number) {
-    const hash = await bcrypt.hash('Test1234', 10);
+    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id }, relations: ['empleado'] });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const randomPassword = this.generateRandomPassword(10);
+    const hash = await bcrypt.hash(randomPassword, 10);
+
     await this.usuarioRepository.update(id, { passwordHash: hash });
-    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
-    await this.logAction({ modulo: 'ADMIN', accion: 'RESET', entidad: 'USUARIO', entidadId: id, detalle: `Clave reseteada: @${user?.username}` }, uid);
+
+    // ENVIAR CORREO CON LA NUEVA CLAVE
+    if (user.empleado && user.empleado.email) {
+      await this.mailService.sendWelcomeEmail(
+        user.empleado.email,
+        `${user.empleado.nombres} ${user.empleado.apellidos}`,
+        user.username,
+        randomPassword
+      );
+    }
+
+    await this.logAction({ modulo: 'ADMIN', accion: 'RESET', entidad: 'USUARIO', entidadId: id, detalle: `Clave reseteada y enviada por correo: @${user.username}` }, uid);
     return { message: 'OK' };
   }
 

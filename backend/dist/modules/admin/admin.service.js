@@ -36,8 +36,9 @@ const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity"
 const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
 const rol_permiso_entity_1 = require("../../entities/rol-permiso.entity");
 const kpi_service_1 = require("../kpi/kpi.service");
+const mail_service_1 = require("../mail/mail.service");
 let AdminService = class AdminService {
-    constructor(turnoRepository, empleadoTurnoRepository, tipoPermisoRepository, parametroRepository, auditRepository, rolRepository, reglaBonoRepository, usuarioRepository, empleadoRepository, solicitudPermisoRepository, registroAsistenciaRepository, kpiMensualRepository, vacacionMovimientoRepository, vacacionSaldoRepository, registroTiempoRepository, bonoResultadoRepository, rolPermisoRepository, dataSource, kpiService) {
+    constructor(turnoRepository, empleadoTurnoRepository, tipoPermisoRepository, parametroRepository, auditRepository, rolRepository, reglaBonoRepository, usuarioRepository, empleadoRepository, solicitudPermisoRepository, registroAsistenciaRepository, kpiMensualRepository, vacacionMovimientoRepository, vacacionSaldoRepository, registroTiempoRepository, bonoResultadoRepository, rolPermisoRepository, dataSource, kpiService, mailService) {
         this.turnoRepository = turnoRepository;
         this.empleadoTurnoRepository = empleadoTurnoRepository;
         this.tipoPermisoRepository = tipoPermisoRepository;
@@ -57,6 +58,7 @@ let AdminService = class AdminService {
         this.rolPermisoRepository = rolPermisoRepository;
         this.dataSource = dataSource;
         this.kpiService = kpiService;
+        this.mailService = mailService;
         this.DEFAULT_MODULES = [
             'Auditoria', 'Configuración', 'Empleados', 'Permisos',
             'Planilla', 'Proyectos', 'Reportes', 'Usuarios'
@@ -148,7 +150,8 @@ let AdminService = class AdminService {
         const existing = await this.usuarioRepository.findOne({ where: { username: dto.username } });
         if (existing)
             throw new common_1.BadRequestException('El identificador ya está en uso.');
-        const passwordHash = await bcrypt.hash(dto.password || 'Test1234', 10);
+        const randomPassword = this.generateRandomPassword(10);
+        const passwordHash = await bcrypt.hash(randomPassword, 10);
         const user = await this.usuarioRepository.save(this.usuarioRepository.create({
             username: dto.username,
             passwordHash,
@@ -159,8 +162,20 @@ let AdminService = class AdminService {
             await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId });
         if (dto.roleId)
             await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [user.usuarioId, dto.roleId]);
-        await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: user.usuarioId, detalle: `Creó cuenta: ${user.username}` }, uid);
+        const empleado = await this.empleadoRepository.findOne({ where: { empleadoId: dto.empleadoId } });
+        if (empleado && empleado.email) {
+            await this.mailService.sendWelcomeEmail(empleado.email, `${empleado.nombres} ${empleado.apellidos}`, dto.username, randomPassword);
+        }
+        await this.logAction({ modulo: 'ADMIN', accion: 'CREATE', entidad: 'USUARIO', entidadId: user.usuarioId, detalle: `Creó cuenta: ${user.username} (Password enviado por email)` }, uid);
         return this.getUsers();
+    }
+    generateRandomPassword(length) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+        let password = '';
+        for (let i = 0; i < length; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
     }
     async updateUser(id, dto, uid) {
         const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
@@ -199,10 +214,16 @@ let AdminService = class AdminService {
         return { message: 'OK' };
     }
     async resetPassword(id, uid) {
-        const hash = await bcrypt.hash('Test1234', 10);
+        const user = await this.usuarioRepository.findOne({ where: { usuarioId: id }, relations: ['empleado'] });
+        if (!user)
+            throw new common_1.NotFoundException('Usuario no encontrado');
+        const randomPassword = this.generateRandomPassword(10);
+        const hash = await bcrypt.hash(randomPassword, 10);
         await this.usuarioRepository.update(id, { passwordHash: hash });
-        const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
-        await this.logAction({ modulo: 'ADMIN', accion: 'RESET', entidad: 'USUARIO', entidadId: id, detalle: `Clave reseteada: @${user?.username}` }, uid);
+        if (user.empleado && user.empleado.email) {
+            await this.mailService.sendWelcomeEmail(user.empleado.email, `${user.empleado.nombres} ${user.empleado.apellidos}`, user.username, randomPassword);
+        }
+        await this.logAction({ modulo: 'ADMIN', accion: 'RESET', entidad: 'USUARIO', entidadId: id, detalle: `Clave reseteada y enviada por correo: @${user.username}` }, uid);
         return { message: 'OK' };
     }
     async getActiveSessions() {
@@ -434,6 +455,7 @@ exports.AdminService = AdminService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.DataSource,
-        kpi_service_1.KpiService])
+        kpi_service_1.KpiService,
+        mail_service_1.MailService])
 ], AdminService);
 //# sourceMappingURL=admin.service.js.map

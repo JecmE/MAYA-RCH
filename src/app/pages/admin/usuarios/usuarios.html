@@ -175,10 +175,8 @@
               </div>
 
               @if (!modoEdicion) {
-                <div class="form-group full-width">
-                  <label>Contraseña Inicial</label>
-                  <input type="password" class="form-control" [(ngModel)]="usuarioForm.password" placeholder="Test1234">
-                  <small>Clave por defecto: Test1234</small>
+                <div class="form-group full-width info-note">
+                  <p>✨ <strong>Contraseña Automática:</strong> Se generará una clave aleatoria y se enviará directamente al correo del empleado seleccionado.</p>
                 </div>
               }
             </div>
