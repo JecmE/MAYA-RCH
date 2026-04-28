@@ -28,9 +28,9 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const port = configService.get<number>('PORT', 3000);
+  // En Azure, el puerto se asigna mediante la variable de entorno PORT (normalmente 8080 en Linux)
+  const port = process.env.PORT || configService.get<number>('PORT', 3000);
   await app.listen(port);
-  // Test deploy - TODO: remove after verification
-  console.log(`MAY A CRH API running on: http://localhost:${port}/api`);
+  console.log(`MAY A CRH API running on port: ${port}`);
 }
 bootstrap();
