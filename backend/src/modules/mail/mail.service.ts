@@ -94,6 +94,37 @@ export class MailService {
     }
   }
 
+  async sendVerificationCodeEmail(to: string, nombre: string, code: string) {
+    const mailOptions = {
+      from: `"Maya RCH - Seguridad" <${this.configService.get('MAIL_USER')}>`,
+      to,
+      subject: `${code} es tu código de verificación de Maya RCH`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #004f71; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Maya RCH</h1>
+          </div>
+          <div style="padding: 30px;">
+            <h2 style="color: #004f71;">Hola, ${nombre}</h2>
+            <p>Has solicitado restablecer tu contraseña. Utiliza el siguiente código para validar tu identidad:</p>
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 25px 0; text-align: center;">
+              <span style="font-family: monospace; font-size: 2.5em; color: #004f71; font-weight: bold; letter-spacing: 10px;">${code}</span>
+            </div>
+            <p style="color: #666; font-size: 0.9em;">Este código expirará en <strong>60 minutos</strong>. Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error(`[MAIL] Error enviando código a ${to}:`, error);
+      return false;
+    }
+  }
+
   async sendPasswordResetEmail(to: string, nombre: string, token: string) {
     const publicUrl = this.configService.get('APP_PUBLIC_URL') || this.configService.get('FRONTEND_URL');
     const resetUrl = `${publicUrl}/reset-password?token=${token}`;

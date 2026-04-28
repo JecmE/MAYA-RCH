@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
+import { Router } from '@angular/router';
 
 export interface GlobalSettings {
   currency: string;
@@ -32,6 +33,7 @@ export class SettingsService {
   constructor(
     private adminService: AdminService,
     private authService: AuthService,
+    private router: Router,
     @Inject(PLATFORM_ID) platformId: object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -41,8 +43,9 @@ export class SettingsService {
   }
 
   refreshSettings(): void {
-    // Solo pedir parámetros si hay sesión. Esto evita el error 401 en la terminal (SSR)
-    if (!this.isBrowser || !this.authService.isAuthenticated()) return;
+    // No pedir nada si no estamos en navegador, si no hay sesión o si estamos en login/recuperación
+    const isAuthPage = this.router.url.includes('/login') || this.router.url.includes('/forgot-password');
+    if (!this.isBrowser || !this.authService.isAuthenticated() || isAuthPage) return;
 
     this.adminService.getKpiParameters().subscribe({
       next: (params) => {

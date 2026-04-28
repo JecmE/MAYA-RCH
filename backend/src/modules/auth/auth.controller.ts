@@ -29,8 +29,13 @@ export class AuthController {
     return this.authService.forgotPassword(
       forgotPasswordDto.email,
       req.ip,
-      req.headers['user-agent'],
     );
+  }
+
+  @Post('verify-recovery-code')
+  @HttpCode(HttpStatus.OK)
+  async verifyCode(@Body() body: { email: string, code: string }, @Req() req: any) {
+    return this.authService.verifyCodeAndResetPassword(body.email, body.code, req.ip);
   }
 
   @Post('reset-password')

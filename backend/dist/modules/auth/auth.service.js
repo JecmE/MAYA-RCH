@@ -24,9 +24,9 @@ const rol_entity_1 = require("../../entities/rol.entity");
 const reset_password_token_entity_1 = require("../../entities/reset-password-token.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
 const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
-const uuid_1 = require("uuid");
+const mail_service_1 = require("../mail/mail.service");
 let AuthService = class AuthService {
-    constructor(usuarioRepository, empleadoRepository, rolRepository, resetTokenRepository, auditRepository, parametroRepository, jwtService, dataSource) {
+    constructor(usuarioRepository, empleadoRepository, rolRepository, resetTokenRepository, auditRepository, parametroRepository, jwtService, dataSource, mailService) {
         this.usuarioRepository = usuarioRepository;
         this.empleadoRepository = empleadoRepository;
         this.rolRepository = rolRepository;
@@ -35,6 +35,7 @@ let AuthService = class AuthService {
         this.parametroRepository = parametroRepository;
         this.jwtService = jwtService;
         this.dataSource = dataSource;
+        this.mailService = mailService;
     }
     sanitizeString(str) {
         if (!str)
@@ -150,27 +151,81 @@ let AuthService = class AuthService {
         await this.auditRepository.save(auditLog);
         return { message: 'Cierre de sesión exitoso' };
     }
-    async forgotPassword(email, ip, userAgent) {
-        const empleado = await this.empleadoRepository.findOne({ where: { email } });
-        if (!empleado) {
-            return { message: 'Si el correo existe, se enviará un enlace de recuperación' };
+    async forgotPassword(email, ip) {
+        const empleado = await this.empleadoRepository.findOne({
+            where: { email },
+            relations: ['usuario']
+        });
+        if (!empleado || !empleado.usuario) {
+            throw new common_1.BadRequestException('No existe una cuenta activa asociada a este correo electrónico.');
         }
-        const usuario = await this.usuarioRepository.findOne({ where: { empleadoId: empleado.empleadoId } });
-        if (!usuario)
-            return { message: 'Si el correo existe, se enviará un enlace de recuperación' };
-        const token = (0, uuid_1.v4)();
+        const usuario = empleado.usuario;
+        if (usuario.estado !== 'activo') {
+            throw new common_1.BadRequestException('Tu cuenta está suspendida. Contacta a soporte.');
+        }
+        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
         const expires = new Date();
         expires.setHours(expires.getHours() + 1);
         const resetToken = this.resetTokenRepository.create({
             usuarioId: usuario.usuarioId,
-            tokenHash: await bcrypt.hash(token, 10),
+            tokenHash: await bcrypt.hash(verificationCode, 10),
+            fechaCreacion: new Date(),
             fechaExpira: expires,
             ipSolicitud: ip,
-            userAgent,
+            usado: false
         });
         await this.resetTokenRepository.save(resetToken);
-        console.log(`Token de recuperación para ${email}: ${token}`);
-        return { message: 'Se ha enviado un enlace de recuperación a su correo' };
+        await this.mailService.sendVerificationCodeEmail(empleado.email, `${empleado.nombres} ${empleado.apellidos}`, verificationCode);
+        return { message: 'Código de verificación enviado.' };
+    }
+    async verifyCodeAndResetPassword(email, code, ip) {
+        const empleado = await this.empleadoRepository.findOne({
+            where: { email },
+            relations: ['usuario']
+        });
+        if (!empleado || !empleado.usuario)
+            throw new common_1.BadRequestException('Sesión inválida.');
+        const tokenRecord = await this.resetTokenRepository.findOne({
+            where: { usuarioId: empleado.usuario.usuarioId, usado: false },
+            order: { fechaCreacion: 'DESC' }
+        });
+        if (!tokenRecord)
+            throw new common_1.BadRequestException('No hay una solicitud de recuperación activa.');
+        if (new Date() > tokenRecord.fechaExpira) {
+            throw new common_1.BadRequestException('El código ha expirado. Solicita uno nuevo.');
+        }
+        const isValid = await bcrypt.compare(code, tokenRecord.tokenHash);
+        if (!isValid) {
+            throw new common_1.BadRequestException('El código ingresado es incorrecto.');
+        }
+        const randomPassword = this.generateRandomPassword(10);
+        const hash = await bcrypt.hash(randomPassword, 10);
+        const usuario = empleado.usuario;
+        usuario.passwordHash = hash;
+        usuario.cambioPasswordObligatorio = true;
+        await this.usuarioRepository.save(usuario);
+        tokenRecord.usado = true;
+        tokenRecord.fechaUso = new Date();
+        await this.resetTokenRepository.save(tokenRecord);
+        await this.mailService.sendCredentialsResetEmail(empleado.email, `${empleado.nombres} ${empleado.apellidos}`, usuario.username, randomPassword);
+        await this.auditRepository.save({
+            usuarioId: usuario.usuarioId,
+            modulo: 'AUTH',
+            accion: 'FORGOT_PASSWORD_SUCCESS',
+            entidad: 'USUARIO',
+            entidadId: usuario.usuarioId,
+            detalle: `Recuperación completada exitosamente vía código 2FA desde IP: ${ip}.`,
+            fechaHora: new Date()
+        });
+        return { message: 'Tu nueva contraseña ha sido enviada a tu correo.' };
+    }
+    generateRandomPassword(length) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+        let password = '';
+        for (let i = 0; i < length; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
     }
     async resetPassword(token, newPassword) {
         throw new common_1.BadRequestException('Funcionalidad en desarrollo');
@@ -250,6 +305,7 @@ exports.AuthService = AuthService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         jwt_1.JwtService,
-        typeorm_2.DataSource])
+        typeorm_2.DataSource,
+        mail_service_1.MailService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

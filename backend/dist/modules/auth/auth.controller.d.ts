@@ -25,6 +25,12 @@ export declare class AuthController {
     forgotPassword(forgotPasswordDto: ForgotPasswordDto, req: any): Promise<{
         message: string;
     }>;
+    verifyCode(body: {
+        email: string;
+        code: string;
+    }, req: any): Promise<{
+        message: string;
+    }>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void>;
     getProfile(req: any): Promise<{
         usuarioId: number;

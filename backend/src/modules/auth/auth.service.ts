@@ -11,6 +11,7 @@ import { AuditLog } from '../../entities/audit-log.entity';
 import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { MailService } from '../mail/mail.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -30,6 +31,7 @@ export class AuthService {
     private parametroRepository: Repository<ParametroSistema>,
     private jwtService: JwtService,
     private dataSource: DataSource,
+    private mailService: MailService,
   ) {}
 
   private sanitizeString(str: string | null | undefined): string {
@@ -155,34 +157,117 @@ export class AuthService {
     return { message: 'Cierre de sesión exitoso' };
   }
 
-  async forgotPassword(email: string, ip: string, userAgent: string) {
-    const empleado = await this.empleadoRepository.findOne({ where: { email } });
-    if (!empleado) {
-      // No revelar si el correo existe o no por seguridad, pero en este caso retornamos ok
-      return { message: 'Si el correo existe, se enviará un enlace de recuperación' };
+  async forgotPassword(email: string, ip: string) {
+    const empleado = await this.empleadoRepository.findOne({
+      where: { email },
+      relations: ['usuario']
+    });
+
+    if (!empleado || !empleado.usuario) {
+      throw new BadRequestException('No existe una cuenta activa asociada a este correo electrónico.');
     }
 
-    const usuario = await this.usuarioRepository.findOne({ where: { empleadoId: empleado.empleadoId } });
-    if (!usuario) return { message: 'Si el correo existe, se enviará un enlace de recuperación' };
+    const usuario = empleado.usuario;
+    if (usuario.estado !== 'activo') {
+      throw new BadRequestException('Tu cuenta está suspendida. Contacta a soporte.');
+    }
 
-    const token = uuidv4();
+    // GENERAR CÓDIGO DE 6 DÍGITOS
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date();
     expires.setHours(expires.getHours() + 1); // 1 hora de vigencia
 
+    // Guardar el código en la tabla de tokens (usamos hash por seguridad)
     const resetToken = this.resetTokenRepository.create({
       usuarioId: usuario.usuarioId,
-      tokenHash: await bcrypt.hash(token, 10),
+      tokenHash: await bcrypt.hash(verificationCode, 10),
+      fechaCreacion: new Date(),
       fechaExpira: expires,
       ipSolicitud: ip,
-      userAgent,
+      usado: false
     });
 
     await this.resetTokenRepository.save(resetToken);
 
-    // Aquí iría el envío de correo real
-    console.log(`Token de recuperación para ${email}: ${token}`);
+    // ENVIAR CORREO CON EL CÓDIGO
+    await this.mailService.sendVerificationCodeEmail(
+        empleado.email,
+        `${empleado.nombres} ${empleado.apellidos}`,
+        verificationCode
+    );
 
-    return { message: 'Se ha enviado un enlace de recuperación a su correo' };
+    return { message: 'Código de verificación enviado.' };
+  }
+
+  async verifyCodeAndResetPassword(email: string, code: string, ip: string) {
+    const empleado = await this.empleadoRepository.findOne({
+        where: { email },
+        relations: ['usuario']
+    });
+
+    if (!empleado || !empleado.usuario) throw new BadRequestException('Sesión inválida.');
+
+    // Buscar el último código activo para este usuario
+    const tokenRecord = await this.resetTokenRepository.findOne({
+        where: { usuarioId: empleado.usuario.usuarioId, usado: false },
+        order: { fechaCreacion: 'DESC' }
+    });
+
+    if (!tokenRecord) throw new BadRequestException('No hay una solicitud de recuperación activa.');
+
+    // Validar expiración
+    if (new Date() > tokenRecord.fechaExpira) {
+        throw new BadRequestException('El código ha expirado. Solicita uno nuevo.');
+    }
+
+    // Validar el código (comparar hash)
+    const isValid = await bcrypt.compare(code, tokenRecord.tokenHash);
+    if (!isValid) {
+        throw new BadRequestException('El código ingresado es incorrecto.');
+    }
+
+    // Código válido -> Generar Password Real
+    const randomPassword = this.generateRandomPassword(10);
+    const hash = await bcrypt.hash(randomPassword, 10);
+
+    const usuario = empleado.usuario;
+    usuario.passwordHash = hash;
+    usuario.cambioPasswordObligatorio = true;
+    await this.usuarioRepository.save(usuario);
+
+    // Marcar código como usado
+    tokenRecord.usado = true;
+    tokenRecord.fechaUso = new Date();
+    await this.resetTokenRepository.save(tokenRecord);
+
+    // Enviar el correo final con la clave
+    await this.mailService.sendCredentialsResetEmail(
+        empleado.email,
+        `${empleado.nombres} ${empleado.apellidos}`,
+        usuario.username,
+        randomPassword
+    );
+
+    await this.auditRepository.save({
+        usuarioId: usuario.usuarioId,
+        modulo: 'AUTH',
+        accion: 'FORGOT_PASSWORD_SUCCESS',
+        entidad: 'USUARIO',
+        entidadId: usuario.usuarioId,
+        detalle: `Recuperación completada exitosamente vía código 2FA desde IP: ${ip}.`,
+        fechaHora: new Date()
+    });
+
+    return { message: 'Tu nueva contraseña ha sido enviada a tu correo.' };
+  }
+
+  private generateRandomPassword(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   }
 
   async resetPassword(token: string, newPassword: string) {

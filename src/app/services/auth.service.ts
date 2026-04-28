@@ -78,6 +78,10 @@ export class AuthService {
     return this.http.post<void>(`${this.apiUrl}/forgot-password`, request);
   }
 
+  verifyRecoveryCode(email: string, code: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/verify-recovery-code`, { email, code });
+  }
+
   resetPassword(request: ResetPasswordRequest): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/reset-password`, request);
   }

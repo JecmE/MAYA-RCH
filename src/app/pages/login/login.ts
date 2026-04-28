@@ -28,6 +28,12 @@ export class Login implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // LIMPIEZA INICIAL: Si entramos al login, aseguramos que no haya basura de sesiones previas
+    if (isPlatformBrowser(this.platformId)) {
+        localStorage.clear();
+        this.permissionService.clearPermissions();
+    }
+
     // Si viene de una redirección por expiración, mostrar mensaje
     this.route.queryParams.subscribe(params => {
       if (params['expired'] === 'true') {
