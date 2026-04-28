@@ -199,6 +199,12 @@ export class AdminController {
     return this.adminService.invalidateUserSession(id, req.user.usuarioId);
   }
 
+  @Delete('users/:id')
+  @Roles('Administrador')
+  deleteUser(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.adminService.deleteUser(id, req.user.usuarioId);
+  }
+
   @Get('system-health')
   @Roles('Administrador')
   getSystemHealth() {

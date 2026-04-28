@@ -90,6 +90,7 @@
                       <button class="btn-action" title="Estado" (click)="toggleBloqueo(row)">
                         {{ row.estado === 'Inactivo' ? '✅' : '🚫' }}
                       </button>
+                      <button class="btn-action btn-action--red" title="Eliminar Permanentemente" (click)="eliminarUsuario(row)">🗑️</button>
                       <button class="btn-action" title="Clave" (click)="resetPassword(row)">🔑</button>
                     </div>
                   </td>

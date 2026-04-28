@@ -70,6 +70,7 @@ export class AdminService implements OnModuleInit {
         await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[REGLA_BONO]') AND name = 'monto') BEGIN ALTER TABLE [dbo].[REGLA_BONO] ADD [monto] DECIMAL(10, 2) DEFAULT 0; END`);
         await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[USUARIO]') AND name = 'session_version') BEGIN ALTER TABLE [dbo].[USUARIO] ADD [session_version] INT DEFAULT 1; END`);
         await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[USUARIO]') AND name = 'ultimo_ip') BEGIN ALTER TABLE [dbo].[USUARIO] ADD [ultimo_ip] NVARCHAR(50); END`);
+        await this.dataSource.query(`IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[USUARIO]') AND name = 'cambio_password_obligatorio') BEGIN ALTER TABLE [dbo].[USUARIO] ADD [cambio_password_obligatorio] BIT DEFAULT 1; END`);
     } catch (e) {}
   }
 
@@ -214,11 +215,26 @@ export class AdminService implements OnModuleInit {
     return this.getUsers();
   }
 
-  // MÉTODO PARA INVALIDACIÓN REAL DE JWT
   async invalidateUserSession(id: number, uid: number) {
     await this.usuarioRepository.update(id, { sessionVersion: () => 'session_version + 1' });
     const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
     await this.logAction({ modulo: 'ADMIN', accion: 'INVALIDATE_SESSION', entidad: 'USUARIO', entidadId: id, detalle: `Sesión de @${user?.username} invalidada.` }, uid);
+    return { message: 'OK' };
+  }
+
+  async deleteUser(id: number, uid: number) {
+    const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
+    if (!user) throw new NotFoundException('Cuenta no encontrada');
+
+    // LIMPIEZA MANUAL DE RELACIONES (CASCADA)
+    await this.dataSource.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [id]);
+    await this.dataSource.query(`DELETE FROM RESET_PASSWORD_TOKEN WHERE usuario_id = @0`, [id]);
+
+    // Desvincular de la bitácora para permitir el borrado (Manteniendo el rastro pero sin dueño)
+    await this.dataSource.query(`UPDATE AUDIT_LOG SET usuario_id = NULL WHERE usuario_id = @0`, [id]);
+
+    await this.usuarioRepository.delete(id);
+    await this.logAction({ modulo: 'ADMIN', accion: 'DELETE_PERMANENT', entidad: 'USUARIO', entidadId: id, detalle: `ELIMINACIÓN FÍSICA: @${user.username}.` }, uid);
     return { message: 'OK' };
   }
 
@@ -229,11 +245,14 @@ export class AdminService implements OnModuleInit {
     const randomPassword = this.generateRandomPassword(10);
     const hash = await bcrypt.hash(randomPassword, 10);
 
-    await this.usuarioRepository.update(id, { passwordHash: hash });
+    await this.usuarioRepository.update(id, {
+      passwordHash: hash,
+      cambioPasswordObligatorio: true // Forzar cambio al resetear
+    });
 
-    // ENVIAR CORREO CON LA NUEVA CLAVE
+    // ENVIAR CORREO CON LA NUEVA CLAVE (Plantilla de Reset)
     if (user.empleado && user.empleado.email) {
-      await this.mailService.sendWelcomeEmail(
+      await this.mailService.sendCredentialsResetEmail(
         user.empleado.email,
         `${user.empleado.nombres} ${user.empleado.apellidos}`,
         user.username,

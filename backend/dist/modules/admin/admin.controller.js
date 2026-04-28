@@ -106,6 +106,9 @@ let AdminController = class AdminController {
     invalidateSession(id, req) {
         return this.adminService.invalidateUserSession(id, req.user.usuarioId);
     }
+    deleteUser(id, req) {
+        return this.adminService.deleteUser(id, req.user.usuarioId);
+    }
     getSystemHealth() {
         return this.adminService.getSystemHealth();
     }
@@ -353,6 +356,15 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "invalidateSession", null);
+__decorate([
+    (0, common_1.Delete)('users/:id'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteUser", null);
 __decorate([
     (0, common_1.Get)('system-health'),
     (0, roles_decorator_1.Roles)('Administrador'),

@@ -192,6 +192,10 @@ export class AdminService {
     return this.http.post<any>(`${this.apiUrl}/users/${id}/reset-password`, {});
   }
 
+  deleteUser(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/users/${id}`);
+  }
+
   toggleUserStatus(id: number, status: string): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/users/${id}/status`, { status });
   }

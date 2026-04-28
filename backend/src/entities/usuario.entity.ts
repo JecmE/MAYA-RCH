@@ -42,6 +42,9 @@ export class Usuario {
   @Column({ name: 'session_version', default: 1 })
   sessionVersion: number;
 
+  @Column({ name: 'cambio_password_obligatorio', default: true })
+  cambioPasswordObligatorio: boolean;
+
   @OneToOne(() => Empleado, (emp) => emp.usuario)
   @JoinColumn({ name: 'empleado_id' })
   empleado: Empleado;

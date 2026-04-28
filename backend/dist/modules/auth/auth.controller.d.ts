@@ -16,6 +16,7 @@ export declare class AuthController {
             empleadoId: number;
             nombreCompleto: string;
             email: string;
+            requirePasswordChange: boolean;
         };
     }>;
     logout(req: any): Promise<{

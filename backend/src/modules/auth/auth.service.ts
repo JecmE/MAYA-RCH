@@ -102,6 +102,7 @@ export class AuthService {
       empleadoId: usuario.empleadoId,
       roles: usuario.roles.map((r) => r.nombre),
       sessionVersion: usuario.sessionVersion,
+      requirePasswordChange: usuario.cambioPasswordObligatorio,
     };
 
     // LEER EXPIRACIÓN DINÁMICA DESDE PARÁMETROS
@@ -135,6 +136,7 @@ export class AuthService {
           usuario.empleado ? `${usuario.empleado.nombres} ${usuario.empleado.apellidos}` : '',
         ),
         email: usuario.empleado?.email,
+        requirePasswordChange: usuario.cambioPasswordObligatorio,
       },
     };
   }

@@ -230,6 +230,67 @@ export class UsersService {
     return { message: 'Empleado desactivado correctamente' };
   }
 
+  async deleteEmpleadoPermanent(id: number, usuarioId: number) {
+    const empleado = await this.empleadoRepository.findOne({
+      where: { empleadoId: id },
+      relations: ['usuario']
+    });
+
+    if (!empleado) {
+      throw new NotFoundException('Empleado no encontrado');
+    }
+
+    const nombre = `${empleado.nombres} ${empleado.apellidos}`;
+
+    // BORRADO NUCLEAR EN CASCADA (Orden de hijos a padres)
+    await this.dataSource.transaction(async manager => {
+        // 1. Limpiar rastro de usuario si existe
+        if (empleado.usuario) {
+            const uid = empleado.usuario.usuarioId;
+            await manager.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [uid]);
+            await manager.query(`DELETE FROM RESET_PASSWORD_TOKEN WHERE usuario_id = @0`, [uid]);
+            await manager.query(`UPDATE AUDIT_LOG SET usuario_id = NULL WHERE usuario_id = @0`, [uid]);
+            await manager.query(`DELETE FROM USUARIO WHERE usuario_id = @0`, [uid]);
+        }
+
+        // 2. Limpiar tablas operativas de RRHH (Hijos y Nietos)
+
+        // Limpiar Ajustes de Asistencia (Nietos)
+        await manager.query(`DELETE FROM AJUSTE_ASISTENCIA WHERE asistencia_id IN (SELECT asistencia_id FROM REGISTRO_ASISTENCIA WHERE empleado_id = @0)`, [id]);
+        await manager.query(`DELETE FROM REGISTRO_ASISTENCIA WHERE empleado_id = @0`, [id]);
+
+        // Limpiar Decisiones y Adjuntos de Permisos (Nietos)
+        await manager.query(`DELETE FROM DECISION_PERMISO WHERE solicitud_id IN (SELECT solicitud_id FROM SOLICITUD_PERMISO WHERE empleado_id = @0)`, [id]);
+        await manager.query(`DELETE FROM ADJUNTO_SOLICITUD WHERE solicitud_id IN (SELECT solicitud_id FROM SOLICITUD_PERMISO WHERE empleado_id = @0)`, [id]);
+        await manager.query(`DELETE FROM SOLICITUD_PERMISO WHERE empleado_id = @0`, [id]);
+
+        // Limpiar Aprobaciones de Tiempo (Nietos)
+        await manager.query(`DELETE FROM APROBACION_TIEMPO WHERE tiempo_id IN (SELECT tiempo_id FROM REGISTRO_TIEMPO WHERE empleado_id = @0)`, [id]);
+        await manager.query(`DELETE FROM REGISTRO_TIEMPO WHERE empleado_id = @0`, [id]);
+
+        await manager.query(`DELETE FROM BONO_RESULTADO WHERE empleado_id = @0`, [id]);
+        await manager.query(`DELETE FROM KPI_MENSUAL WHERE empleado_id = @0`, [id]);
+        await manager.query(`DELETE FROM VACACION_MOVIMIENTO WHERE empleado_id = @0`, [id]);
+        await manager.query(`DELETE FROM VACACION_SALDO WHERE empleado_id = @0`, [id]);
+        await manager.query(`DELETE FROM EMPLEADO_PROYECTO WHERE empleado_id = @0`, [id]);
+        await manager.query(`DELETE FROM EMPLEADO_TURNO WHERE empleado_id = @0`, [id]);
+
+        // 3. Finalmente borrar al empleado
+        await manager.delete(Empleado, id);
+    });
+
+    await this.auditRepository.save({
+      usuarioId,
+      modulo: 'EMPLEADOS',
+      accion: 'DELETE_PERMANENT',
+      entidad: 'EMPLEADO',
+      entidadId: id,
+      detalle: `ELIMINACIÓN FÍSICA TOTAL de empleado: ${nombre}`,
+    });
+
+    return { message: 'Empleado eliminado permanentemente' };
+  }
+
   async createUsuario(empleadoId: number, createUsuarioDto: CreateUsuarioDto, usuarioId: number) {
     const empleado = await this.empleadoRepository.findOne({
       where: { empleadoId },
@@ -347,6 +408,7 @@ export class UsersService {
     }
 
     usuario.passwordHash = await bcrypt.hash(changePasswordDto.newPassword, 10);
+    usuario.cambioPasswordObligatorio = false; // Desactivar obligatoriedad tras cambio exitoso
     await this.usuarioRepository.save(usuario);
 
     await this.auditRepository.save({

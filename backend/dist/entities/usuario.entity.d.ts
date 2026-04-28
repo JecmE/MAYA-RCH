@@ -14,6 +14,7 @@ export declare class Usuario {
     ultimoLogin: Date;
     ultimoIp: string;
     sessionVersion: number;
+    cambioPasswordObligatorio: boolean;
     empleado: Empleado;
     roles: Rol[];
     decisionesPermiso: DecisionPermiso[];

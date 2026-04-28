@@ -51,6 +51,9 @@ let UsersController = class UsersController {
     deactivate(id, req) {
         return this.usersService.deactivateEmpleado(id, req.user.usuarioId);
     }
+    deletePermanent(id, req) {
+        return this.usersService.deleteEmpleadoPermanent(id, req.user.usuarioId);
+    }
     createUsuario(id, createUsuarioDto, req) {
         return this.usersService.createUsuario(id, createUsuarioDto, req.user.usuarioId);
     }
@@ -129,6 +132,15 @@ __decorate([
     __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "deactivate", null);
+__decorate([
+    (0, common_1.Delete)(':id/permanent'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "deletePermanent", null);
 __decorate([
     (0, common_1.Post)(':id/usuario'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),

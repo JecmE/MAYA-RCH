@@ -1,188 +1,103 @@
 <div class="profile-page">
   <main class="profile-main">
     <div class="page-header">
-      <button (click)="goBack()" class="back-button">←</button>
+      <!-- Solo mostramos botón de regreso si no es cambio obligatorio -->
+      @if (!forceChangeMode) {
+        <button (click)="goBack()" class="back-button">←</button>
+      }
       <div>
-        <h2 class="page-title">Mi Perfil</h2>
+        <h2 class="page-title">{{ forceChangeMode ? 'Configuración de Cuenta' : 'Mi Perfil' }}</h2>
       </div>
     </div>
 
+    @if (forceChangeMode) {
+      <div class="alert-banner">
+        <span class="alert-icon">🛡️</span>
+        <div>
+          <strong>¡Bienvenido al sistema!</strong>
+          <p>Por seguridad, es necesario que actualices la contraseña temporal que recibiste en tu correo para activar todas las funciones de tu cuenta.</p>
+        </div>
+      </div>
+    }
+
     <div class="profile-layout">
+      <!-- Sidebar siempre visible para una mejor experiencia -->
       <div class="profile-sidebar-card">
         <div class="profile-hero">
-          <div class="profile-avatar-wrapper">
-            <div class="profile-avatar">👤</div>
-          </div>
-
-          <h2 class="profile-name">{{ perfilData?.nombreCompleto || 'Empleado' }}</h2>
-          <p class="profile-position">{{ perfilData?.puesto || 'Sin puesto asignado' }}</p>
-
+          <div class="profile-avatar-wrapper"><div class="profile-avatar">👤</div></div>
+          <h2 class="profile-name">{{ perfilData?.nombreCompleto || 'Cargando...' }}</h2>
+          <p class="profile-position">{{ perfilData?.puesto || 'Consultando puesto...' }}</p>
           <div class="profile-status">✓ Cuenta Activa</div>
         </div>
-
         <div class="profile-sidebar-content">
-          <div>
-            <h3 class="section-label">Detalles corporativos</h3>
-
-            <div class="details-list">
-              <div class="detail-item">
-                <div class="detail-icon">🏢</div>
-                <div>
-                  <p class="detail-label">Departamento</p>
-                  <p class="detail-value">{{ perfilData?.departamento || 'Sin asignar' }}</p>
-                </div>
-              </div>
-
-              <div class="detail-item">
-                <div class="detail-icon">💼</div>
-                <div>
-                  <p class="detail-label">Puesto</p>
-                  <p class="detail-value">{{ perfilData?.puesto || 'Sin asignar' }}</p>
-                </div>
-              </div>
-
-              <div class="detail-item">
-                <div class="detail-icon">👤</div>
-                <div>
-                  <p class="detail-label">Código Empleado</p>
-                  <p class="detail-value">{{ perfilData?.codigoEmpleado || 'N/A' }}</p>
-                </div>
-              </div>
-
-              <div class="detail-item">
-                <div class="detail-icon">✉</div>
-                <div>
-                  <p class="detail-label">Correo Corporativo</p>
-                  <p class="detail-value detail-value--truncate" title="{{ perfilData?.email }}">
-                    {{ perfilData?.email || 'Sin email' }}
-                  </p>
-                </div>
-              </div>
-            </div>
+          <h3 class="section-label">Detalles corporativos</h3>
+          <div class="details-list">
+            <div class="detail-item"><span>🏢</span><div><p class="detail-label">Departamento</p><p class="detail-value">{{ perfilData?.departamento || '---' }}</p></div></div>
+            <div class="detail-item"><span>💼</span><div><p class="detail-label">Puesto</p><p class="detail-value">{{ perfilData?.puesto || '---' }}</p></div></div>
+            <div class="detail-item"><span>👤</span><div><p class="detail-label">Código Empleado</p><p class="detail-value">{{ perfilData?.codigoEmpleado || '---' }}</p></div></div>
+            <div class="detail-item"><span>✉</span><div><p class="detail-label">Correo Corporativo</p><p class="detail-value">{{ perfilData?.email || '---' }}</p></div></div>
           </div>
         </div>
       </div>
 
       <div class="profile-content">
+        <!-- Tarjeta de contacto siempre visible -->
         <div class="content-card">
-          <div class="card-header">
-            <div class="card-header__icon card-header__icon--blue">👤</div>
-            <h2 class="card-title">Actualizar Datos de Contacto</h2>
+          <div class="card-header"><div class="card-header__icon card-header__icon--blue">👤</div><h2 class="card-title">Datos de Contacto</h2></div>
+          <div class="form-group form-group--full">
+            <label class="form-label"> Teléfono Personal </label>
+            <input type="text" [(ngModel)]="telefono" class="form-control" placeholder="Ej: 5555-1234" />
           </div>
-
-          <div class="form-grid">
-            <div class="form-group form-group--full">
-              <label class="form-label"> Teléfono Personal </label>
-              <input type="text" [(ngModel)]="telefono" class="form-control" placeholder="Ej: 5555-1234" />
-            </div>
-          </div>
-
-          @if (errorMessage) {
-            <div class="alert-message alert-message--error">
-              {{ errorMessage }}
-            </div>
-          }
-
-          @if (successMessage) {
-            <div class="alert-message alert-message--success">
-              {{ successMessage }}
-            </div>
-          }
-
           <div class="card-actions card-actions--end">
-            <button (click)="guardarCambios()" class="action-button action-button--amber">
-              Actualizar Teléfono
-            </button>
+            <button (click)="guardarCambios()" class="action-button action-button--amber">Actualizar Datos</button>
           </div>
         </div>
 
-        <div class="content-card">
-          <div class="card-header">
-            <div class="card-header__icon card-header__icon--amber">🔑</div>
-            <h2 class="card-title">Seguridad de la Cuenta</h2>
-          </div>
+        <!-- Tarjeta de Seguridad (Password) -->
+        <div class="content-card" [class.highlight-card]="forceChangeMode">
+          <div class="card-header"><div class="card-header__icon card-header__icon--amber">🔑</div><h2 class="card-title">Seguridad de la Cuenta</h2></div>
 
           <div class="security-grid">
             <div class="form-group form-group--full">
               <label class="form-label"> Contraseña Actual </label>
-              <input
-                type="password"
-                [(ngModel)]="passwordActual"
-                placeholder="••••••••"
-                class="form-control"
-              />
+              <div class="password-input-wrapper">
+                <input [type]="showActual ? 'text' : 'password'" [(ngModel)]="passwordActual" placeholder="Escribe la clave de tu correo" class="form-control" />
+                <button class="eye-toggle" type="button" (click)="showActual = !showActual">{{ showActual ? '👁️' : '👁️‍🗨️' }}</button>
+              </div>
             </div>
 
             <div class="form-group">
               <label class="form-label"> Nueva Contraseña </label>
-              <input
-                type="password"
-                [(ngModel)]="nuevaPassword"
-                placeholder="••••••••"
-                class="form-control"
-              />
+              <div class="password-input-wrapper">
+                <input [type]="showNueva ? 'text' : 'password'" [(ngModel)]="nuevaPassword" placeholder="Mínimo 8 caracteres" class="form-control" />
+                <button class="eye-toggle" type="button" (click)="showNueva = !showNueva">{{ showNueva ? '👁️' : '👁️‍🗨️' }}</button>
+              </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label"> Confirmar Contraseña </label>
-              <input
-                type="password"
-                [(ngModel)]="confirmarPassword"
-                placeholder="••••••••"
-                class="form-control"
-              />
+              <label class="form-label"> Confirmar Nueva </label>
+              <div class="password-input-wrapper">
+                <input [type]="showConfirmar ? 'text' : 'password'" [(ngModel)]="confirmarPassword" placeholder="Repite la nueva clave" class="form-control" />
+                <button class="eye-toggle" type="button" (click)="showConfirmar = !showConfirmar">{{ showConfirmar ? '👁️' : '👁️‍🗨️' }}</button>
+              </div>
             </div>
           </div>
 
-          @if (passwordErrorMessage) {
-            <div class="alert-message alert-message--error">
-              {{ passwordErrorMessage }}
-            </div>
-          }
-
-          @if (passwordSuccessMessage) {
-            <div class="alert-message alert-message--success">
-              {{ passwordSuccessMessage }}
-            </div>
-          }
+          @if (passwordErrorMessage) { <div class="alert-message alert-message--error">{{ passwordErrorMessage }}</div> }
 
           <div class="card-actions card-actions--start">
-            <button (click)="actualizarPassword()" class="action-button action-button--dark">
-              Actualizar Contraseña
-            </button>
+            <button (click)="actualizarPassword()" class="action-button action-button--dark">Actualizar Contraseña</button>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Modales de éxito -->
     @if (showSuccessModal) {
-      <div class="modal-overlay">
-        <div class="modal-card">
-          <h3 class="modal-title">Cambios guardados</h3>
-          <p class="modal-text">Tu información de contacto fue actualizada correctamente.</p>
-          <button
-            class="action-button action-button--amber modal-button"
-            (click)="cerrarModalPerfil()"
-          >
-            Aceptar
-          </button>
-        </div>
-      </div>
+      <div class="modal-overlay"><div class="modal-card"><h3 class="modal-title">¡Éxito!</h3><p>Información de contacto actualizada correctamente.</p><button (click)="cerrarModalPerfil()" class="action-button action-button--amber">Aceptar</button></div></div>
     }
-
     @if (showPasswordSuccessModal) {
-      <div class="modal-overlay">
-        <div class="modal-card">
-          <h3 class="modal-title">Contraseña actualizada</h3>
-          <p class="modal-text">Tu contraseña se cambió correctamente.</p>
-          <button
-            class="action-button action-button--dark modal-button"
-            (click)="cerrarModalPassword()"
-          >
-            Aceptar
-          </button>
-        </div>
-      </div>
+      <div class="modal-overlay"><div class="modal-card"><h3 class="modal-title">🔑 Seguridad Actualizada</h3><p>Tu contraseña ha sido guardada. El acceso total al sistema ha sido habilitado.</p><button (click)="cerrarModalPassword()" class="action-button action-button--dark">Aceptar</button></div></div>
     }
   </main>
 </div>

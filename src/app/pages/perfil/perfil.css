@@ -475,3 +475,22 @@
     top: 6rem;
   }
 }
+
+.alert-banner {
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.alert-icon { font-size: 1.5rem; }
+.alert-banner strong { color: #9a3412; display: block; }
+.alert-banner p { margin: 0; font-size: 0.875rem; color: #c2410c; }
+.password-input-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+.eye-toggle { position: absolute; right: 0.75rem; background: transparent; border: none; cursor: pointer; padding: 0.25rem; font-size: 1.1rem; color: #64748b; z-index: 10; }
+.eye-toggle:hover { color: #1e293b; }
+.form-control { padding-right: 2.5rem !important; }

@@ -91,6 +91,10 @@ export class UsersService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  deletePermanent(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}/permanent`);
+  }
+
   createUsuario(empleadoId: number, data: CreateUsuarioDto): Observable<Usuario> {
     return this.http.post<Usuario>(`${this.apiUrl}/${empleadoId}/usuario`, data);
   }

@@ -117,6 +117,9 @@ export declare class AdminService implements OnModuleInit {
     invalidateUserSession(id: number, uid: number): Promise<{
         message: string;
     }>;
+    deleteUser(id: number, uid: number): Promise<{
+        message: string;
+    }>;
     resetPassword(id: number, uid: number): Promise<{
         message: string;
     }>;

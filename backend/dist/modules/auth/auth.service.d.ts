@@ -29,6 +29,7 @@ export declare class AuthService {
             empleadoId: number;
             nombreCompleto: string;
             email: string;
+            requirePasswordChange: boolean;
         };
     }>;
     logout(usuarioId: number): Promise<{

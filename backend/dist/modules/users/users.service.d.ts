@@ -102,6 +102,9 @@ export declare class UsersService {
     deactivateEmpleado(id: number, usuarioId: number): Promise<{
         message: string;
     }>;
+    deleteEmpleadoPermanent(id: number, usuarioId: number): Promise<{
+        message: string;
+    }>;
     createUsuario(empleadoId: number, createUsuarioDto: CreateUsuarioDto, usuarioId: number): Promise<{
         usuarioId: number;
         empleadoId: number;

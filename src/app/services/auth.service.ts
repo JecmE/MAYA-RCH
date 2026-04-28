@@ -9,17 +9,20 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UserData {
+  usuarioId: number;
+  username: string;
+  roles: string[];
+  rolId?: number;
+  empleadoId: number;
+  nombreCompleto?: string;
+  email?: string;
+  requirePasswordChange?: boolean;
+}
+
 export interface LoginResponse {
   token: string;
-  user: {
-    usuarioId: number;
-    username: string;
-    roles: string[];
-    rolId?: number; // Añadido para permisos
-    empleadoId: number;
-    nombreCompleto?: string;
-    email?: string;
-  };
+  user: UserData;
 }
 
 export interface RegisterRequest {
@@ -79,8 +82,14 @@ export class AuthService {
     return this.http.post<void>(`${this.apiUrl}/reset-password`, request);
   }
 
-  getCurrentUser(): Observable<LoginResponse['user']> {
-    return this.http.get<LoginResponse['user']>(`${this.apiUrl}/me`);
+  getCurrentUser(): Observable<UserData> {
+    return this.http.get<UserData>(`${this.apiUrl}/me`);
+  }
+
+  getUserLocal(): UserData | null {
+    if (!this.isBrowser) return null;
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson) : null;
   }
 
   setToken(token: string): void {

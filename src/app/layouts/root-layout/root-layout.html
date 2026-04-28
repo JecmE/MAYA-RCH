@@ -18,9 +18,11 @@
 
         @if (!collapsedSections['general']) {
           <div class="sidebar__links-container">
-            <a routerLink="/" routerLinkActive="sidebar__link--active" [routerLinkActiveOptions]="{ exact: true }" class="sidebar__link">
-              Dashboard
-            </a>
+            @if (canAccess('Dashboard')) {
+              <a routerLink="/" routerLinkActive="sidebar__link--active" [routerLinkActiveOptions]="{ exact: true }" class="sidebar__link">
+                Dashboard
+              </a>
+            }
 
             @if (canAccess('Permisos')) {
               <a routerLink="/asistencia" routerLinkActive="sidebar__link--active" class="sidebar__link">Asistencia</a>
@@ -68,7 +70,7 @@
       }
 
       <!-- SECCIÓN RRHH -->
-      @if (role === 'rrhh' || role === 'admin') {
+      @if (!mustChangePassword && (role === 'rrhh' || role === 'admin')) {
         <div class="sidebar__section">
           <p class="sidebar__section-title" (click)="toggleSection('rrhh')">
             <span class="sidebar__section-arrow" [class.sidebar__section-arrow--collapsed]="collapsedSections['rrhh']">▼</span>
@@ -107,7 +109,7 @@
       }
 
       <!-- SECCIÓN ADMIN -->
-      @if (role === 'admin') {
+      @if (!mustChangePassword && role === 'admin') {
         <div class="sidebar__section">
           <p class="sidebar__section-title" (click)="toggleSection('admin')">
             <span class="sidebar__section-arrow" [class.sidebar__section-arrow--collapsed]="collapsedSections['admin']">▼</span>

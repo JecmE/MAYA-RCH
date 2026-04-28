@@ -122,6 +122,9 @@ export declare class AdminController {
     invalidateSession(id: number, req: any): Promise<{
         message: string;
     }>;
+    deleteUser(id: number, req: any): Promise<{
+        message: string;
+    }>;
     getSystemHealth(): Promise<{
         db: {
             status: string;

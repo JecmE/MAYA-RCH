@@ -113,6 +113,9 @@ export declare class UsersController {
     deactivate(id: number, req: any): Promise<{
         message: string;
     }>;
+    deletePermanent(id: number, req: any): Promise<{
+        message: string;
+    }>;
     createUsuario(id: number, createUsuarioDto: CreateUsuarioDto, req: any): Promise<{
         usuarioId: number;
         empleadoId: number;

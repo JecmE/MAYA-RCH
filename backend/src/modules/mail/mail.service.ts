@@ -36,7 +36,7 @@ export class MailService {
             </div>
             <p style="color: #666; font-size: 0.9em;"><em>* Por seguridad, se te solicitará cambiar esta contraseña en tu primer inicio de sesión.</em></p>
             <div style="text-align: center; margin-top: 30px;">
-              <a href="${this.configService.get('FRONTEND_URL')}" style="background-color: #ea580c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acceder al Sistema</a>
+              <a href="${this.configService.get('APP_PUBLIC_URL') || this.configService.get('FRONTEND_URL')}" style="background-color: #ea580c; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acceder al Sistema</a>
             </div>
           </div>
           <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 0.8em; color: #888;">
@@ -57,8 +57,46 @@ export class MailService {
     }
   }
 
+  async sendCredentialsResetEmail(to: string, nombre: string, usuario: string, clave: string) {
+    const mailOptions = {
+      from: `"Maya RCH - Seguridad" <${this.configService.get('MAIL_USER')}>`,
+      to,
+      subject: 'Seguridad: Tu contraseña ha sido restablecida',
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #1e293b; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Maya RCH</h1>
+          </div>
+          <div style="padding: 30px;">
+            <h2 style="color: #1e293b;">Hola, ${nombre}</h2>
+            <p>Un administrador ha restablecido tus credenciales de acceso al sistema.</p>
+            <p>Tu nueva contraseña temporal es:</p>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;">
+              <p style="margin: 0; font-size: 0.9em; color: #64748b;">Contraseña Temporal:</p>
+              <p style="margin: 10px 0 0 0;"><span style="font-family: monospace; font-size: 1.4em; color: #dc2626; font-weight: bold; letter-spacing: 2px;">${clave}</span></p>
+            </div>
+            <p style="color: #b91c1c; font-weight: bold;">Importante:</p>
+            <p style="color: #4b5563; font-size: 0.9em;">Por razones de seguridad, el sistema te obligará a cambiar esta clave en tu próximo inicio de sesión.</p>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${this.configService.get('APP_PUBLIC_URL') || this.configService.get('FRONTEND_URL')}" style="background-color: #1e293b; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Entrar al Sistema</a>
+            </div>
+          </div>
+        </div>
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error(`[MAIL] Error enviando reset credentials a ${to}:`, error);
+      return false;
+    }
+  }
+
   async sendPasswordResetEmail(to: string, nombre: string, token: string) {
-    const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${token}`;
+    const publicUrl = this.configService.get('APP_PUBLIC_URL') || this.configService.get('FRONTEND_URL');
+    const resetUrl = `${publicUrl}/reset-password?token=${token}`;
     const mailOptions = {
       from: `"Maya RCH - Seguridad" <${this.configService.get('MAIL_USER')}>`,
       to,

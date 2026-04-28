@@ -14,6 +14,7 @@ import { PermissionService } from '../../services/permission.service';
 export class RootLayout implements OnInit, OnDestroy {
   role = 'empleado';
   roleDisplayName = 'Empleado';
+  mustChangePassword = false;
   private permsSub?: Subscription;
 
   collapsedSections: { [key: string]: boolean } = {
@@ -50,11 +51,20 @@ export class RootLayout implements OnInit, OnDestroy {
     if (isPlatformBrowser(this.platformId)) {
       this.role = localStorage.getItem('userRole')?.toLowerCase() || 'empleado';
       this.roleDisplayName = localStorage.getItem('userRoleName') || 'Empleado';
+
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        this.mustChangePassword = user.requirePasswordChange === true;
+      }
     }
   }
 
   // MÉTODO PARA EL TEMPLATE: Verifica permisos dinámicamente con bypass de Admin
   canAccess(modulo: string): boolean {
+    // BLOQUEO TOTAL SI DEBE CAMBIAR PASSWORD
+    if (this.mustChangePassword) return modulo === 'Perfil';
+
     if (modulo === 'Dashboard' || modulo === 'Perfil') return true;
     if (this.role === 'admin' || this.role === 'administrador') return true;
 

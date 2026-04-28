@@ -211,6 +211,20 @@ export class Usuarios implements OnInit {
     });
   }
 
+  eliminarUsuario(u: UsuarioItem): void {
+    const msg = `¿Está seguro de eliminar permanentemente a @${u.usuario}?\n\nEsta función es para datos incorrectos a la hora de crear un usuario o con fines de pruebas en desarrollo. No se recomienda usar con usuarios existentes y en uso por temas de auditoría.`;
+
+    if (confirm(msg)) {
+        this.adminService.deleteUser(u.usuarioId).subscribe({
+            next: () => {
+                alert('Usuario eliminado de la base de datos.');
+                this.loadUsers();
+            },
+            error: (err) => alert('No se pudo eliminar: ' + (err.error?.message || 'Error técnico'))
+        });
+    }
+  }
+
   toggleBloqueo(u: UsuarioItem): void {
     const nuevoEstado = u.estado === 'Activo' ? 'inactivo' : 'activo';
     this.adminService.toggleUserStatus(u.usuarioId, nuevoEstado).subscribe({

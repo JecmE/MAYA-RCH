@@ -69,10 +69,16 @@ export class Login implements OnInit {
           localStorage.setItem('userRoleName', rawRole);
           localStorage.setItem('usuarioId', response.user.usuarioId.toString());
           localStorage.setItem('empleadoId', response.user.empleadoId.toString());
+          localStorage.setItem('user', JSON.stringify(response.user));
 
           // CARGAR PERMISOS: Solo si el rolId viene del backend
           if (response.user.rolId) {
             this.permissionService.loadPermissions(response.user.rolId);
+          }
+
+          if (response.user.requirePasswordChange) {
+            this.router.navigate(['/perfil']);
+            return;
           }
         }
         this.router.navigate(['/']);

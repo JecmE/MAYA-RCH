@@ -106,6 +106,7 @@ let AuthService = class AuthService {
             empleadoId: usuario.empleadoId,
             roles: usuario.roles.map((r) => r.nombre),
             sessionVersion: usuario.sessionVersion,
+            requirePasswordChange: usuario.cambioPasswordObligatorio,
         };
         const expParam = await this.parametroRepository.findOne({ where: { clave: 'jwt_expiracion', activo: true } });
         const expiresInMinutes = expParam ? parseInt(expParam.valor) : 60;
@@ -132,6 +133,7 @@ let AuthService = class AuthService {
                 empleadoId: usuario.empleadoId,
                 nombreCompleto: this.sanitizeString(usuario.empleado ? `${usuario.empleado.nombres} ${usuario.empleado.apellidos}` : ''),
                 email: usuario.empleado?.email,
+                requirePasswordChange: usuario.cambioPasswordObligatorio,
             },
         };
     }

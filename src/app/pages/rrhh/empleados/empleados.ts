@@ -211,6 +211,20 @@ export class Empleados implements OnInit {
     }
   }
 
+  eliminarEmpleadoPermanente(e: EmpleadoItem): void {
+    const msg = `¿Está seguro de eliminar permanentemente a ${e.nombre}?\n\nEsta función es para datos incorrectos a la hora de crear un usuario o con fines de pruebas en desarrollo, no se recomienda usar con usuarios existentes y en uso por temas de auditoría.`;
+
+    if (confirm(msg)) {
+        this.usersService.deletePermanent(e.id).subscribe({
+            next: () => {
+                this.mostrarNotificacionExito('Empleado borrado de la base de datos.');
+                this.loadEmpleados();
+            },
+            error: (err) => alert('No se pudo borrar: ' + (err.error?.message || 'Error de integridad'))
+        });
+    }
+  }
+
   limpiarFiltros(): void {
     this.filtroBusqueda = '';
     this.filtroDepartamento = 'Todos los departamentos';

@@ -57,6 +57,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Usuario.prototype, "sessionVersion", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'cambio_password_obligatorio', default: true }),
+    __metadata("design:type", Boolean)
+], Usuario.prototype, "cambioPasswordObligatorio", void 0);
+__decorate([
     (0, typeorm_1.OneToOne)(() => empleado_entity_1.Empleado, (emp) => emp.usuario),
     (0, typeorm_1.JoinColumn)({ name: 'empleado_id' }),
     __metadata("design:type", empleado_entity_1.Empleado)
