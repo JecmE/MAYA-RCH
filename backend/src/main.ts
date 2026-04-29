@@ -9,7 +9,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.enableCors({
-    origin: '*', // Permitir todo momentáneamente para asegurar conexión en el primer arranque
+    origin: '*',
     credentials: true,
   });
 
@@ -17,11 +17,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // En Azure Linux, el puerto es asignado por la infraestructura.
+  // En Azure Linux, el puerto es obligatorio y lo da la máquina
   const port = process.env.PORT || 8080;
 
-  // Escuchar en 0.0.0.0 es obligatorio para contenedores en la nube
+  // Escuchar en 0.0.0.0 es la ÚNICA forma de que el contenedor sea visible
   await app.listen(port, '0.0.0.0');
-  console.log(`Backend operando en puerto: ${port}`);
+  console.log(`Servidor iniciado en puerto: ${port}`);
 }
 bootstrap();
