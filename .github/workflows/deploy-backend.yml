@@ -21,12 +21,23 @@ jobs:
         run: |
           cd backend
           npm install
-          npm run build
+          npx nest build
 
-      - name: Deploy
+      - name: Prepare Deployment Package
+        run: |
+          # Creamos una carpeta limpia para que Azure no se confunda
+          mkdir deploy_package
+          cp -r backend/dist/* deploy_package/
+          cp backend/package.json deploy_package/
+          cp backend/package-lock.json deploy_package/
+          cd deploy_package
+          # Instalamos solo dependencias de produccion
+          npm install --production
+
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend
+          package: deploy_package
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
