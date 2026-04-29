@@ -28,8 +28,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // En Azure Windows, process.env.PORT es el túnel oficial.
-  const port = process.env.PORT || 3000;
+  // Lógica universal: Detecta el puerto de Azure (Linux o Windows) o usa 3000 local.
+  const port = process.env.PORT || process.env.WEBSITES_PORT || 8080;
 
   await app.listen(port);
   console.log(`MAYA RCH API running on port: ${port}`);
