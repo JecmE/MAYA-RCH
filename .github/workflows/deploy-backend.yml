@@ -21,7 +21,8 @@ jobs:
         run: |
           cd backend
           npm install
-          npm run build
+          # Forzamos el build usando el binario local para evitar el "not found"
+          node_modules/.bin/nest build
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
