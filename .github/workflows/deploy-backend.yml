@@ -28,5 +28,5 @@ jobs:
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend/dist
+          package: backend
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
