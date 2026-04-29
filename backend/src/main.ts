@@ -28,9 +28,10 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // Lógica de puerto para Azure: Detecta el puerto de la nube o usa 3000 en local
-  const port = process.env.PORT || configService.get<number>('PORT', 3000);
-  await app.listen(port);
-  console.log(`MAY A CRH API running on: http://localhost:${port}/api`);
+  // En Azure, el puerto se asigna mediante PORT o WEBSITES_PORT. Escuchamos en 0.0.0.0 para acceso externo.
+  const port = process.env.PORT || process.env.WEBSITES_PORT || configService.get<number>('PORT', 3000);
+
+  await app.listen(port, '0.0.0.0');
+  console.log(`MAY A CRH API running on port: ${port}`);
 }
 bootstrap();
