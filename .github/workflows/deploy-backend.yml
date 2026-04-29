@@ -23,10 +23,19 @@ jobs:
           npm install
           npm run build
 
+      - name: Create Deployment Package
+        run: |
+          mkdir deploy
+          cp -r backend/dist/* deploy/
+          cp backend/package.json deploy/
+          cp backend/package-lock.json deploy/
+          cd deploy
+          npm install --production
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend
+          package: deploy
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
