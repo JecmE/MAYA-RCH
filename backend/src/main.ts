@@ -27,11 +27,12 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // En Azure Linux, el puerto viene en process.env.PORT.
-  // Escuchar en '0.0.0.0' es vital para que Azure detecte que el sitio está vivo.
+  // PRIORIDAD DE PUERTO PARA AZURE
+  // Usamos process.env.PORT que es el que Azure asigna dinámicamente
   const port = process.env.PORT || 8080;
 
+  // Escuchar en 0.0.0.0 es obligatorio en Azure Linux para ser visible
   await app.listen(port, '0.0.0.0');
-  console.log(`MAYA RCH API is live on port: ${port}`);
+  console.log(`MAYA RCH API is now online on port: ${port}`);
 }
 bootstrap();
