@@ -6,7 +6,7 @@ import * as express from 'express';
 
 async function bootstrap() {
   console.log('--- STARTING MAYA RCH PRODUCTION SERVER ---');
-  const app = await NestFactory.create(appModule);
+  const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   app.enableCors({
