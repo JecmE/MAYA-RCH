@@ -5,13 +5,12 @@ import { AppModule } from './app.module';
 import * as express from 'express';
 
 async function bootstrap() {
-  console.log('--- INICIANDO SERVIDOR MAYA RCH ---');
-  const app = await NestFactory.create(AppModule);
+  console.log('--- STARTING MAYA RCH PRODUCTION SERVER ---');
+  const app = await NestFactory.create(appModule);
   const configService = app.get(ConfigService);
 
-  // CORS TOTAL: Permitimos todo para asegurar que el Login no se bloquee
   app.enableCors({
-    origin: true,
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -20,11 +19,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // Azure Linux asigna el puerto en process.env.PORT
+  // Azure Linux port mapping
   const port = process.env.PORT || 8080;
 
-  // 0.0.0.0 es OBLIGATORIO en Azure para que el sitio sea visible
+  // Listening on 0.0.0.0 is MANDATORY for Azure Container Instances
   await app.listen(port, '0.0.0.0');
-  console.log(`✅ SERVIDOR LISTO Y ESCUCHANDO EN EL PUERTO: ${port}`);
+  console.log(`🚀 Server is up and running on port ${port}`);
 }
 bootstrap();
