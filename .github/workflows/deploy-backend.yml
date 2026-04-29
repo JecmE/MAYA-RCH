@@ -15,21 +15,21 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18.x' # Sincronizamos con la versión de Azure
+          node-version: '20.x'
 
       - name: Build and Package
         run: |
           cd backend
-          npm ci # Instalación limpia y rápida
-          npx nest build # Compilación
+          npm install
+          npx nest build
 
-          # PREPARAR CARPETA DE SALIDA (Para evitar errores de rutas en Azure)
+          # PREPARAR CARPETA DE SALIDA LIMPIA
           mkdir -p ../output
           cp -r dist/* ../output/
           cp package.json ../output/
           cp package-lock.json ../output/
           cd ../output
-          npm install --production # Solo librerías de ejecución
+          npm install --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
