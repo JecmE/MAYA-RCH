@@ -17,20 +17,28 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Install dependencies
+      - name: Build Backend
         run: |
           cd backend
           npm install
+          # Usamos el comando directo para evitar el error de "nest not found"
+          ./node_modules/.bin/nest build
 
-      - name: Build
+      - name: Prepare Final Package
         run: |
-          cd backend
-          npx nest build
+          # Creamos una carpeta limpia con solo lo necesario para que Azure no se pierda
+          mkdir deploy_folder
+          cp -r backend/dist/* deploy_folder/
+          cp backend/package.json deploy_folder/
+          cp backend/package-lock.json deploy_folder/
+          cd deploy_folder
+          # Instalamos solo las librerías de producción para que sea ligero
+          npm install --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend
+          package: deploy_folder
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}

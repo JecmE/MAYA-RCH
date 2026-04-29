@@ -20,7 +20,7 @@ async function bootstrap() {
   // En Azure, process.env.PORT es el puerto asignado.
   const port = process.env.PORT || 8080;
 
-  // Escuchar en 0.0.0.0 es crítico para que el contenedor responda
+  // Escuchar en 0.0.0.0 es crítico en Azure Linux.
   await app.listen(port, '0.0.0.0');
   console.log(`MAYA RCH API is running on port: ${port}`);
 }
