@@ -28,10 +28,10 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // En Azure, el puerto se asigna mediante PORT o WEBSITES_PORT. Escuchamos en 0.0.0.0 para acceso externo.
-  const port = process.env.PORT || process.env.WEBSITES_PORT || configService.get<number>('PORT', 3000);
+  // En Azure Windows, process.env.PORT es el túnel oficial.
+  const port = process.env.PORT || 3000;
 
-  await app.listen(port, '0.0.0.0');
-  console.log(`MAY A CRH API running on port: ${port}`);
+  await app.listen(port);
+  console.log(`MAYA RCH API running on port: ${port}`);
 }
 bootstrap();
