@@ -23,18 +23,11 @@ jobs:
           npm install
           npm run build
 
-      - name: Prepare Deployment Package
-        run: |
-          mkdir deploy_root
-          cp -r backend/dist deploy_root/
-          cp backend/package.json deploy_root/
-          cp backend/package-lock.json deploy_root/
-          # No copiamos node_modules para que Azure los instale rápido según su OS
-
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: deploy_root
+          package: backend
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
+          startup-command: 'node dist/main.js'
