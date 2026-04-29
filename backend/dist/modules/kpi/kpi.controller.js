@@ -37,6 +37,9 @@ let KpiController = class KpiController {
     getEmployeeProfile(id) {
         return this.kpiService.getEmployeeProfile(id);
     }
+    saveObservation(empleadoId, mes, anio, observacion) {
+        return this.kpiService.saveObservation(empleadoId, mes, anio, observacion);
+    }
 };
 exports.KpiController = KpiController;
 __decorate([
@@ -83,6 +86,17 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], KpiController.prototype, "getEmployeeProfile", null);
+__decorate([
+    (0, common_1.Put)('observation/:empleadoId'),
+    (0, roles_decorator_1.Roles)('Supervisor', 'RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('empleadoId', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)('mes')),
+    __param(2, (0, common_1.Body)('anio')),
+    __param(3, (0, common_1.Body)('observacion')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Number, Number, String]),
+    __metadata("design:returntype", void 0)
+], KpiController.prototype, "saveObservation", null);
 exports.KpiController = KpiController = __decorate([
     (0, common_1.Controller)('kpi'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

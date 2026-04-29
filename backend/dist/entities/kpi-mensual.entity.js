@@ -72,6 +72,10 @@ __decorate([
     __metadata("design:type", Date)
 ], KpiMensual.prototype, "fechaCalculo", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'observacion', length: 500, nullable: true }),
+    __metadata("design:type", String)
+], KpiMensual.prototype, "observacion", void 0);
+__decorate([
     (0, typeorm_1.ManyToOne)(() => empleado_entity_1.Empleado, (emp) => emp.kpis),
     (0, typeorm_1.JoinColumn)({ name: 'empleado_id' }),
     __metadata("design:type", empleado_entity_1.Empleado)

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -7,11 +7,13 @@ import { TimesheetsService, TeamTimesheetEntry } from '../../../services/timeshe
 interface TimesheetRegistro {
   id: number;
   empleado: string;
+  empleadoId: number;
   proyecto: string;
+  proyectoId: number;
   fecha: string;
   actividad: string;
   horas: number;
-  estado: 'Pendiente' | 'Aprobado' | 'Observación' | 'Rechazado';
+  estado: string;
   comentario: string;
 }
 
@@ -28,56 +30,77 @@ export class TimesheetEquipo implements OnInit {
   selectedProyecto = 'Todos los proyectos';
 
   paginaActual = 1;
-  registrosPorPagina = 5;
+  registrosPorPagina = 10;
 
   registros: TimesheetRegistro[] = [];
   registrosFiltrados: TimesheetRegistro[] = [];
+  proyectosDisponibles: string[] = [];
+
+  // Modal logic
+  modalOpen = false;
+  selectedRegistro: TimesheetRegistro | null = null;
+  comentarioDecision = '';
+  isProcessing = false;
+  errorMessage = '';
 
   constructor(
     private router: Router,
     private timesheetsService: TimesheetsService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadTeamEntries();
   }
 
-  private loadTeamEntries(): void {
-    const supervisorId = this.getSupervisorId();
-    if (!supervisorId) {
-      this.registros = [];
-      this.registrosFiltrados = [];
-      return;
-    }
-
-    this.timesheetsService.getTeamEntries(supervisorId).subscribe({
+  loadTeamEntries(): void {
+    // 0 is passed but backend uses JWT user info
+    this.timesheetsService.getTeamEntries(0).subscribe({
       next: (data: TeamTimesheetEntry[]) => {
         this.registros = data.map((entry) => this.mapEntryToRegistro(entry));
+        this.extractProjects();
         this.aplicarFiltros();
+        this.cdr.detectChanges();
       },
       error: () => {
         this.registros = [];
         this.registrosFiltrados = [];
+        this.cdr.detectChanges();
       },
     });
   }
 
-  private getSupervisorId(): number | null {
-    const empleadoIdStr = localStorage.getItem('empleadoId');
-    return empleadoIdStr ? parseInt(empleadoIdStr, 10) : null;
+  private extractProjects(): void {
+    const projs = new Set(this.registros.map(r => r.proyecto));
+    this.proyectosDisponibles = Array.from(projs).sort();
   }
 
   private mapEntryToRegistro(entry: TeamTimesheetEntry): TimesheetRegistro {
     return {
       id: entry.tiempoId,
-      empleado: entry.nombreCompleto || `Empleado ${entry.empleadoId}`,
-      proyecto: entry.nombreProyecto || `Proyecto ${entry.proyectoId}`,
-      fecha: entry.fecha,
+      empleado: entry.nombreCompleto || `ID: ${entry.empleadoId}`,
+      empleadoId: entry.empleadoId,
+      proyecto: entry.nombreProyecto || `ID: ${entry.proyectoId}`,
+      proyectoId: entry.proyectoId,
+      fecha: this.formatDate(entry.fecha),
       actividad: entry.actividadDescripcion || '',
       horas: entry.horas,
-      estado: entry.estado as 'Pendiente' | 'Aprobado' | 'Observación' | 'Rechazado',
+      estado: this.capitalize(entry.estado),
       comentario: '',
     };
+  }
+
+  private formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+    const correctedDate = new Date(d.getTime() + userTimezoneOffset);
+    return correctedDate.toLocaleDateString('es-GT');
+  }
+
+  private capitalize(str: string): string {
+    if (!str) return 'Pendiente';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
   goBack(): void {
@@ -85,18 +108,11 @@ export class TimesheetEquipo implements OnInit {
   }
 
   getStatusClass(estado: string): string {
-    switch (estado) {
-      case 'Pendiente':
-        return 'status-pending';
-      case 'Aprobado':
-        return 'status-approved';
-      case 'Observación':
-        return 'status-observation';
-      case 'Rechazado':
-        return 'status-rejected';
-      default:
-        return '';
-    }
+    const e = estado.toLowerCase();
+    if (e.includes('pendiente')) return 'status-pending';
+    if (e.includes('aprobado')) return 'status-approved';
+    if (e.includes('rechazado')) return 'status-rejected';
+    return '';
   }
 
   aplicarFiltros(): void {
@@ -106,7 +122,7 @@ export class TimesheetEquipo implements OnInit {
       const coincideBusqueda =
         !termino ||
         row.empleado.toLowerCase().includes(termino) ||
-        row.proyecto.toLowerCase().includes(termino);
+        row.actividad.toLowerCase().includes(termino);
 
       const coincideEstado =
         this.selectedEstado === 'Todos los estados' || row.estado === this.selectedEstado;
@@ -142,31 +158,56 @@ export class TimesheetEquipo implements OnInit {
     }
   }
 
-  aprobarRegistro(id: number): void {
-    this.timesheetsService.approveEntry(id).subscribe({
+  openDecisionModal(registro: TimesheetRegistro): void {
+    // Redirigir a la bandeja de pendientes con la pestaña de horas activa
+    this.router.navigate(['/supervisor/pendientes'], { queryParams: { tab: 'horas' } });
+  }
+
+  closeModal(): void {
+    this.modalOpen = false;
+    this.selectedRegistro = null;
+    this.isProcessing = false;
+  }
+
+  handleAprobar(): void {
+    if (!this.selectedRegistro || this.isProcessing) return;
+    if (!this.comentarioDecision.trim()) {
+      this.errorMessage = 'El comentario es obligatorio para aprobar.';
+      return;
+    }
+
+    this.isProcessing = true;
+    this.timesheetsService.approveEntry(this.selectedRegistro.id, this.comentarioDecision).subscribe({
       next: () => {
-        const registro = this.registros.find((r) => r.id === id);
-        if (registro) {
-          registro.estado = 'Aprobado';
-          registro.comentario = 'Registro aprobado por supervisor';
-          this.aplicarFiltros();
-        }
+        this.loadTeamEntries();
+        this.closeModal();
       },
-      error: () => {},
+      error: (err) => {
+        this.isProcessing = false;
+        this.errorMessage = err.error?.message || 'Error al aprobar el registro.';
+        this.cdr.detectChanges();
+      }
     });
   }
 
-  rechazarRegistro(id: number): void {
-    this.timesheetsService.rejectEntry(id).subscribe({
+  handleRechazar(): void {
+    if (!this.selectedRegistro || this.isProcessing) return;
+    if (!this.comentarioDecision.trim()) {
+      this.errorMessage = 'El comentario es obligatorio para rechazar.';
+      return;
+    }
+
+    this.isProcessing = true;
+    this.timesheetsService.rejectEntry(this.selectedRegistro.id, this.comentarioDecision).subscribe({
       next: () => {
-        const registro = this.registros.find((r) => r.id === id);
-        if (registro) {
-          registro.estado = 'Rechazado';
-          registro.comentario = 'Registro rechazado por supervisor';
-          this.aplicarFiltros();
-        }
+        this.loadTeamEntries();
+        this.closeModal();
       },
-      error: () => {},
+      error: (err) => {
+        this.isProcessing = false;
+        this.errorMessage = err.error?.message || 'Error al rechazar el registro.';
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -178,8 +219,8 @@ export class TimesheetEquipo implements OnInit {
     return this.registros.filter((r) => r.estado === 'Aprobado').length;
   }
 
-  get totalObservacion(): number {
-    return this.registros.filter((r) => r.estado === 'Observación').length;
+  get totalRechazados(): number {
+    return this.registros.filter((r) => r.estado === 'Rechazado').length;
   }
 
   limpiarFiltros(): void {

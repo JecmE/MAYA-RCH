@@ -2,23 +2,13 @@ import { PayrollService } from './payroll.service';
 export declare class PayrollController {
     private readonly payrollService;
     constructor(payrollService: PayrollService);
-    getPeriods(): Promise<{
-        periodoId: number;
-        nombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        tipo: string;
-        estado: string;
-    }[]>;
+    getPeriods(): Promise<import("../../entities").PeriodoPlanilla[]>;
     createPeriod(createDto: any, req: any): Promise<{
         periodoId: number;
         nombre: string;
-        estado: string;
-        mensaje: string;
     }>;
     calculatePayroll(id: number, req: any): Promise<{
         mensaje: string;
-        empleadosProcesados: number;
         resultados: any[];
     }>;
     closePeriod(id: number, req: any): Promise<{
@@ -27,9 +17,6 @@ export declare class PayrollController {
     getMyPaycheck(req: any, periodoId?: number): Promise<{
         message: string;
         periodo?: undefined;
-        empleadoId?: undefined;
-        tarifaHora?: undefined;
-        horasPagables?: undefined;
         montoBruto?: undefined;
         totalBonificaciones?: undefined;
         totalDeducciones?: undefined;
@@ -37,17 +24,14 @@ export declare class PayrollController {
         movimientos?: undefined;
     } | {
         periodo: {
-            nombre: any;
-            fechaInicio: any;
-            fechaFin: any;
+            nombre: string;
+            fechaInicio: Date;
+            fechaFin: Date;
         };
-        empleadoId: any;
-        tarifaHora: any;
-        horasPagables: any;
-        montoBruto: any;
-        totalBonificaciones: any;
-        totalDeducciones: any;
-        montoNeto: any;
+        montoBruto: number;
+        totalBonificaciones: number;
+        totalDeducciones: number;
+        montoNeto: number;
         movimientos: {
             concepto: string;
             tipo: string;
@@ -55,20 +39,9 @@ export declare class PayrollController {
         }[];
         message?: undefined;
     }>;
-    getMyPeriods(req: any): Promise<{
-        periodoId: number;
-        nombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        tipo: string;
-        estado: string;
-    }[]>;
-    getConcepts(): Promise<{
-        conceptoId: number;
-        codigo: string;
-        nombre: string;
-        tipo: string;
-        modoCalculo: string;
-        baseCalculo: number;
-    }[]>;
+    getMyPeriods(req: any): Promise<import("../../entities").PeriodoPlanilla[]>;
+    getConcepts(): Promise<import("../../entities").ConceptoPlanilla[]>;
+    seedTestData(): Promise<{
+        message: string;
+    }>;
 }

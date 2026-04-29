@@ -1,63 +1,84 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, ChangeDetectorRef, OnInit, OnDestroy } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-
-type UserRole = 'empleado' | 'supervisor' | 'rrhh' | 'admin';
+import { Subscription } from 'rxjs';
+import { PermissionService } from '../../services/permission.service';
 
 @Component({
   selector: 'app-root-layout',
   standalone: true,
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './root-layout.html',
-  styleUrl: './root-layout.scss',
+  styleUrl: './root-layout.scss'
 })
-export class RootLayout {
-  role: UserRole = 'empleado';
+export class RootLayout implements OnInit, OnDestroy {
+  role = 'empleado';
+  roleDisplayName = 'Empleado';
+  mustChangePassword = false;
+  private permsSub?: Subscription;
+
+  collapsedSections: { [key: string]: boolean } = {
+    general: false,
+    supervisor: false,
+    rrhh: false,
+    admin: false
+  };
 
   constructor(
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: object,
-  ) {
-    if (isPlatformBrowser(this.platformId)) {
-      const storedRole = localStorage.getItem('userRole')?.toLowerCase();
+    private permissionService: PermissionService,
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private platformId: object
+  ) {}
 
-      if (
-        storedRole === 'empleado' ||
-        storedRole === 'supervisor' ||
-        storedRole === 'rrhh' ||
-        storedRole === 'admin'
-      ) {
-        this.role = storedRole;
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.updateIdentity();
+
+      // Suscribirse a cambios en los permisos para refrescar el menú lateral automáticamente
+      this.permsSub = this.permissionService.permissions$.subscribe(() => {
+        this.updateIdentity();
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.permsSub?.unsubscribe();
+  }
+
+  private updateIdentity(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.role = localStorage.getItem('userRole')?.toLowerCase() || 'empleado';
+      this.roleDisplayName = localStorage.getItem('userRoleName') || 'Empleado';
+
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        this.mustChangePassword = user.requirePasswordChange === true;
       }
     }
   }
 
-  get isEmpleado(): boolean {
-    return this.role === 'empleado';
+  // MÉTODO PARA EL TEMPLATE: Verifica permisos dinámicamente con bypass de Admin
+  canAccess(modulo: string): boolean {
+    // BLOQUEO TOTAL SI DEBE CAMBIAR PASSWORD
+    if (this.mustChangePassword) return modulo === 'Perfil';
+
+    if (modulo === 'Dashboard' || modulo === 'Perfil') return true;
+    if (this.role === 'admin' || this.role === 'administrador') return true;
+
+    return this.permissionService.hasPermission(modulo, 'ver');
   }
 
-  get isSupervisor(): boolean {
-    return this.role === 'supervisor';
-  }
-
-  get isRrhh(): boolean {
-    return this.role === 'rrhh';
-  }
-
-  get isAdmin(): boolean {
-    return this.role === 'admin';
-  }
-
-  get showEmpleadoMenu(): boolean {
-    return this.isEmpleado || this.isSupervisor;
+  toggleSection(section: string): void {
+    this.collapsedSections[section] = !this.collapsedSections[section];
   }
 
   logout(): void {
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('usuarioId');
-      localStorage.removeItem('empleadoId');
+      localStorage.clear();
+      this.permissionService.clearPermissions();
     }
     this.router.navigate(['/login']);
   }

@@ -12,7 +12,7 @@
       <div class="header-content">
         <h2 class="page-title">Timesheet del Equipo</h2>
         <p class="page-subtitle">
-          Revisa y valida los registros de horas enviados por tu equipo.
+          Revisa y valida los registros de horas enviados por tu equipo en los diferentes proyectos.
         </p>
       </div>
     </div>
@@ -29,8 +29,8 @@
       </div>
 
       <div class="stat-card">
-        <p class="stat-label">Con observación</p>
-        <p class="stat-value stat-red">{{ totalObservacion }}</p>
+        <p class="stat-label">Rechazados</p>
+        <p class="stat-value stat-red">{{ totalRechazados }}</p>
       </div>
     </div>
 
@@ -40,35 +40,27 @@
           <div class="search-box">
             <input
               type="text"
-              placeholder="Buscar por empleado o proyecto..."
+              placeholder="Buscar por empleado o actividad..."
               class="search-input"
               [(ngModel)]="searchTerm"
+              (input)="aplicarFiltros()"
             />
           </div>
 
           <div class="filters-box">
-            <select class="filter-control" [(ngModel)]="selectedEstado">
-              <option>Todos los estados</option>
-              <option>Pendiente</option>
-              <option>Aprobado</option>
-              <option>Observación</option>
-              <option>Rechazado</option>
+            <select class="filter-control" [(ngModel)]="selectedEstado" (change)="aplicarFiltros()">
+              <option value="Todos los estados">Todos los estados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Aprobado">Aprobado</option>
+              <option value="Rechazado">Rechazado</option>
             </select>
 
-            <select class="filter-control" [(ngModel)]="selectedProyecto">
-              <option>Todos los proyectos</option>
-              <option>CRH</option>
-              <option>RRHH</option>
-              <option>MKT</option>
+            <select class="filter-control" [(ngModel)]="selectedProyecto" (change)="aplicarFiltros()">
+              <option value="Todos los proyectos">Todos los proyectos</option>
+              @for (proj of proyectosDisponibles; track proj) {
+                <option [value]="proj">{{ proj }}</option>
+              }
             </select>
-
-            <button
-              type="button"
-              class="filter-button"
-              (click)="aplicarFiltros()"
-            >
-              Filtrar
-            </button>
 
             <button
               type="button"
@@ -91,7 +83,6 @@
               <th>Actividad</th>
               <th class="text-center">Horas</th>
               <th class="text-center">Estado</th>
-              <th>Comentario</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -111,37 +102,23 @@
                     {{ row.estado }}
                   </span>
                 </td>
-                <td class="comment-text">{{ row.comentario }}</td>
                 <td class="text-center">
                   @if (row.estado === 'Pendiente') {
-                    <div class="actions-group">
-                      <button
-                        type="button"
-                        class="action-icon approve-icon"
-                        title="Aprobar"
-                        (click)="aprobarRegistro(row.id)"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        type="button"
-                        class="action-icon reject-icon"
-                        title="Rechazar"
-                        (click)="rechazarRegistro(row.id)"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      class="btn-action"
+                      (click)="openDecisionModal(row)"
+                    >
+                      Gestionar
+                    </button>
                   } @else {
-                    <span class="managed-text">Gestionado</span>
+                    <span class="managed-text">✓ Finalizado</span>
                   }
                 </td>
               </tr>
-            }
-
-            @if (registrosPaginados.length === 0) {
+            } @empty {
               <tr>
-                <td colspan="8" class="empty-row">
+                <td colspan="7" class="empty-row">
                   No se encontraron registros con los filtros seleccionados.
                 </td>
               </tr>
@@ -183,4 +160,57 @@
       </div>
     </div>
   </main>
+
+  <!-- Modal de Decisión -->
+  @if (modalOpen && selectedRegistro) {
+    <div class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Gestionar Registro de Tiempo</h3>
+          <button (click)="closeModal()" class="close-btn">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="info-summary">
+            <p><strong>Empleado:</strong> {{ selectedRegistro.empleado }}</p>
+            <p><strong>Proyecto:</strong> {{ selectedRegistro.proyecto }}</p>
+            <p><strong>Fecha:</strong> {{ selectedRegistro.fecha }}</p>
+            <p><strong>Horas:</strong> {{ selectedRegistro.horas }} h</p>
+            <p><strong>Actividad:</strong> {{ selectedRegistro.actividad }}</p>
+          </div>
+
+          <div class="form-group">
+            <label>Comentario de revisión <span class="req">*</span></label>
+            <textarea
+              [(ngModel)]="comentarioDecision"
+              rows="3"
+              placeholder="Escribe el motivo de la aprobación o rechazo..."
+              class="form-control"
+            ></textarea>
+          </div>
+
+          @if (errorMessage) {
+            <div class="error-msg">⚠️ {{ errorMessage }}</div>
+          }
+
+          <div class="modal-actions">
+            <button
+              (click)="handleRechazar()"
+              class="btn-reject"
+              [disabled]="isProcessing"
+            >
+              {{ isProcessing ? 'Procesando...' : 'Rechazar' }}
+            </button>
+            <button
+              (click)="handleAprobar()"
+              class="btn-approve"
+              [disabled]="isProcessing"
+            >
+              {{ isProcessing ? 'Procesando...' : 'Aprobar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>

@@ -16,7 +16,7 @@ export class AuditLog {
   @Column({ name: 'usuario_id', nullable: true })
   usuarioId: number;
 
-  @CreateDateColumn({ name: 'fecha_hora' })
+  @Column({ name: 'fecha_hora', type: 'datetime', default: () => 'GETDATE()' })
   fechaHora: Date;
 
   @Column({ length: 50 })

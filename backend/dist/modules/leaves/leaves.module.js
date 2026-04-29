@@ -19,12 +19,14 @@ const vacacion_saldo_entity_1 = require("../../entities/vacacion-saldo.entity");
 const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const notices_module_1 = require("../notices/notices.module");
 let LeavesModule = class LeavesModule {
 };
 exports.LeavesModule = LeavesModule;
 exports.LeavesModule = LeavesModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            notices_module_1.NoticesModule,
             typeorm_1.TypeOrmModule.forFeature([
                 solicitud_permiso_entity_1.SolicitudPermiso,
                 tipo_permiso_entity_1.TipoPermiso,

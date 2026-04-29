@@ -1,343 +1,204 @@
 <div class="roles-page">
-  <div class="success-alert" *ngIf="mostrarMensajeExito">
-    <span class="success-alert__icon">✓</span>
-    <span>{{ mensajeExito }}</span>
-  </div>
-
   <div class="roles-header">
-    <button
-      type="button"
-      (click)="goBack()"
-      class="back-button"
-    >
-      ←
-    </button>
-
-    <div class="roles-header__content">
-      <h2 class="roles-title">Roles y Permisos</h2>
-      <p class="roles-subtitle">
-        Gestiona el acceso por rol y las acciones permitidas en el sistema.
-      </p>
+    <div class="roles-header__left">
+      <button (click)="goBack()" class="back-button">←</button>
+      <div class="roles-header__content">
+        <h2 class="roles-title">Roles y Permisos</h2>
+        <p class="roles-subtitle">Administra los niveles de acceso y la matriz de acciones por cada perfil técnico.</p>
+      </div>
+    </div>
+    <div class="roles-header__actions">
+      <button (click)="abrirModalNuevoRol()" class="btn-primary">
+        <span>+</span> Crear Rol
+      </button>
     </div>
   </div>
 
   <div class="roles-layout">
-    <div class="roles-sidebar">
-      <div class="roles-list-card">
-        <h3 class="section-title">Perfiles de Sistema</h3>
-
+    <!-- Listado Lateral de Roles -->
+    <aside class="roles-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-header">Perfiles de Sistema</div>
         <div class="roles-list">
-          @for (rol of roles; track rol) {
+          @for (rol of rolesList; track rol.rolId) {
             <button
-              type="button"
+              class="rol-item"
+              [class.rol-item--active]="activeRolObj?.rolId === rol.rolId"
               (click)="setActiveRole(rol)"
-              class="role-item"
-              [class.role-item--active]="activeRole === rol"
-              [class.role-item--inactive]="activeRole !== rol"
             >
-              <span class="role-item__content">
-                <span
-                  class="role-item__icon"
-                  [class.role-item__icon--active]="activeRole === rol"
-                  [class.role-item__icon--inactive]="activeRole !== rol"
-                >
-                  🛡
-                </span>
-                {{ rol }}
-              </span>
+              <div class="rol-info">
+                <span class="rol-icon">🛡️</span>
+                <span class="rol-name">{{ rol.nombre }}</span>
+              </div>
+              @if (activeRolObj?.rolId === rol.rolId && !['Administrador','Supervisor','RRHH','Empleado'].includes(rol.nombre)) {
+                <span class="rol-delete-trigger" (click)="$event.stopPropagation(); abrirModalEliminarRol()" title="Eliminar Rol">✕</span>
+              }
             </button>
           }
         </div>
       </div>
+    </aside>
 
-      <button
-        type="button"
-        class="create-role-button"
-        (click)="abrirModalNuevoRol()"
-      >
-        + Crear nuevo rol
-      </button>
-
-      <button
-        type="button"
-        class="delete-role-button"
-        (click)="abrirModalEliminarRol()"
-        [disabled]="!puedeEliminarRolActivo"
-      >
-        🗑 Borrar rol
-      </button>
-    </div>
-
-    <div class="roles-main">
-      <div class="permissions-card">
-        <div class="permissions-card__header">
-          <div>
-            <h3 class="permissions-title">
-              Permisos: <span class="permissions-title__accent">{{ activeRole }}</span>
-            </h3>
-            <p class="permissions-subtitle">
-              Configuración de acceso a módulos y acciones.
-            </p>
+    <!-- Matriz de Permisos Dinámica -->
+    <main class="roles-content">
+      <div class="matrix-card">
+        <div class="matrix-card__header">
+          <div class="header-text">
+            <h3 class="active-rol-label">Matriz de Acceso: <span>{{ activeRolObj?.nombre }}</span></h3>
+            <p class="active-rol-sub">{{ activeRolObj?.descripcion || 'Configuración de permisos y alcances funcionales.' }}</p>
           </div>
 
           <button
-            type="button"
-            class="edit-matrix-button"
+            [disabled]="isSaving || isLoading"
             (click)="toggleEditarMatriz()"
+            class="action-btn"
+            [class.action-btn--saving]="isSaving"
+            [class.action-btn--editing]="editandoMatriz"
           >
-            {{ editandoMatriz ? 'Guardar Cambios' : 'Editar Matriz' }}
+            @if (isSaving) {
+              <span class="spinner spinner--xs"></span>
+              Procesando...
+            } @else {
+              {{ editandoMatriz ? 'Guardar Cambios' : '✏️ Editar Matriz' }}
+            }
           </button>
         </div>
 
-        <div class="permissions-table-wrapper">
-          <table class="permissions-table">
+        <div class="table-container">
+          <table class="matrix-table">
             <thead>
-              <tr class="permissions-table__head-row">
-                <th class="table-head table-head--first table-head--module">Módulo</th>
-                <th class="table-head table-head--center">Ver</th>
-                <th class="table-head table-head--center">Crear</th>
-                <th class="table-head table-head--center">Editar</th>
-                <th class="table-head table-head--center">Aprobar</th>
-                <th class="table-head table-head--center">Exportar</th>
-                <th class="table-head table-head--center table-head--last">Administrar</th>
+              <tr>
+                <th class="col-modulo">Módulo / Sección</th>
+                <th class="col-perm">Ver</th>
+                <th class="col-perm">Crear</th>
+                <th class="col-perm">Editar</th>
+                <th class="col-perm">Aprobar</th>
+                <th class="col-perm">Exportar</th>
+                <th class="col-perm">Gestionar</th>
               </tr>
             </thead>
-
-            <tbody class="permissions-table__body">
-              @for (row of permisosData; track row.modulo) {
-                <tr class="permissions-table__row">
-                  <td class="table-cell table-cell--first table-cell--module">
-                    {{ row.modulo }}
-                  </td>
-
-                  <td class="table-cell table-cell--center">
-                    <div class="permission-check-wrapper">
-                      <button
-                        type="button"
-                        class="permission-check"
-                        [class.permission-check--enabled]="row.ver"
-                        [class.permission-check--disabled]="!row.ver"
-                        [class.permission-check--editable]="editandoMatriz"
-                        (click)="togglePermiso(row, 'ver')"
-                      >
-                        {{ row.ver ? '✓' : '✕' }}
-                      </button>
-                    </div>
-                  </td>
-
-                  <td class="table-cell table-cell--center">
-                    <div class="permission-check-wrapper">
-                      <button
-                        type="button"
-                        class="permission-check"
-                        [class.permission-check--enabled]="row.crear"
-                        [class.permission-check--disabled]="!row.crear"
-                        [class.permission-check--editable]="editandoMatriz"
-                        (click)="togglePermiso(row, 'crear')"
-                      >
-                        {{ row.crear ? '✓' : '✕' }}
-                      </button>
-                    </div>
-                  </td>
-
-                  <td class="table-cell table-cell--center">
-                    <div class="permission-check-wrapper">
-                      <button
-                        type="button"
-                        class="permission-check"
-                        [class.permission-check--enabled]="row.editar"
-                        [class.permission-check--disabled]="!row.editar"
-                        [class.permission-check--editable]="editandoMatriz"
-                        (click)="togglePermiso(row, 'editar')"
-                      >
-                        {{ row.editar ? '✓' : '✕' }}
-                      </button>
-                    </div>
-                  </td>
-
-                  <td class="table-cell table-cell--center">
-                    <div class="permission-check-wrapper">
-                      <button
-                        type="button"
-                        class="permission-check"
-                        [class.permission-check--enabled]="row.aprobar"
-                        [class.permission-check--disabled]="!row.aprobar"
-                        [class.permission-check--editable]="editandoMatriz"
-                        (click)="togglePermiso(row, 'aprobar')"
-                      >
-                        {{ row.aprobar ? '✓' : '✕' }}
-                      </button>
-                    </div>
-                  </td>
-
-                  <td class="table-cell table-cell--center">
-                    <div class="permission-check-wrapper">
-                      <button
-                        type="button"
-                        class="permission-check"
-                        [class.permission-check--enabled]="row.exportar"
-                        [class.permission-check--disabled]="!row.exportar"
-                        [class.permission-check--editable]="editandoMatriz"
-                        (click)="togglePermiso(row, 'exportar')"
-                      >
-                        {{ row.exportar ? '✓' : '✕' }}
-                      </button>
-                    </div>
-                  </td>
-
-                  <td class="table-cell table-cell--center table-cell--last">
-                    <div class="permission-check-wrapper">
-                      <button
-                        type="button"
-                        class="permission-check"
-                        [class.permission-check--enabled]="row.administrar"
-                        [class.permission-check--disabled]="!row.administrar"
-                        [class.permission-check--editable]="editandoMatriz"
-                        (click)="togglePermiso(row, 'administrar')"
-                      >
-                        {{ row.administrar ? '✓' : '✕' }}
-                      </button>
-                    </div>
+            <tbody>
+              @if (isLoading) {
+                <tr>
+                  <td colspan="7" class="loading-state">
+                    <span class="spinner spinner--blue"></span>
+                    Sincronizando permisos con la base de datos...
                   </td>
                 </tr>
+              } @else {
+                @for (row of permisosData; track row.modulo) {
+                  <tr class="matrix-row" [class.matrix-row--editable]="editandoMatriz">
+                    <td class="cell-modulo">{{ row.modulo }}</td>
+
+                    <td class="cell-perm" (click)="togglePermiso(row, 'ver')">
+                      <div class="check-toggle" [class.check-toggle--active]="row.ver">
+                        {{ row.ver ? '✓' : '✕' }}
+                      </div>
+                    </td>
+
+                    <td class="cell-perm" (click)="togglePermiso(row, 'crear')">
+                      <div class="check-toggle" [class.check-toggle--active]="row.crear">
+                        {{ row.crear ? '✓' : '✕' }}
+                      </div>
+                    </td>
+
+                    <td class="cell-perm" (click)="togglePermiso(row, 'editar')">
+                      <div class="check-toggle" [class.check-toggle--active]="row.editar">
+                        {{ row.editar ? '✓' : '✕' }}
+                      </div>
+                    </td>
+
+                    <td class="cell-perm" (click)="togglePermiso(row, 'aprobar')">
+                      <div class="check-toggle" [class.check-toggle--active]="row.aprobar">
+                        {{ row.aprobar ? '✓' : '✕' }}
+                      </div>
+                    </td>
+
+                    <td class="cell-perm" (click)="togglePermiso(row, 'exportar')">
+                      <div class="check-toggle" [class.check-toggle--active]="row.exportar">
+                        {{ row.exportar ? '✓' : '✕' }}
+                      </div>
+                    </td>
+
+                    <td class="cell-perm" (click)="togglePermiso(row, 'administrar')">
+                      <div class="check-toggle" [class.check-toggle--active]="row.administrar">
+                        {{ row.administrar ? '✓' : '✕' }}
+                      </div>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
         </div>
 
-        <div class="restrictions-section">
-          <h3 class="section-title">
-            Restricciones Específicas para {{ activeRole }}
-          </h3>
-
-          <div class="restriction-list">
-            <div class="restriction-card">
-              <div class="restriction-dot restriction-dot--blue"></div>
-              <div>
-                <p class="restriction-title">Acceso limitado por departamento</p>
-                <p class="restriction-text">
-                  Solo puede visualizar y editar datos de empleados de su departamento asignado.
-                </p>
-              </div>
-            </div>
-
-            <div class="restriction-card">
-              <div class="restriction-dot restriction-dot--amber"></div>
-              <div>
-                <p class="restriction-title">Aprobaciones con límite de monto</p>
-                <p class="restriction-text">
-                  Puede aprobar bonos e incentivos hasta Q5,000 por empleado sin aprobación adicional.
-                </p>
-              </div>
-            </div>
-
-            <div class="restriction-card">
-              <div class="restriction-dot restriction-dot--purple"></div>
-              <div>
-                <p class="restriction-title">Exportación con auditoría</p>
-                <p class="restriction-text">
-                  Todas las exportaciones de datos quedan registradas en auditoría con fecha y usuario.
-                </p>
-              </div>
+        <div class="matrix-footer">
+          <div class="security-alert">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-content">
+              <strong>Nota de Seguridad:</strong> Los cambios en la matriz de acceso se aplicarán a todos los usuarios vinculados a este rol en su próxima sesión.
             </div>
           </div>
         </div>
+      </div>
+    </main>
+  </div>
 
-        <div class="security-note">
-          <div class="security-note__icon">⚠</div>
-          <div class="security-note__text">
-            <strong>Nota de seguridad:</strong> Los cambios en la matriz de permisos aplicarán en el próximo inicio de sesión para los usuarios con el rol
-            <strong>{{ activeRole }}</strong>.
+  <!-- Toast Notificación -->
+  @if (mostrarMensajeExito) {
+    <div class="toast-success">
+      <span class="toast-check">✓</span>
+      {{ mensajeExito }}
+    </div>
+  }
+
+  <!-- Modales -->
+  @if (mostrarModalNuevoRol) {
+    <div class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Definir Nuevo Rol</h3>
+          <button (click)="cerrarModalNuevoRol()" class="btn-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nombre Identificador</label>
+            <input type="text" [(ngModel)]="nuevoRolNombre" placeholder="Ej: Auditor Interno" class="form-control">
           </div>
+          <div class="form-group">
+            <label>Descripción del Alcance</label>
+            <textarea [(ngModel)]="nuevoRolDesc" placeholder="Detalla qué secciones podrá ver este rol..." class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="cerrarModalNuevoRol()" class="btn-secondary" [disabled]="isSaving">Cancelar</button>
+          <button (click)="crearNuevoRol()" class="btn-primary" [disabled]="isSaving">
+            @if (isSaving) { <span class="spinner spinner--xs"></span> Procesando... }
+            @else { Crear Perfil }
+          </button>
         </div>
       </div>
     </div>
-  </div>
+  }
 
-  <!-- Modal nuevo rol -->
-  <div class="modal-backdrop" *ngIf="mostrarModalNuevoRol">
-    <div class="role-modal">
-      <div class="role-modal__header">
-        <h3>Crear nuevo rol</h3>
-        <button
-          type="button"
-          class="role-modal__close"
-          (click)="cerrarModalNuevoRol()"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div class="role-modal__body">
-        <label class="role-modal__label">Nombre del rol</label>
-        <input
-          type="text"
-          class="role-modal__input"
-          placeholder="Ej: Contador"
-          [(ngModel)]="nuevoRol"
-        />
-      </div>
-
-      <div class="role-modal__footer">
-        <button
-          type="button"
-          class="role-modal__button role-modal__button--secondary"
-          (click)="cerrarModalNuevoRol()"
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          class="role-modal__button role-modal__button--primary"
-          (click)="crearNuevoRol()"
-        >
-          Crear rol
-        </button>
+  @if (mostrarModalEliminarRol && rolAEliminar) {
+    <div class="modal-overlay">
+      <div class="modal-card modal-card--small">
+        <div class="modal-header">
+          <h3>Eliminar Perfil</h3>
+        </div>
+        <div class="modal-body">
+          <p class="delete-confirm-text">¿Está seguro que desea eliminar el rol <strong>{{ rolAEliminar.nombre }}</strong>?</p>
+          <small class="delete-warning">Esta acción es irreversible y eliminará todos los permisos asociados.</small>
+        </div>
+        <div class="modal-footer">
+          <button (click)="cerrarModalEliminarRol()" class="btn-secondary" [disabled]="isSaving">Cancelar</button>
+          <button (click)="eliminarRol()" class="btn-danger" [disabled]="isSaving">
+             @if (isSaving) { <span class="spinner spinner--xs"></span> }
+             Eliminar permanentemente
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-
-  <!-- Modal eliminar rol -->
-  <div class="modal-backdrop" *ngIf="mostrarModalEliminarRol">
-    <div class="role-modal">
-      <div class="role-modal__header">
-        <h3>Eliminar rol</h3>
-        <button
-          type="button"
-          class="role-modal__close"
-          (click)="cerrarModalEliminarRol()"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div class="role-modal__body">
-        <p class="role-modal__text">
-          ¿Deseas eliminar el rol <strong>{{ rolAEliminar }}</strong>?
-        </p>
-        <p class="role-modal__text role-modal__text--muted">
-          Esta acción quitará el rol de la lista y su matriz de permisos.
-        </p>
-      </div>
-
-      <div class="role-modal__footer">
-        <button
-          type="button"
-          class="role-modal__button role-modal__button--secondary"
-          (click)="cerrarModalEliminarRol()"
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          class="role-modal__button role-modal__button--danger"
-          (click)="eliminarRol()"
-        >
-          Eliminar rol
-        </button>
-      </div>
-    </div>
-  </div>
+  }
 </div>

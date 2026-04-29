@@ -12,7 +12,7 @@
       <div class="header-content">
         <h2 class="page-title">Asistencia del Equipo</h2>
         <p class="page-subtitle">
-          Revisa el estado de asistencia de los colaboradores a tu cargo.
+          Revisa el estado de asistencia de los colaboradores a tu cargo en tiempo real.
         </p>
       </div>
     </div>
@@ -20,22 +20,22 @@
     <div class="stats-grid">
       <div class="stat-card">
         <p class="stat-label">Presentes</p>
-        <p class="stat-value stat-blue">1</p>
+        <p class="stat-value stat-blue">{{ stats.presentes }}</p>
       </div>
 
       <div class="stat-card">
         <p class="stat-label">Tardías</p>
-        <p class="stat-value stat-amber">1</p>
+        <p class="stat-value stat-amber">{{ stats.tardias }}</p>
       </div>
 
       <div class="stat-card">
         <p class="stat-label">Ausentes</p>
-        <p class="stat-value stat-red">1</p>
+        <p class="stat-value stat-red">{{ stats.ausentes }}</p>
       </div>
 
       <div class="stat-card">
         <p class="stat-label">Completas</p>
-        <p class="stat-value stat-green">1</p>
+        <p class="stat-value stat-green">{{ stats.completas }}</p>
       </div>
     </div>
 
@@ -46,6 +46,8 @@
             type="text"
             placeholder="Buscar por empleado..."
             class="search-input"
+            [(ngModel)]="searchTerm"
+            (input)="applyFilters()"
           />
         </div>
 
@@ -53,10 +55,11 @@
           <input
             type="date"
             class="filter-control date-control"
+            [(ngModel)]="filterDate"
           />
 
-          <button class="filter-button" type="button">
-            Filtrar
+          <button (click)="loadTeamAttendance()" class="filter-button" type="button">
+            Consultar Fecha
           </button>
         </div>
       </div>
@@ -76,7 +79,7 @@
           </thead>
 
           <tbody>
-            @for (row of equipoData; track row.id) {
+            @for (row of filteredData; track row.id) {
               <tr>
                 <td class="employee-name">{{ row.empleado }}</td>
                 <td class="muted-text">{{ row.puesto }}</td>
@@ -90,22 +93,19 @@
                 </td>
                 <td class="observation-text">{{ row.observacion }}</td>
               </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="text-center py-10 text-slate-400">
+                  No se encontraron registros de asistencia para los criterios seleccionados.
+                </td>
+              </tr>
             }
           </tbody>
         </table>
       </div>
 
       <div class="table-footer">
-        <span>Mostrando 4 de 4 registros</span>
-
-        <div class="pagination">
-          <button class="page-button disabled-button">
-            Anterior
-          </button>
-          <button class="page-button">
-            Siguiente
-          </button>
-        </div>
+        <span>Mostrando {{ filteredData.length }} registros</span>
       </div>
     </div>
 

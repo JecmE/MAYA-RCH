@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { PayrollService, PayrollResult } from '../../../services/payroll.service';
+import { PayrollService, PayrollResult, PeriodoPlanilla } from '../../../services/payroll.service';
+import jsPDF from 'jspdf';
 
 interface PlanillaEmpleadoItem {
   id: number;
@@ -17,12 +19,13 @@ interface PlanillaEmpleadoItem {
 @Component({
   selector: 'app-planilla',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './planilla.html',
   styleUrl: './planilla.css',
 })
 export class Planilla implements OnInit {
-  periodo = '03-2026';
+  periodoId: number | null = null;
+  periodosDisponibles: PeriodoPlanilla[] = [];
   tipoPlanilla = 'mensual';
 
   filtroBusqueda = '';
@@ -30,6 +33,7 @@ export class Planilla implements OnInit {
 
   mostrarMensajeExito = false;
   mensajeExito = '';
+  isCalculating = false;
 
   modalBoleta = false;
   empleadoSeleccionado: PlanillaEmpleadoItem | null = null;
@@ -39,39 +43,79 @@ export class Planilla implements OnInit {
   constructor(
     private router: Router,
     private payrollService: PayrollService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.loadPayrollData();
+    this.loadPeriods();
   }
 
-  private loadPayrollData(): void {
-    const [month, year] = this.periodo.split('-');
-    const periodoId = parseInt(this.periodo.replace('-', ''), 10);
-
-    this.payrollService.calculatePayroll(periodoId).subscribe({
-      next: (data: any) => {
-        if (data && data.results) {
-          this.planillaData = data.results.map((p: PayrollResult) => this.mapPayrollToItem(p));
+  private loadPeriods(): void {
+    this.payrollService.getPeriods().subscribe({
+      next: (periods) => {
+        this.periodosDisponibles = periods;
+        if (periods.length > 0) {
+          this.periodoId = periods[0].periodoId || null;
+          this.loadPayrollResults();
         }
+        this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err) => console.error('Error cargando periodos:', err)
+    });
+  }
+
+  loadPayrollResults(): void {
+    if (!this.periodoId) return;
+
+    this.isCalculating = true;
+    this.payrollService.calculatePayroll(this.periodoId).subscribe({
+      next: (data: any) => {
+        this.isCalculating = false;
+        if (data && data.resultados) {
+          this.planillaData = data.resultados.map((p: PayrollResult) => this.mapPayrollToItem(p));
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isCalculating = false;
         this.planillaData = [];
-      },
+        this.cdr.detectChanges();
+      }
     });
   }
 
   private mapPayrollToItem(p: PayrollResult): PlanillaEmpleadoItem {
     return {
       id: p.empleadoId,
-      empleado: p.nombreCompleto || `Empleado ${p.empleadoId}`,
-      puesto: 'Empleado',
-      salarioBase: `Q ${p.horasTrabajadas * 50 || 0}`,
-      bonificacion: `Q ${p.totalBonificaciones || 0}`,
-      deducciones: `Q ${p.totalDeducciones || 0}`,
-      neto: `Q ${p.montoNeto || 0}`,
+      empleado: this.sanitize(p.nombreCompleto) || `Empleado ${p.empleadoId}`,
+      puesto: 'Colaborador',
+      salarioBase: this.formatearMoneda(p.montoBruto),
+      bonificacion: this.formatearMoneda(p.totalBonificaciones),
+      deducciones: this.formatearMoneda(p.totalDeducciones),
+      neto: this.formatearMoneda(p.montoNeto),
       estado: 'Calculado',
     };
+  }
+
+  private sanitize(str: string | undefined | null): string {
+    if (!str) return '';
+    let res = str.replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
+                 .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ').replace(/Ã/g, 'í');
+    res = res.replace(/\?/g, (m, offset, original) => {
+      if (original.includes('Rodr')) return 'í';
+      if (original.includes('Mart')) return 'í';
+      if (original.includes('Garc')) return 'í';
+      if (original.includes('Fern')) return 'á';
+      return 'í';
+    });
+    const words = res.split(' ');
+    const seen = new Set<string>();
+    return words.filter(w => {
+      const lower = w.toLowerCase();
+      if (seen.has(lower) && w.length > 2) return false;
+      seen.add(lower);
+      return true;
+    }).join(' ');
   }
 
   goBack(): void {
@@ -79,10 +123,8 @@ export class Planilla implements OnInit {
   }
 
   generarPlanilla(): void {
-    this.loadPayrollData();
-    this.mostrarNotificacion(
-      `Planilla ${this.tipoPlanilla} generada para el período ${this.obtenerNombrePeriodo()}.`,
-    );
+    if (!this.periodoId) return;
+    this.loadPayrollResults();
   }
 
   limpiarFiltros(): void {
@@ -101,86 +143,90 @@ export class Planilla implements OnInit {
   }
 
   recalcularEmpleado(empleado: PlanillaEmpleadoItem): void {
-    this.planillaData = this.planillaData.map((item) =>
-      item.id === empleado.id
-        ? {
-            ...item,
-            estado: 'Calculado',
-          }
-        : item,
-    );
-
-    this.mostrarNotificacion(`Planilla recalculada para ${empleado.empleado}.`);
+    this.generarPlanilla();
   }
 
   exportarExcel(): void {
-    this.mostrarNotificacion('Exportación a Excel simulada correctamente.');
+    if (this.planillaData.length === 0) return;
+    const headers = ['Colaborador', 'Sueldo Bruto', 'Bonificaciones', 'Deducciones', 'Sueldo Neto'];
+    const cleanNum = (val: string) => val.replace('Q', '').replace(/,/g, '').trim();
+    const rows = this.planillaFiltrada.map(p => [
+      p.empleado,
+      cleanNum(p.salarioBase),
+      cleanNum(p.bonificacion),
+      cleanNum(p.deducciones),
+      cleanNum(p.neto)
+    ]);
+    let csvContent = headers.map(h => `"${h}"`).join(",") + "\r\n";
+    rows.forEach(row => {
+      csvContent += row.map(cell => `"${cell}"`).join(",") + "\r\n";
+    });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Planilla_${this.obtenerNombrePeriodo().replace(/\s/g, '_')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.mostrarNotificacion('Archivo Excel generado con éxito.');
   }
 
   exportarPdf(): void {
-    this.mostrarNotificacion('Exportación a PDF simulada correctamente.');
+    if (this.planillaData.length === 0) return;
+    const doc = new jsPDF();
+    const periodName = this.obtenerNombrePeriodo();
+    doc.setFontSize(18);
+    doc.text(`Reporte de Planilla - ${periodName}`, 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Fecha: ${new Date().toLocaleString()}`, 14, 28);
+    let y = 45;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Colaborador", 14, y);
+    doc.text("Bruto", 80, y);
+    doc.text("Bonos", 110, y);
+    doc.text("Deducciones", 140, y);
+    doc.text("Neto", 170, y);
+    doc.line(14, y + 2, 195, y + 2);
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    this.planillaFiltrada.forEach(item => {
+      doc.text(item.empleado, 14, y);
+      doc.text(item.salarioBase, 80, y);
+      doc.text(item.bonificacion, 110, y);
+      doc.text(item.deducciones, 140, y);
+      doc.text(item.neto, 170, y);
+      y += 8;
+    });
+    doc.save(`Planilla_${periodName.replace(/\s/g, '_')}.pdf`);
   }
 
   get planillaFiltrada(): PlanillaEmpleadoItem[] {
     const texto = this.filtroBusqueda.trim().toLowerCase();
-
-    return this.planillaData.filter((empleado) => {
-      const coincideBusqueda =
-        !texto ||
-        empleado.empleado.toLowerCase().includes(texto) ||
-        empleado.puesto.toLowerCase().includes(texto);
-
-      const coincideEstado =
-        this.filtroEstado === 'Todos los estados' || empleado.estado === this.filtroEstado;
-
-      return coincideBusqueda && coincideEstado;
-    });
+    return this.planillaData.filter((e) => !texto || e.empleado.toLowerCase().includes(texto));
   }
 
-  get totalColaboradores(): number {
-    return this.planillaData.length;
-  }
-
+  get totalColaboradores(): number { return this.planillaData.length; }
   get totalDevengado(): string {
-    const total = this.planillaData.reduce((acc, item) => {
-      return acc + this.parseMoneda(item.salarioBase) + this.parseMoneda(item.bonificacion);
-    }, 0);
-
-    return this.formatearMoneda(total);
+    const t = this.planillaData.reduce((acc, i) => acc + this.parseMoneda(i.salarioBase), 0);
+    return this.formatearMoneda(t);
   }
-
   get totalDeducciones(): string {
-    const total = this.planillaData.reduce((acc, item) => {
-      return acc + this.parseMoneda(item.deducciones);
-    }, 0);
-
-    return this.formatearMoneda(total);
+    const t = this.planillaData.reduce((acc, i) => acc + this.parseMoneda(i.deducciones), 0);
+    return this.formatearMoneda(t);
   }
-
   get totalNeto(): string {
-    const total = this.planillaData.reduce((acc, item) => {
-      return acc + this.parseMoneda(item.neto);
-    }, 0);
-
-    return this.formatearMoneda(total);
+    const t = this.planillaData.reduce((acc, i) => acc + this.parseMoneda(i.neto), 0);
+    return this.formatearMoneda(t);
   }
 
-  getEstadoClass(estado: string): string {
-    if (estado === 'Calculado') {
-      return 'status-badge--calculated';
-    }
-
-    return 'status-badge--pending';
-  }
+  getEstadoClass(estado: string): string { return 'status-badge--calculated'; }
 
   private mostrarNotificacion(mensaje: string): void {
     this.mensajeExito = mensaje;
     this.mostrarMensajeExito = true;
-
-    setTimeout(() => {
-      this.mostrarMensajeExito = false;
-      this.mensajeExito = '';
-    }, 3000);
+    setTimeout(() => this.mostrarMensajeExito = false, 3000);
   }
 
   private parseMoneda(valor: string): number {
@@ -188,22 +234,11 @@ export class Planilla implements OnInit {
   }
 
   private formatearMoneda(valor: number): string {
-    return `Q ${valor.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    return `Q ${Number(valor).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   obtenerNombrePeriodo(): string {
-    switch (this.periodo) {
-      case '03-2026':
-        return 'Marzo 2026';
-      case '02-2026':
-        return 'Febrero 2026';
-      case '01-2026':
-        return 'Enero 2026';
-      default:
-        return this.periodo;
-    }
+    const p = this.periodosDisponibles.find(x => x.periodoId === this.periodoId);
+    return p ? p.nombre : 'Período Actual';
   }
 }

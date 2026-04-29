@@ -15,9 +15,16 @@ import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { KpiMensual } from '../../entities/kpi-mensual.entity';
 import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
+import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
+import { BonoResultado } from '../../entities/bono-resultado.entity';
+import { RolPermiso } from '../../entities/rol-permiso.entity';
+import { VacacionSaldo } from '../../entities/vacacion-saldo.entity';
+import { KpiModule } from '../kpi/kpi.module';
+import { forwardRef } from '@nestjs/common';
 
 @Module({
   imports: [
+    forwardRef(() => KpiModule),
     TypeOrmModule.forFeature([
       Turno,
       EmpleadoTurno,
@@ -32,6 +39,10 @@ import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
       RegistroAsistencia,
       KpiMensual,
       VacacionMovimiento,
+      RegistroTiempo,
+      BonoResultado,
+      RolPermiso,
+      VacacionSaldo,
     ]),
   ],
   controllers: [AdminController],

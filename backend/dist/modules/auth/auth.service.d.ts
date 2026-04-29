@@ -1,52 +1,56 @@
-import { JwtService } from '@nestjs/jwt';
 import { Repository, DataSource } from 'typeorm';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { JwtService } from '@nestjs/jwt';
 import { Usuario } from '../../entities/usuario.entity';
 import { Empleado } from '../../entities/empleado.entity';
+import { Rol } from '../../entities/rol.entity';
 import { ResetPasswordToken } from '../../entities/reset-password-token.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { MailService } from '../mail/mail.service';
 export declare class AuthService {
     private usuarioRepository;
     private empleadoRepository;
+    private rolRepository;
     private resetTokenRepository;
     private auditRepository;
-    private dataSource;
+    private parametroRepository;
     private jwtService;
-    constructor(usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, resetTokenRepository: Repository<ResetPasswordToken>, auditRepository: Repository<AuditLog>, dataSource: DataSource, jwtService: JwtService);
-    login(loginDto: LoginDto, ipAddress: string): Promise<{
+    private dataSource;
+    private mailService;
+    constructor(usuarioRepository: Repository<Usuario>, empleadoRepository: Repository<Empleado>, rolRepository: Repository<Rol>, resetTokenRepository: Repository<ResetPasswordToken>, auditRepository: Repository<AuditLog>, parametroRepository: Repository<ParametroSistema>, jwtService: JwtService, dataSource: DataSource, mailService: MailService);
+    private sanitizeString;
+    login(loginDto: LoginDto, ip: string): Promise<{
         token: string;
         user: {
             usuarioId: number;
             username: string;
+            roles: string[];
+            rolId: number;
             empleadoId: number;
             nombreCompleto: string;
             email: string;
-            roles: any;
+            requirePasswordChange: boolean;
         };
     }>;
     logout(usuarioId: number): Promise<{
         message: string;
     }>;
-    forgotPassword(email: string, ipAddress: string, userAgent: string): Promise<{
-        message: string;
-        resetToken?: undefined;
-    } | {
-        message: string;
-        resetToken: string;
-    }>;
-    resetPassword(token: string, newPassword: string): Promise<{
+    forgotPassword(email: string, ip: string): Promise<{
         message: string;
     }>;
+    verifyCodeAndResetPassword(email: string, code: string, ip: string): Promise<{
+        message: string;
+    }>;
+    private generateRandomPassword;
+    resetPassword(token: string, newPassword: string): Promise<void>;
     getProfile(usuarioId: number): Promise<{
         usuarioId: number;
         username: string;
         empleadoId: number;
         nombreCompleto: string;
         email: string;
-        telefono: string;
-        puesto: string;
-        departamento: string;
         roles: string[];
         ultimoLogin: Date;
     }>;

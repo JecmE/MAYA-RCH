@@ -4,6 +4,9 @@
       <button (click)="goBack()" class="back-button">←</button>
       <div>
         <h2 class="page-title">Boleta de Pago</h2>
+        @if (empleadoNombre) {
+          <p class="page-subtitle">Empleado: {{ empleadoNombre }}</p>
+        }
       </div>
     </div>
 
@@ -12,9 +15,10 @@
         <label class="form-label"> Período de Planilla </label>
 
         <div class="period-controls">
-          <select [(ngModel)]="periodoId" class="form-control">
+          <select name="periodoId" [(ngModel)]="periodoId" class="form-control" (change)="loadPaycheck()">
+            <option [ngValue]="null" disabled>Seleccione un período</option>
             @for (p of periodosDisponibles; track p.periodoId) {
-              <option [value]="p.periodoId">{{ p.nombre }}</option>
+              <option [ngValue]="p.periodoId">{{ p.nombre }}</option>
             }
           </select>
 
@@ -31,13 +35,19 @@
       </div>
     </div>
 
+    @if (mensaje) {
+      <div class="alert-card alert-card--warning">
+        {{ mensaje }}
+      </div>
+    }
+
     <div class="summary-grid">
       <div class="summary-card">
         <div class="summary-card__header">
-          <div class="summary-card__icon summary-card__icon--neutral">Q</div>
+          <div class="summary-card__icon summary-card__icon--neutral">{{ currencySymbol }}</div>
           <h3 class="summary-card__label">Salario Base</h3>
         </div>
-        <p class="summary-card__value">Q {{ resumen.salarioBase }}</p>
+        <p class="summary-card__value">{{ currencySymbol }} {{ resumen.salarioBase }}</p>
       </div>
 
       <div class="summary-card">
@@ -45,7 +55,7 @@
           <div class="summary-card__icon summary-card__icon--green">↑</div>
           <h3 class="summary-card__label">Bonificaciones</h3>
         </div>
-        <p class="summary-card__value summary-card__value--green">Q {{ resumen.bonificaciones }}</p>
+        <p class="summary-card__value summary-card__value--green">{{ currencySymbol }} {{ resumen.bonificaciones }}</p>
       </div>
 
       <div class="summary-card">
@@ -53,7 +63,7 @@
           <div class="summary-card__icon summary-card__icon--amber">↓</div>
           <h3 class="summary-card__label">Deducciones</h3>
         </div>
-        <p class="summary-card__value summary-card__value--amber">Q {{ resumen.deducciones }}</p>
+        <p class="summary-card__value summary-card__value--amber">{{ currencySymbol }} {{ resumen.deducciones }}</p>
       </div>
 
       <div class="summary-card">
@@ -61,13 +71,13 @@
           <div class="summary-card__icon summary-card__icon--red">↓</div>
           <h3 class="summary-card__label">ISR</h3>
         </div>
-        <p class="summary-card__value summary-card__value--red">Q {{ resumen.isr }}</p>
+        <p class="summary-card__value summary-card__value--red">{{ currencySymbol }} {{ resumen.isr }}</p>
       </div>
 
       <div class="summary-card summary-card--highlight">
         <div class="summary-card__highlight-content">
           <h3 class="summary-card__highlight-label">Neto a Pagar</h3>
-          <p class="summary-card__highlight-value">Q {{ resumen.netoPagar }}</p>
+          <p class="summary-card__highlight-value">{{ currencySymbol }} {{ resumen.netoPagar }}</p>
         </div>
       </div>
     </div>
@@ -106,7 +116,7 @@
                   [class.amount-cell--income]="row.tipo === 'Ingreso'"
                   [class.amount-cell--deduction]="row.tipo === 'Deducción'"
                 >
-                  {{ row.tipo === 'Deducción' ? '- Q ' : '+ Q ' }}{{ row.monto }}
+                  {{ row.tipo === 'Deducción' ? '- ' + currencySymbol + ' ' : '+ ' + currencySymbol + ' ' }}{{ row.monto }}
                 </td>
                 <td class="table-cell table-cell--last table-cell--muted">{{ row.obs }}</td>
               </tr>

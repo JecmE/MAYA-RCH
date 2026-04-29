@@ -20,6 +20,9 @@ export class Proyecto {
   @Column({ length: 500, nullable: true })
   descripcion: string;
 
+  @Column({ length: 100, nullable: true })
+  responsable: string;
+
   @Column({ default: 1 })
   activo: boolean;
 

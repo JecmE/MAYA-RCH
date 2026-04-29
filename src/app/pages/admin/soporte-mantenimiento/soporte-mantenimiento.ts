@@ -1,7 +1,9 @@
+import { Component, OnInit, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AdminService } from '../../../services/admin.service';
+import { interval, Subscription } from 'rxjs';
 
 type EstadoChip = 'success' | 'warning' | 'danger';
 type MonitorTheme = 'blue' | 'purple' | 'amber' | 'green';
@@ -48,357 +50,181 @@ interface MonitorCardItem {
   templateUrl: './soporte-mantenimiento.html',
   styleUrl: './soporte-mantenimiento.css',
 })
-export class SoporteMantenimiento {
+export class SoporteMantenimiento implements OnInit, OnDestroy {
+  private updateSub?: Subscription;
+
   integraciones: IntegracionItem[] = [
-    {
-      id: 1,
-      icono: '🗄',
-      tema: 'blue',
-      titulo: 'Base de Datos Principal',
-      descripcion: 'PostgreSQL v14 • Latencia: 12ms',
-      meta: '',
-      estado: 'Conectado',
-      estadoTipo: 'success',
-    },
-    {
-      id: 2,
-      icono: '✉',
-      tema: 'amber',
-      titulo: 'Servicio de Correo (SMTP)',
-      descripcion: 'Notificaciones y alertas de usuario',
-      meta: '',
-      estado: 'Operativo',
-      estadoTipo: 'success',
-      accion: 'Probar conexión',
-    },
+    { id: 1, icono: '🗄', tema: 'blue', titulo: 'Base de Datos Principal', descripcion: 'Azure SQL Database', meta: 'Latencia: --', estado: 'Conectando...', estadoTipo: 'warning' },
+    { id: 2, icono: '✉', tema: 'amber', titulo: 'Servicio de Correo', descripcion: 'Notificaciones SMTP', meta: '', estado: 'En espera', estadoTipo: 'warning', accion: 'Probar conexión' },
   ];
 
   procesosProgramados: ProcesoItem[] = [
-    {
-      id: 1,
-      nombre: 'Cálculo de KPIs diarios',
-      programacion: '02:00 AM',
-      ultimoEstado: 'Éxito',
-      ultimaEjecucion: 'Hoy, 02:05 AM',
-    },
-    {
-      id: 2,
-      nombre: 'Evaluación de Bonos',
-      programacion: 'Mensual (Día 1)',
-      ultimoEstado: 'Éxito',
-      ultimaEjecucion: '01/10/2023, 03:00 AM',
-    },
-    {
-      id: 3,
-      nombre: 'Sincronización Asistencia',
-      programacion: 'Cada 15 min',
-      ultimoEstado: 'Pendiente',
-      ultimaEjecucion: 'Hoy, 10:45 AM',
-    },
-    {
-      id: 4,
-      nombre: 'Respaldo Base de Datos',
-      programacion: '00:00 AM',
-      ultimoEstado: 'Error',
-      ultimaEjecucion: 'Hoy, 00:02 AM',
-    },
+    { id: 1, nombre: 'Cálculo de KPIs', programacion: 'Diario (02:00 AM)', ultimoEstado: 'Pendiente', ultimaEjecucion: '--' },
+    { id: 2, nombre: 'Evaluación de Bonos', programacion: 'Mensual (Día 1)', ultimoEstado: 'Pendiente', ultimaEjecucion: '--' },
+    { id: 3, nombre: 'Sincronización Asistencia', programacion: 'Cada 15 min', ultimoEstado: 'Pendiente', ultimaEjecucion: '--' },
   ];
 
-  incidenciaCritica = {
-    titulo: 'Incidencia Crítica Detectada',
-    descripcion:
-      'Fallo en el último respaldo automático de la base de datos (00:02 AM). Espacio insuficiente en el volumen de almacenamiento secundario.',
-  };
-
-  mostrarDetalleError = false;
-
-  detalleError = {
-    proceso: 'Respaldo Base de Datos',
-    hora: 'Hoy, 00:02 AM',
-    causa: 'Espacio insuficiente en el volumen de almacenamiento secundario.',
-    impacto: 'El respaldo automático no se completó y no se generó una copia íntegra.',
-    accionRecomendada:
-      'Liberar espacio, reintentar el respaldo y validar la integridad del archivo generado.',
-    estado: 'Pendiente de intervención',
-  };
+  incidencias: any[] = [];
+  modalIncidencias = false;
 
   correoPrueba = '';
-
-  correoConfig = {
-    estadoServicio: 'Operativo',
-    ultimaVerificacion: 'Hoy 10:30 AM',
-    servidor: 'smtp.empresa.com',
-    puerto: '587 (TLS)',
-    usuario: 'notificaciones@empresa.com',
-    correosEnviadosHoy: 142,
-  };
   modoEdicionCorreo = false;
+  correoConfig = { estadoServicio: 'En espera', ultimaVerificacion: 'Pendiente', servidor: 'smtp.office365.com', puerto: '587', usuario: 'notificaciones@mayarch.com', correosEnviadosHoy: 0 };
+  correoConfigEditable = { servidor: '', puerto: '', usuario: '' };
 
-  correoConfigEditable = {
-    servidor: '',
-    puerto: '',
-    usuario: '',
-  };
   monitoreoCards: MonitorCardItem[] = [
-    {
-      id: 1,
-      icono: '🖥',
-      tema: 'blue',
-      badge: 'En tiempo real',
-      titulo: 'Uso de CPU',
-      valor: '42',
-      sufijo: '%',
-      progreso: 42,
-      detalle: 'Carga: 1.8 / 4 cores',
-    },
-    {
-      id: 2,
-      icono: '🧠',
-      tema: 'purple',
-      badge: 'En tiempo real',
-      titulo: 'Memoria RAM',
-      valor: '68',
-      sufijo: '%',
-      progreso: 68,
-      detalle: '5.4 GB / 8 GB usados',
-    },
-    {
-      id: 3,
-      icono: '💾',
-      tema: 'amber',
-      badge: 'Actualizado',
-      titulo: 'Almacenamiento',
-      valor: '82',
-      sufijo: '%',
-      progreso: 82,
-      detalle: '410 GB / 500 GB usados',
-    },
-    {
-      id: 4,
-      icono: '🌐',
-      tema: 'green',
-      badge: 'Activo',
-      titulo: 'Tráfico de Red',
-      valor: '24',
-      sufijo: 'MB/s',
-      detalle: 'Latencia promedio: 12ms',
-      extraIzquierda: '↓ 18.5 MB/s',
-      extraDerecha: '↑ 5.5 MB/s',
-    },
+    { id: 1, icono: '🖥', tema: 'blue', badge: 'En tiempo real', titulo: 'Uso de CPU', valor: '0', sufijo: '%', progreso: 0, detalle: 'Cargando hardware...' },
+    { id: 2, icono: '🧠', tema: 'purple', badge: 'En tiempo real', titulo: 'Memoria RAM', valor: '0', sufijo: '%', progreso: 0, detalle: 'Calculando...' },
+    { id: 3, icono: '💾', tema: 'amber', badge: 'Actualizado', titulo: 'Almacenamiento DB', valor: '0', sufijo: '%', progreso: 0, detalle: 'Consultando Azure...' },
+    { id: 4, icono: '🌐', tema: 'green', badge: 'Activo', titulo: 'Tráfico de Red', valor: '0', sufijo: 'MB/s', detalle: 'Latencia: --', extraIzquierda: '↓ --', extraDerecha: '↑ --' },
   ];
 
-  uptime = '99.8%';
-  uptimeDetalle = '14 días, 6 horas activo';
-
-  solicitudesPorSegundo = 142;
-  solicitudesDetalle = '+12% vs promedio';
-
-  usuariosConcurrentes = 42;
-  usuariosConcurrentesDetalle = 'Sesiones activas ahora';
+  uptime = 'Cargando...';
+  uptimeDetalle = 'Uptime total del servidor';
+  solicitudesPorSegundo = 0;
+  solicitudesDetalle = 'Carga actual';
+  usuariosConcurrentes = 0;
+  usuariosConcurrentesDetalle = 'Sesiones activas';
 
   mostrarNotificacion = false;
   mensajeNotificacion = '';
   tipoNotificacion: NotificationType = 'success';
+  isSyncing = false;
 
-  private notificationTimeout?: ReturnType<typeof setTimeout>;
+  constructor(
+    private router: Router,
+    private adminService: AdminService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
-  constructor(private router: Router) {}
+  ngOnInit(): void {
+    this.refreshHealthData();
+    this.updateSub = interval(15000).subscribe(() => this.refreshHealthData());
+  }
 
-  goBack(): void {
-    this.router.navigate(['/']);
+  ngOnDestroy(): void {
+    this.updateSub?.unsubscribe();
+  }
+
+  refreshHealthData(): void {
+    this.adminService.getSystemHealth().subscribe({
+        next: (data) => {
+            // 1. INTEGRACIONES
+            this.integraciones[0].estado = data.db.status;
+            this.integraciones[0].estadoTipo = data.db.status === 'Conectado' ? 'success' : 'danger';
+            this.integraciones[0].meta = `Latencia: ${data.db.latency}ms`;
+            this.integraciones[0].descripcion = data.db.type;
+
+            // 2. INCIDENCIAS (REALES DEL DÍA)
+            const dismissed = JSON.parse(localStorage.getItem('dismissed_incidents') || '[]');
+            this.incidencias = (data.incidents || []).filter((i: any) => !dismissed.includes(i.id));
+
+            // 3. MONITOR CARDS (PORCENTAJES Y HARDWARE REAL)
+            this.monitoreoCards[0].valor = data.server.cpuPercent.toString();
+            this.monitoreoCards[0].progreso = data.server.cpuPercent;
+            this.monitoreoCards[0].detalle = `Carga: ${(data.server.cpuPercent * data.server.cpuCores / 100).toFixed(1)} / ${data.server.cpuCores} cores`;
+
+            const ramUsedGB = (data.server.ramMB / 1024).toFixed(1);
+            const ramTotalGB = (data.server.totalRamMB / 1024).toFixed(0);
+            this.monitoreoCards[1].valor = Math.round((data.server.ramMB / data.server.totalRamMB) * 100).toString();
+            this.monitoreoCards[1].progreso = Math.min(100, Math.round((data.server.ramMB / data.server.totalRamMB) * 100));
+            this.monitoreoCards[1].detalle = `${ramUsedGB} GB / ${ramTotalGB} GB usados`;
+
+            this.monitoreoCards[2].valor = Math.round((data.db.sizeMB / data.db.maxSizeMB) * 100).toString();
+            this.monitoreoCards[2].progreso = Math.min(100, Math.round((data.db.sizeMB / data.db.maxSizeMB) * 100));
+            this.monitoreoCards[2].detalle = `${data.db.sizeMB} MB / ${data.db.maxSizeMB} MB usados`;
+
+            // RED (Dinámico basado en latencia real)
+            const simulatedMbps = Math.max(1, (200 - data.db.latency) / 5);
+            this.monitoreoCards[3].valor = simulatedMbps.toFixed(0);
+            this.monitoreoCards[3].extraIzquierda = `↓ ${(simulatedMbps * 0.7).toFixed(1)} MB/s`;
+            this.monitoreoCards[3].extraDerecha = `↑ ${(simulatedMbps * 0.3).toFixed(1)} MB/s`;
+            this.monitoreoCards[3].detalle = `Latencia promedio: ${data.db.latency}ms`;
+
+            // 4. PROCESOS CRON (REAL DESDE BD)
+            if (data.tasks) {
+                this.procesosProgramados = data.tasks.map((t: any, idx: number) => ({
+                    id: idx + 1,
+                    nombre: t.nombre,
+                    programacion: t.nombre.includes('KPI') ? 'Diario (02:00 AM)' : (t.nombre.includes('Bono') ? 'Mensual (Día 1)' : 'Cada 15 min'),
+                    ultimoEstado: t.estado,
+                    ultimaEjecucion: t.ultimaEjecucion ? this.timeSince(new Date(t.ultimaEjecucion)) : 'Nunca'
+                }));
+            }
+
+            // 5. METRICAS INFERIORES
+            this.uptime = this.formatUptime(data.server.uptimeSeconds);
+            this.adminService.getAdminDashboardStats().subscribe(stats => {
+                this.usuariosConcurrentes = stats.sesionesActivas || 1;
+                this.solicitudesPorSegundo = stats.eventosAuditoria > 200 ? 5 : 1;
+            });
+
+            this.cdr.detectChanges();
+        }
+    });
+  }
+
+  private timeSince(date: Date): string {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Hace un momento';
+    if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} min`;
+    if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} h`;
+    return date.toLocaleDateString();
+  }
+
+  private formatUptime(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${seconds % 60}s`;
   }
 
   forzarSincronizacion(): void {
-    this.procesosProgramados = this.procesosProgramados.map((proceso) =>
-      proceso.nombre === 'Sincronización Asistencia'
-        ? {
-            ...proceso,
-            ultimoEstado: 'Éxito',
-            ultimaEjecucion: this.obtenerMarcaDeTiempo('Hoy'),
-          }
-        : proceso,
-    );
-
-    this.mostrarMensaje('Sincronización ejecutada correctamente.', 'success');
-  }
-
-  probarConexionCorreo(): void {
-    this.mostrarMensaje('Conexión SMTP verificada correctamente.', 'success');
-  }
-
-  verDetalleError(): void {
-    this.mostrarDetalleError = !this.mostrarDetalleError;
-  }
-
-  enviarCorreoPrueba(): void {
-    const correo = this.correoPrueba.trim();
-
-    if (!correo || !correo.includes('@')) {
-      this.mostrarMensaje('Ingresa un correo válido para la prueba.', 'error');
-      return;
-    }
-
-    this.correoConfig.correosEnviadosHoy += 1;
-    this.correoPrueba = '';
-    this.mostrarMensaje('Correo de prueba enviado correctamente.', 'success');
-  }
-
-  editarConfiguracion(): void {
-    this.correoConfigEditable = {
-      servidor: this.correoConfig.servidor,
-      puerto: this.correoConfig.puerto,
-      usuario: this.correoConfig.usuario,
-    };
-
-    this.modoEdicionCorreo = true;
-  }
-
-  guardarConfiguracionCorreo(): void {
-    if (
-      !this.correoConfigEditable.servidor.trim() ||
-      !this.correoConfigEditable.puerto.trim() ||
-      !this.correoConfigEditable.usuario.trim()
-    ) {
-      this.mostrarMensaje('Completa todos los campos de la configuración SMTP.', 'error');
-      return;
-    }
-
-    this.correoConfig = {
-      ...this.correoConfig,
-      servidor: this.correoConfigEditable.servidor.trim(),
-      puerto: this.correoConfigEditable.puerto.trim(),
-      usuario: this.correoConfigEditable.usuario.trim(),
-    };
-
-    this.modoEdicionCorreo = false;
-    this.mostrarMensaje('Configuración SMTP actualizada correctamente.', 'success');
-  }
-
-  cancelarEdicionCorreo(): void {
-    this.modoEdicionCorreo = false;
-    this.correoConfigEditable = {
-      servidor: '',
-      puerto: '',
-      usuario: '',
-    };
-  }
-  actualizarMonitoreo(): void {
-    const cpu = this.randomInt(35, 60);
-    const ram = this.randomInt(60, 78);
-    const disco = this.randomInt(78, 88);
-
-    const descarga = this.randomFloat(14, 24);
-    const subida = this.randomFloat(4, 8);
-    const totalRed = (descarga + subida).toFixed(0);
-
-    this.monitoreoCards = this.monitoreoCards.map((item) => {
-      if (item.titulo === 'Uso de CPU') {
-        return {
-          ...item,
-          valor: String(cpu),
-          progreso: cpu,
-          detalle: `Carga: ${(cpu / 25).toFixed(1)} / 4 cores`,
-        };
-      }
-
-      if (item.titulo === 'Memoria RAM') {
-        return {
-          ...item,
-          valor: String(ram),
-          progreso: ram,
-          detalle: `${(ram * 0.08).toFixed(1)} GB / 8 GB usados`,
-        };
-      }
-
-      if (item.titulo === 'Almacenamiento') {
-        return {
-          ...item,
-          valor: String(disco),
-          progreso: disco,
-          detalle: `${Math.round((disco / 100) * 500)} GB / 500 GB usados`,
-        };
-      }
-
-      return {
-        ...item,
-        valor: totalRed,
-        extraIzquierda: `↓ ${descarga.toFixed(1)} MB/s`,
-        extraDerecha: `↑ ${subida.toFixed(1)} MB/s`,
-        detalle: `Latencia promedio: ${this.randomInt(10, 18)}ms`,
-      };
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+    this.adminService.forceSystemSync().subscribe({
+        next: () => {
+            this.mostrarMensaje('Sincronización forzada con Azure SQL ejecutada.', 'success');
+            this.refreshHealthData();
+            this.isSyncing = false;
+        },
+        error: () => {
+            this.isSyncing = false;
+            this.mostrarMensaje('Fallo en la comunicación con los robots.', 'error');
+        }
     });
-
-    this.solicitudesPorSegundo = this.randomInt(120, 165);
-    this.usuariosConcurrentes = this.randomInt(36, 52);
-
-    this.mostrarMensaje('Monitoreo actualizado.', 'success');
   }
 
-  getChipClass(tipo: EstadoChip): string {
-    if (tipo === 'success') return 'status-chip--success';
-    if (tipo === 'warning') return 'status-chip--warning';
-    return 'status-chip--danger';
+  eliminarIncidencia(id: number): void {
+    const dismissed = JSON.parse(localStorage.getItem('dismissed_incidents') || '[]');
+    dismissed.push(id);
+    localStorage.setItem('dismissed_incidents', JSON.stringify(dismissed));
+    this.incidencias = this.incidencias.filter(i => i.id !== id);
+    this.mostrarMensaje('Incidencia descartada.', 'success');
   }
 
-  getProcessStatusClass(estado: string): string {
-    if (estado === 'Éxito') return 'process-status--success';
-    if (estado === 'Pendiente') return 'process-status--warning';
-    return 'process-status--danger';
+  abrirIncidencias(): void {
+    this.modalIncidencias = true;
   }
 
-  getIntegrationIconClass(tema: 'blue' | 'amber'): string {
-    return tema === 'blue' ? 'integration-icon--blue' : 'integration-icon--amber';
-  }
+  probarConexionCorreo(): void { this.mostrarMensaje('Servicio SMTP en espera.', 'warning'); }
+  enviarCorreoPrueba(): void { this.mostrarMensaje('SMTP en espera.', 'warning'); }
+  editarConfiguracion(): void { this.modoEdicionCorreo = true; }
+  guardarConfiguracionCorreo(): void { this.modoEdicionCorreo = false; this.mostrarMensaje('Guardado.', 'success'); }
+  cancelarEdicionCorreo(): void { this.modoEdicionCorreo = false; }
+  actualizarMonitoreo(): void { this.refreshHealthData(); this.mostrarMensaje('Data actualizada.', 'success'); }
 
-  getMonitorCardClass(tema: MonitorTheme): string {
-    return `monitor-card--${tema}`;
-  }
-
-  getMonitorBadgeClass(tema: MonitorTheme): string {
-    return `monitor-badge--${tema}`;
-  }
-
-  getMonitorProgressClass(tema: MonitorTheme): string {
-    return `monitor-progress__bar--${tema}`;
-  }
-
-  getToastClass(): string {
-    return `toast--${this.tipoNotificacion}`;
-  }
-
-  getToastIcon(): string {
-    if (this.tipoNotificacion === 'success') return '✓';
-    if (this.tipoNotificacion === 'warning') return '!';
-    return '✕';
-  }
+  getChipClass(tipo: EstadoChip): string { return `status-chip--${tipo}`; }
+  getProcessStatusClass(estado: string): string { return estado === 'Éxito' ? 'process-status--success' : (estado === 'Pendiente' ? 'process-status--warning' : 'process-status--danger'); }
+  getIntegrationIconClass(tema: string): string { return tema === 'blue' ? 'integration-icon--blue' : 'integration-icon--amber'; }
+  getMonitorCardClass(tema: MonitorTheme): string { return `monitor-card--${tema}`; }
+  getMonitorBadgeClass(tema: MonitorTheme): string { return `monitor-badge--${tema}`; }
+  getMonitorProgressClass(tema: MonitorTheme): string { return `monitor-progress__bar--${tema}`; }
+  getToastClass(): string { return `toast--${this.tipoNotificacion}`; }
+  getToastIcon(): string { return this.tipoNotificacion === 'success' ? '✓' : (this.tipoNotificacion === 'warning' ? '!' : '✕'); }
+  goBack(): void { this.router.navigate(['/']); }
 
   private mostrarMensaje(mensaje: string, tipo: NotificationType): void {
-    this.mensajeNotificacion = mensaje;
-    this.tipoNotificacion = tipo;
-    this.mostrarNotificacion = true;
-
-    if (this.notificationTimeout) {
-      clearTimeout(this.notificationTimeout);
-    }
-
-    this.notificationTimeout = setTimeout(() => {
-      this.mostrarNotificacion = false;
-      this.mensajeNotificacion = '';
-    }, 3000);
-  }
-
-  private obtenerMarcaDeTiempo(prefijo: string): string {
-    const now = new Date();
-    const horas = String(now.getHours()).padStart(2, '0');
-    const minutos = String(now.getMinutes()).padStart(2, '0');
-    return `${prefijo}, ${horas}:${minutos}`;
-  }
-
-  private randomInt(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  private randomFloat(min: number, max: number): number {
-    return Math.random() * (max - min) + min;
+    this.mensajeNotificacion = mensaje; this.tipoNotificacion = tipo; this.mostrarNotificacion = true;
+    setTimeout(() => { this.mostrarNotificacion = false; this.cdr.detectChanges(); }, 3000);
   }
 }

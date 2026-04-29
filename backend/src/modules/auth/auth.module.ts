@@ -11,10 +11,18 @@ import { Empleado } from '../../entities/empleado.entity';
 import { ResetPasswordToken } from '../../entities/reset-password-token.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { Rol } from '../../entities/rol.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Empleado, ResetPasswordToken, AuditLog, Rol]),
+    TypeOrmModule.forFeature([
+      Usuario,
+      Empleado,
+      ResetPasswordToken,
+      AuditLog,
+      Rol,
+      ParametroSistema,
+    ]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

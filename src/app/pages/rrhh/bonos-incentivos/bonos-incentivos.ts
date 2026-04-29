@@ -1,42 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AdminService, ReglaBono } from '../../../services/admin.service';
+import { AdminService } from '../../../services/admin.service';
 import { ReportsService, BonusEligibilityReport } from '../../../services/reports.service';
+import jsPDF from 'jspdf';
 
 interface BonoItem {
   id: number;
   empleado: string;
   departamento: string;
   cumplimiento: string;
-  clasificacion: string;
-  bono: string;
   estado: string;
   periodo: string;
   regla: string;
+  bono: string;
   motivo: string;
-}
-
-interface ReglaItem {
-  id: string;
-  nombre: string;
-  periodo: string;
-  vigencia: string;
-  minAsistencia: string;
-  maxTardias: number;
-  estado: string;
-  condiciones: string;
-}
-
-interface NuevaReglaForm {
-  nombre: string;
-  fechaInicio: string;
-  fechaFin: string;
-  minAsistencia: number | null;
-  maxTardias: number | null;
-  condiciones: string;
-  periodo: string;
+  detalles?: any;
 }
 
 @Component({
@@ -48,305 +28,193 @@ interface NuevaReglaForm {
 })
 export class BonosIncentivos implements OnInit {
   activeTab: 'resultados' | 'reglas' = 'resultados';
-
   filtroBusqueda = '';
-  filtroPeriodo = 'Octubre 2023';
-  mostrarMensajeExito = false;
-  mensajeExito = '';
+  filtroPeriodo = '';
 
-  modalNuevaRegla = false;
-  modalDetalle = false;
+  mesActual = new Date().getMonth() + 1;
+  anioActual = new Date().getFullYear();
 
-  bonoSeleccionado: BonoItem | null = null;
+  modalRegla = false;
+  modalDetalleBono = false;
+  modoEdicion = false;
+  isEvaluating = false;
+  isSaving = false;
 
-  nuevaRegla: NuevaReglaForm = this.crearFormularioReglaVacio();
+  reglaForm: any = this.getReglaVacia();
+  bonoDetalle: any = null;
 
   bonosData: BonoItem[] = [];
-  reglasData: ReglaItem[] = [];
+  reglasData: any[] = [];
+  mostrarMensajeExito = false;
+  mensajeExito = '';
 
   constructor(
     private router: Router,
     private adminService: AdminService,
     private reportsService: ReportsService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    this.filtroPeriodo = `${months[this.mesActual - 1]} ${this.anioActual}`;
     this.loadData();
-  }
-
-  private loadData(): void {
-    this.adminService.getBonusRules().subscribe({
-      next: (data: ReglaBono[]) => {
-        this.reglasData = data.map((r) => this.mapReglaToItem(r));
-      },
-      error: () => {
-        this.reglasData = [];
-      },
-    });
-
-    const currentDate = new Date();
-    const anio = currentDate.getFullYear();
-    const mes = currentDate.getMonth() + 1;
-    this.filtroPeriodo = `${currentDate.toLocaleString('default', { month: 'long' })} ${anio}`;
-
-    this.reportsService.getBonusEligibility(anio, mes).subscribe({
-      next: (data: BonusEligibilityReport[]) => {
-        this.bonosData = data.map((b) => this.mapBonusToItem(b));
-      },
-      error: () => {
-        this.bonosData = [];
-      },
-    });
-  }
-
-  private mapBonusToItem(b: BonusEligibilityReport): BonoItem {
-    return {
-      id: b.empleadoId,
-      empleado: b.nombreCompleto || `Empleado ${b.empleadoId}`,
-      departamento: 'General',
-      cumplimiento: b.elegible ? '95%' : '70%',
-      clasificacion: b.elegible ? 'Excelente' : 'Observación',
-      bono: b.elegible ? 'Q 1,000.00' : 'Q 0.00',
-      estado: b.elegible ? 'Elegible' : 'No elegible',
-      periodo: this.filtroPeriodo,
-      regla: b.reglaNombre,
-      motivo: b.motivoNoElegible || 'Cumple criterios',
-    };
-  }
-
-  private mapReglaToItem(r: ReglaBono): ReglaItem {
-    return {
-      id: r.reglaBonoId?.toString() || '',
-      nombre: r.nombre,
-      periodo: 'Mensual',
-      vigencia: r.vigenciaFin ? `Hasta ${r.vigenciaFin}` : 'Indefinida',
-      minAsistencia: `${r.minDiasTrabajados || 100}%`,
-      maxTardias: r.maxTardias || 0,
-      estado: r.activo ? 'Activo' : 'Inactivo',
-      condiciones: this.buildCondiciones(r),
-    };
-  }
-
-  private buildCondiciones(r: ReglaBono): string {
-    const conditions: string[] = [];
-    if (r.minDiasTrabajados) conditions.push(`Mínimo ${r.minDiasTrabajados}% asistencia`);
-    if (r.maxTardias !== undefined) conditions.push(`Máximo ${r.maxTardias} tardías`);
-    if (r.maxFaltas) conditions.push(`Máximo ${r.maxFaltas} faltas`);
-    if (r.minHoras) conditions.push(`Mínimo ${r.minHoras} horas`);
-    return conditions.join(', ') || 'Sin condiciones';
-  }
-
-  goBack(): void {
-    this.router.navigate(['/']);
   }
 
   setTab(tab: 'resultados' | 'reglas'): void {
     this.activeTab = tab;
+    this.loadData();
   }
 
-  abrirModalNuevaRegla(): void {
-    this.nuevaRegla = this.crearFormularioReglaVacio();
-    this.modalNuevaRegla = true;
-  }
-
-  cerrarModalNuevaRegla(): void {
-    this.modalNuevaRegla = false;
-  }
-
-  cancelarNuevaRegla(): void {
-    this.nuevaRegla = this.crearFormularioReglaVacio();
-    this.modalNuevaRegla = false;
-  }
-
-  guardarNuevaRegla(): void {
-    const nueva: ReglaItem = {
-      id: this.generarIdRegla(),
-      nombre: this.nuevaRegla.nombre.trim() || 'Nueva regla',
-      periodo: this.nuevaRegla.periodo || 'Mensual',
-      vigencia: this.obtenerVigenciaTexto(),
-      minAsistencia: `${this.nuevaRegla.minAsistencia ?? 0}%`,
-      maxTardias: this.nuevaRegla.maxTardias ?? 0,
-      estado: 'Activo',
-      condiciones: this.nuevaRegla.condiciones.trim() || 'Sin condiciones adicionales.',
-    };
-
-    this.reglasData = [nueva, ...this.reglasData];
-    this.modalNuevaRegla = false;
-    this.nuevaRegla = this.crearFormularioReglaVacio();
-    this.mostrarNotificacion(`Regla ${nueva.id} creada correctamente.`);
-  }
-
-  verDetalle(bono: BonoItem): void {
-    this.bonoSeleccionado = bono;
-    this.modalDetalle = true;
-  }
-
-  cerrarDetalle(): void {
-    this.modalDetalle = false;
-    this.bonoSeleccionado = null;
-  }
-
-  recalcular(bono: BonoItem): void {
-    this.bonosData = this.bonosData.map((item) => {
-      if (item.id !== bono.id) {
-        return item;
+  loadData(): void {
+    this.adminService.getBonusRules().subscribe({
+      next: (data: any[]) => {
+        this.reglasData = data.map(r => ({
+          id: r.reglaBonoId,
+          nombre: r.nombre,
+          vigencia: r.vigenciaInicio,
+          minAsistencia: r.minDiasTrabajados || 0,
+          maxTardias: r.maxTardias || 0,
+          maxFaltas: r.maxFaltas || 0,
+          minHoras: r.minHoras || 0,
+          monto: Number(r.monto) || 0,
+          activo: r.activo,
+          estado: r.activo ? 'Activo' : 'Inactivo'
+        }));
+        this.cdr.detectChanges();
       }
-
-      const cumplimiento = this.parsePorcentaje(item.cumplimiento);
-      const elegible = cumplimiento >= 85;
-
-      return {
-        ...item,
-        estado: elegible ? 'Elegible' : 'No elegible',
-        bono: elegible ? item.bono : 'Q 0.00',
-        motivo: elegible ? 'Cumple criterios' : 'No alcanza el cumplimiento mínimo',
-      };
     });
 
-    this.mostrarNotificacion(`Evaluación recalculada para ${bono.empleado}.`);
+    this.reportsService.getBonusEligibility(this.mesActual, this.anioActual).subscribe({
+      next: (data: BonusEligibilityReport[]) => {
+        this.bonosData = data.map(b => ({
+          id: b.empleadoId,
+          empleado: b.nombreCompleto,
+          departamento: b.departamento || '-',
+          cumplimiento: `${Number(b.cumplimientoPct || 0).toFixed(1)}%`,
+          estado: b.elegible ? 'Elegible' : 'No elegible',
+          periodo: this.filtroPeriodo,
+          regla: b.reglaNombre,
+          bono: b.elegible ? `Q ${Number(b.monto || 0).toLocaleString('es-GT', {minimumFractionDigits: 2})}` : 'Q 0.00',
+          motivo: b.motivoNoElegible || '-',
+          detalles: b.detalles
+        }));
+        this.cdr.detectChanges();
+      }
+    });
   }
 
-  toggleEstadoRegla(regla: ReglaItem): void {
-    this.reglasData = this.reglasData.map((item) =>
-      item.id === regla.id
-        ? { ...item, estado: item.estado === 'Activo' ? 'Inactivo' : 'Activo' }
-        : item,
-    );
-
-    this.mostrarNotificacion(`Estado actualizado para ${regla.nombre}.`);
+  verInfoBono(bono: BonoItem): void {
+    this.bonoDetalle = bono;
+    this.modalDetalleBono = true;
   }
 
-  exportarResultados(): void {
-    this.mostrarNotificacion('Exportación de resultados realizada correctamente.');
+  abrirNuevaRegla(): void {
+    this.modoEdicion = false;
+    this.reglaForm = this.getReglaVacia();
+    this.modalRegla = true;
+  }
+
+  editarRegla(r: any): void {
+    this.modoEdicion = true;
+    let fechaISO = '';
+    if (r.vigencia) {
+        const d = new Date(r.vigencia);
+        if (!isNaN(d.getTime())) {
+          d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+          fechaISO = d.toISOString().split('T')[0];
+        }
+    }
+    this.reglaForm = {
+      reglaBonoId: r.id, nombre: r.nombre, minDiasTrabajados: r.minAsistencia, maxTardias: r.maxTardias,
+      maxFaltas: r.maxFaltas, minHoras: r.minHoras, monto: r.monto, activo: r.activo,
+      vigenciaInicio: fechaISO || new Date().toISOString().split('T')[0]
+    };
+    this.modalRegla = true;
+  }
+
+  guardarRegla(): void {
+    if (this.isSaving) return;
+    this.isSaving = true;
+
+    const action = this.modoEdicion
+      ? this.adminService.updateBonusRule(this.reglaForm.reglaBonoId, this.reglaForm)
+      : this.adminService.createBonusRule(this.reglaForm);
+
+    action.subscribe({
+      next: () => {
+        setTimeout(() => {
+          this.isSaving = false;
+          this.modalRegla = false;
+          this.notificar('Regla guardada correctamente.');
+          this.loadData();
+        }, 300);
+      },
+      error: () => { this.isSaving = false; alert('Error al guardar'); }
+    });
+  }
+
+  toggleRegla(r: any): void {
+    this.adminService.updateBonusRule(r.id, { activo: !r.activo, vigenciaInicio: r.vigencia }).subscribe(() => {
+      this.notificar('Estado actualizado.');
+      this.loadData();
+    });
   }
 
   ejecutarEvaluacion(): void {
-    this.mostrarNotificacion(`Evaluación ejecutada para ${this.filtroPeriodo}.`);
-  }
+    if (this.isEvaluating) return;
+    this.isEvaluating = true;
+    this.cdr.detectChanges();
 
-  get bonosFiltrados(): BonoItem[] {
-    const texto = this.filtroBusqueda.trim().toLowerCase();
-
-    return this.bonosData.filter((item) => {
-      const coincideBusqueda = !texto || item.empleado.toLowerCase().includes(texto);
-
-      const coincidePeriodo = !this.filtroPeriodo || item.periodo === this.filtroPeriodo;
-
-      return coincideBusqueda && coincidePeriodo;
+    this.adminService.runBonusEvaluation(this.mesActual, this.anioActual).subscribe({
+      next: (res: any) => {
+        setTimeout(() => {
+          this.isEvaluating = false;
+          this.notificar(res.message);
+          this.loadData();
+        }, 500);
+      },
+      error: () => { this.isEvaluating = false; alert('Error al calcular'); }
     });
   }
 
-  get totalElegibles(): number {
-    return this.bonosData.filter((item) => item.estado === 'Elegible').length;
-  }
-
-  get totalNoElegibles(): number {
-    return this.bonosData.filter((item) => item.estado === 'No elegible').length;
-  }
-
-  get montoEstimado(): string {
-    const total = this.bonosData.reduce((acc, item) => {
-      if (item.estado !== 'Elegible') return acc;
-      return acc + this.parseMoneda(item.bono);
-    }, 0);
-
-    return this.formatearMonedaCompacta(total);
-  }
-
-  get promedioBono(): string {
-    const elegibles = this.bonosData.filter((item) => item.estado === 'Elegible');
-    if (!elegibles.length) return 'Q 0';
-
-    const total = elegibles.reduce((acc, item) => acc + this.parseMoneda(item.bono), 0);
-    return this.formatearMonedaCompacta(Math.round(total / elegibles.length));
-  }
-
-  getEstadoClass(estado: string): string {
-    if (estado === 'Elegible') {
-      return 'status-badge--eligible';
-    }
-    return 'status-badge--not-eligible';
-  }
-
-  getClasificacionClass(clasificacion: string): string {
-    if (clasificacion === 'Excelente') {
-      return 'status-badge--excellent';
-    }
-    if (clasificacion === 'Bueno') {
-      return 'status-badge--good';
-    }
-    return 'status-badge--warning';
-  }
-
-  getReglaEstadoClass(estado: string): string {
-    return estado === 'Activo' ? 'status-badge--eligible' : 'status-badge--default';
-  }
-
-  private crearFormularioReglaVacio(): NuevaReglaForm {
-    return {
-      nombre: '',
-      fechaInicio: '',
-      fechaFin: '',
-      minAsistencia: null,
-      maxTardias: null,
-      condiciones: '',
-      periodo: 'Mensual',
-    };
-  }
-
-  private generarIdRegla(): string {
-    const ids = this.reglasData
-      .map((item) => Number(item.id.replace('R-', '')))
-      .filter((id) => !isNaN(id));
-
-    const siguiente = ids.length ? Math.max(...ids) + 1 : 1;
-    return `R-${String(siguiente).padStart(2, '0')}`;
-  }
-
-  private obtenerVigenciaTexto(): string {
-    if (!this.nuevaRegla.fechaInicio && !this.nuevaRegla.fechaFin) {
-      return 'Indefinida';
-    }
-
-    if (this.nuevaRegla.fechaInicio && !this.nuevaRegla.fechaFin) {
-      return `Desde ${this.formatearFecha(this.nuevaRegla.fechaInicio)}`;
-    }
-
-    if (this.nuevaRegla.fechaInicio && this.nuevaRegla.fechaFin) {
-      return `${this.formatearFecha(this.nuevaRegla.fechaInicio)} - ${this.formatearFecha(this.nuevaRegla.fechaFin)}`;
-    }
-
-    return 'Indefinida';
-  }
-
-  private formatearFecha(valor: string): string {
-    if (!valor) return '';
-    const [anio, mes, dia] = valor.split('-');
-    return `${dia}/${mes}/${anio}`;
-  }
-
-  private parseMoneda(valor: string): number {
-    return Number(valor.replace('Q', '').replace(/,/g, '').trim()) || 0;
-  }
-
-  private parsePorcentaje(valor: string): number {
-    return Number(valor.replace('%', '').trim()) || 0;
-  }
-
-  private formatearMonedaCompacta(valor: number): string {
-    if (valor >= 1000) {
-      return `Q ${(valor / 1000).toFixed(valor % 1000 === 0 ? 0 : 1)}K`;
-    }
-    return `Q ${valor}`;
-  }
-
-  private mostrarNotificacion(mensaje: string): void {
-    this.mensajeExito = mensaje;
+  private notificar(msg: string): void {
+    this.mensajeExito = msg;
     this.mostrarMensajeExito = true;
-
+    this.cdr.detectChanges();
     setTimeout(() => {
       this.mostrarMensajeExito = false;
       this.mensajeExito = '';
-    }, 3000);
+      this.cdr.detectChanges();
+    }, 2500);
   }
+
+  exportarExcel(): void {
+    if (this.bonosData.length === 0) return;
+    let csv = "Empleado,Departamento,Cumplimiento,Estado,Regla,Monto\r\n";
+    this.bonosFiltrados.forEach(b => {
+      csv += `"${b.empleado}","${b.departamento}","${b.cumplimiento}","${b.estado}","${b.regla}","${b.bono}"\r\n`;
+    });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = `Reporte_Bonos.csv`; link.click();
+  }
+
+  exportarPdf(): void {
+    if (this.bonosData.length === 0) return;
+    const doc = new jsPDF();
+    doc.text(`Elegibilidad a Bonos - ${this.filtroPeriodo}`, 14, 20);
+    let y = 30;
+    this.bonosFiltrados.forEach(b => {
+      doc.text(`${b.empleado} - ${b.estado} - ${b.bono}`, 14, y);
+      y += 10;
+    });
+    doc.save('Reporte_Bonos.pdf');
+  }
+
+  getEstadoClass(estado: string): string { return estado === 'Elegible' ? 'badge--green' : 'badge--red'; }
+  get bonosFiltrados(): BonoItem[] { return this.bonosData.filter(b => !this.filtroBusqueda || b.empleado.toLowerCase().includes(this.filtroBusqueda.toLowerCase())); }
+  private getReglaVacia() { return { nombre: '', minDiasTrabajados: 95, maxTardias: 5, maxFaltas: 2, minHoras: 40, monto: 0, vigenciaInicio: new Date().toISOString().split('T')[0], activo: true }; }
+  goBack(): void { this.router.navigate(['/']); }
 }

@@ -1,263 +1,250 @@
-<div class="users-page">
-  <div class="users-header">
-    <div class="users-header__left">
-      <button
-        (click)="goBack()"
-        class="back-button"
-      >
-        ←
+<div class="usuarios-page">
+  <main class="usuarios-main">
+
+    <div class="page-header">
+      <button type="button" (click)="goBack()" class="back-button">←</button>
+      <div class="page-header__content">
+        <h2 class="page-title">Gestión de Usuarios</h2>
+        <p class="page-subtitle">Sincronización en tiempo real de cuentas y jerarquías.</p>
+      </div>
+      <button type="button" class="btn-primary" (click)="openNuevoUsuario()">
+        <span>+</span> Crear Usuario
       </button>
-
-      <div class="users-header__content">
-        <h2 class="users-title">Gestión de Usuarios</h2>
-        <p class="users-subtitle">
-          Administra cuentas de acceso al sistema y roles asignados.
-        </p>
-      </div>
     </div>
 
-    <button
-      (click)="openNuevoUsuario()"
-      class="new-user-button"
-    >
-      Nuevo Usuario
-    </button>
-  </div>
+    <div class="main-card">
+      <div class="card-filters">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar por nombre o usuario..."
+            [(ngModel)]="filtroBusqueda"
+            class="filter-input"
+          />
+        </div>
 
-  <div class="users-card">
-    <div class="users-card__filters">
-      <div class="search-box">
-        <input
-          type="text"
-          placeholder="Buscar por nombre, usuario o correo..."
-          class="form-control"
-        />
+        <div class="filters-group">
+          <select class="filter-select" [(ngModel)]="filtroRol">
+            <option value="Todos los roles">Todos los roles</option>
+            @for (rol of rolesList; track rol.rolId) {
+              <option [value]="rol.nombre">{{ rol.nombre }}</option>
+            }
+          </select>
+
+          <select class="filter-select" [(ngModel)]="filtroEstado">
+            <option value="Todos los estados">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
       </div>
 
-      <div class="filters-group">
-        <select class="form-control form-control--auto">
-          <option>Todos los roles</option>
-          <option>Administrador</option>
-          <option>RRHH</option>
-          <option>Supervisor</option>
-          <option>Empleado</option>
-        </select>
-
-        <select class="form-control form-control--auto">
-          <option>Todos los estados</option>
-          <option>Activo</option>
-          <option>Inactivo</option>
-          <option>Bloqueado</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="users-table-wrapper">
-      <table class="users-table">
-        <thead>
-          <tr class="users-table__head-row">
-            <th class="table-head table-head--first">Usuario</th>
-            <th class="table-head">Contacto</th>
-            <th class="table-head">Rol</th>
-            <th class="table-head">ID Empleado</th>
-            <th class="table-head table-head--center">Estado</th>
-            <th class="table-head table-head--last table-head--center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="users-table__body">
-          @for (row of usuariosData; track row.id) {
-            <tr class="users-table__row">
-              <td class="table-cell table-cell--first">
-                <div class="table-user-name">{{ row.nombre }}</div>
-                <div class="table-user-handle">@{{ row.usuario }}</div>
-              </td>
-
-              <td class="table-cell table-cell--muted">
-                {{ row.correo }}
-              </td>
-
-              <td class="table-cell">
-                <span class="badge badge--bordered" [class]="getRolClass(row.rol)">
-                  {{ row.rol }}
-                </span>
-              </td>
-
-              <td class="table-cell table-cell--mono">
-                {{ row.empleado }}
-              </td>
-
-              <td class="table-cell table-cell--center">
-                <span class="badge" [class]="getEstadoClass(row.estado)">
-                  {{ row.estado }}
-                </span>
-              </td>
-
-              <td class="table-cell table-cell--last table-cell--center">
-                <div class="table-actions">
-                  <button
-                    class="icon-button icon-button--amber"
-                    title="Restablecer Contraseña"
-                  >
-                    🔑
-                  </button>
-
-                  @if (row.estado === 'Activo') {
-                    <button
-                      class="icon-button icon-button--red"
-                      title="Bloquear Usuario"
-                    >
-                      ⛔
-                    </button>
-                  } @else {
-                    <button
-                      class="icon-button icon-button--green"
-                      title="Activar Usuario"
-                    >
-                      ✅
-                    </button>
-                  }
-
-                  <button
-                    class="icon-button icon-button--blue"
-                    title="Más opciones"
-                  >
-                    ⋮
-                  </button>
-                </div>
-              </td>
+      <div class="table-container">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>CUENTA / PROPIETARIO</th>
+              <th>CONTACTO</th>
+              <th>NIVEL DE ACCESO</th>
+              <th>SUPERVISOR ASOCIADO</th>
+              <th>ESTADO</th>
+              <th>ACCIONES</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-
-    <div class="users-card__footer">
-      <span>Mostrando 4 de 148 usuarios</span>
-      <div class="pagination-actions">
-        <button class="pagination-button pagination-button--disabled">
-          Anterior
-        </button>
-        <button class="pagination-button">
-          Siguiente
-        </button>
+          </thead>
+          <tbody>
+            @if (isLoading) {
+              <tr>
+                <td colspan="6" class="empty-state">Actualizando listado en tiempo real...</td>
+              </tr>
+            } @else {
+              @for (row of dataFiltrada; track row.usuarioId) {
+                <tr class="table-row">
+                  <td>
+                    <div class="user-info">
+                      <div class="user-avatar">{{ row.nombre.charAt(0) }}</div>
+                      <div class="user-details">
+                        <span class="user-name">{{ row.nombre }}</span>
+                        <span class="user-username">@{{ row.usuario }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="user-email">{{ row.correo || '---' }}</span></td>
+                  <td>
+                    <div class="roles-container">
+                      @for (rol of row.roles; track $index) {
+                        <span class="badge" [ngClass]="getRolClass(rol)">{{ rol }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td><span class="boss-name">{{ row.supervisorNombre || '---' }}</span></td>
+                  <td>
+                    <span class="status-indicator" [ngClass]="getEstadoClass(row.estado)">
+                      {{ row.estado }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <button class="btn-action" title="Detalle" (click)="verDetalle(row)">👁️</button>
+                      <button class="btn-action" title="Editar" (click)="editarUsuario(row)">✏️</button>
+                      <button class="btn-action" title="Estado" (click)="toggleBloqueo(row)">
+                        {{ row.estado === 'Inactivo' ? '✅' : '🚫' }}
+                      </button>
+                      <button class="btn-action btn-action--red" title="Eliminar Permanentemente" (click)="eliminarUsuario(row)">🗑️</button>
+                      <button class="btn-action" title="Clave" (click)="resetPassword(row)">🔑</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="empty-state">No hay registros que coincidan.</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
       </div>
     </div>
-  </div>
 
-  @if (modalNuevoUsuario) {
-    <div class="modal-overlay">
-      <div class="modal-card">
-        <div class="modal-card__header">
-          <h3 class="modal-title">Nuevo Usuario</h3>
-          <button
-            (click)="closeNuevoUsuario()"
-            class="modal-close-button"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="modal-card__body">
-          <div class="form-group">
-            <label class="form-label">Nombre Completo</label>
-            <input
-              type="text"
-              class="form-control"
-              placeholder="Nombre completo del usuario"
-            />
+    <!-- Modal Editar / Crear de Cero -->
+    @if (modalUsuario) {
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>{{ modoEdicion ? 'Configurar Cuenta' : 'Nueva Cuenta' }}</h3>
+            <button class="btn-close" (click)="cerrarModales()" [disabled]="isSaving">✕</button>
           </div>
+          <div class="modal-body">
+            <div class="form-grid">
 
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Nombre de Usuario</label>
-              <input
-                type="text"
-                class="form-control form-control--mono"
-                placeholder="username"
-              />
+              <!-- 1. Dueño de la cuenta (HABILITADO PARA CORRECCIONES) -->
+              <div class="form-group full-width">
+                <label>Persona dueña de esta cuenta (Vínculo)</label>
+                <select class="form-control" [(ngModel)]="usuarioForm.empleadoId">
+                  <option [ngValue]="null">--- Seleccione a la Persona ---</option>
+                  @for (emp of empleadosList; track emp.empleadoId) {
+                    <option [ngValue]="emp.empleadoId">{{ emp.nombreCompleto }} ({{ emp.codigoEmpleado }})</option>
+                  }
+                </select>
+                <small>⚠️ Use este campo solo para corregir el nombre vinculado a la cuenta.</small>
+              </div>
+
+              <!-- 2. Roles (Admin tiene libertad total) -->
+              <div class="form-group full-width">
+                <label>Nivel de Acceso (Rol del Sistema)</label>
+                <div class="roles-selection">
+                  @for (rol of rolesList; track rol.rolId) {
+                    <label class="radio-label" [class.selected]="usuarioForm.roleId === rol.rolId">
+                      <input
+                        type="radio"
+                        name="userRole"
+                        [value]="rol.rolId"
+                        [(ngModel)]="usuarioForm.roleId"
+                        (change)="usuarioForm.bossId = null"
+                      >
+                      <span class="radio-text">{{ rol.nombre }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+
+              <!-- 3. Colaborador Asociado (JEFE) - Lógica de jerarquía por ROL -->
+              <div class="form-group full-width">
+                <label>Supervisor/Jefe Inmediato (Filtrado por Rol)</label>
+                <select class="form-control" [(ngModel)]="usuarioForm.bossId" [disabled]="!usuarioForm.roleId || getRoleName(usuarioForm.roleId) === 'Administrador'">
+                  <option [ngValue]="null">--- Ninguno (Opcional) ---</option>
+                  @for (boss of jefesPorJerarquia; track boss.usuarioId) {
+                    <option [ngValue]="boss.empleadoId">{{ boss.nombre }} (@{{ boss.usuario }})</option>
+                  }
+                </select>
+                @if (usuarioForm.roleId) {
+                  <small>Listando solo cuentas con el nivel superior a {{ getRoleName(usuarioForm.roleId) }}.</small>
+                }
+              </div>
+
+              <div class="form-group">
+                <label>Identificador (User)</label>
+                <input type="text" class="form-control" [(ngModel)]="usuarioForm.username" placeholder="ej: jcuevas">
+              </div>
+
+              <div class="form-group">
+                <label>Estado Acceso</label>
+                <select class="form-control" [(ngModel)]="usuarioForm.estado">
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+
+              @if (!modoEdicion) {
+                <div class="form-group full-width info-note">
+                  <p>✨ <strong>Contraseña Automática:</strong> Se generará una clave aleatoria y se enviará directamente al correo del empleado seleccionado.</p>
+                </div>
+              }
             </div>
-
-            <div class="form-group">
-              <label class="form-label">Correo Electrónico</label>
-              <input
-                type="email"
-                class="form-control"
-                placeholder="usuario@empresa.com"
-              />
-            </div>
           </div>
-
-          <div class="form-group">
-            <label class="form-label">Contraseña Temporal (Opcional)</label>
-            <input
-              type="password"
-              class="form-control"
-              placeholder="Dejar vacío para generar automáticamente"
-            />
-            <p class="helper-text">
-              Si no se especifica, se generará una contraseña temporal que se enviará al correo del usuario.
-            </p>
+          <div class="modal-footer">
+            <button class="btn-secondary" (click)="cerrarModales()" [disabled]="isSaving">Cancelar</button>
+            <button class="btn-primary min-w-160" (click)="guardarUsuario()" [disabled]="isSaving">
+              @if (isSaving) {
+                <span class="spinner spinner--xs"></span>
+                <span>Guardando...</span>
+              } @else {
+                <span>{{ modoEdicion ? 'Actualizar Cuenta' : 'Crear Cuenta' }}</span>
+              }
+            </button>
           </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Rol</label>
-              <select class="form-control">
-                <option value="">Seleccionar rol</option>
-                <option>Administrador</option>
-                <option>RRHH</option>
-                <option>Supervisor</option>
-                <option>Empleado</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Estado</label>
-              <select class="form-control">
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Empleado Asociado</label>
-            <select class="form-control">
-              <option value="">Seleccionar empleado (opcional)</option>
-              <option>EMP-001 - Carlos Mérida</option>
-              <option>EMP-002 - Lucía Torres</option>
-              <option>EMP-003 - Ana López</option>
-              <option>EMP-004 - Mario Paz</option>
-              <option>N/A - Usuario sin relación de empleado</option>
-            </select>
-            <p class="helper-text">
-              Asocia este usuario a un registro de empleado existente en el sistema.
-            </p>
-          </div>
-
-          <div class="info-box">
-            <p class="info-box__title">Nota importante</p>
-            <p class="info-box__text">
-              El usuario recibirá un correo con sus credenciales de acceso. Se le solicitará cambiar la contraseña en su primer inicio de sesión.
-            </p>
-          </div>
-        </div>
-
-        <div class="modal-card__footer">
-          <button
-            (click)="closeNuevoUsuario()"
-            class="footer-button footer-button--secondary"
-          >
-            Cancelar
-          </button>
-          <button
-            (click)="closeNuevoUsuario()"
-            class="footer-button footer-button--primary"
-          >
-            Crear Usuario
-          </button>
         </div>
       </div>
-    </div>
-  }
+    }
+
+    <!-- Modal Detalle -->
+    @if (modalDetalle && usuarioSeleccionado) {
+      <div class="modal-overlay">
+        <div class="modal-card modal-card--small">
+          <div class="modal-header">
+            <h3>Ficha de Seguridad</h3>
+            <button class="btn-close" (click)="cerrarModales()">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="detail-list">
+              <div class="detail-item">
+                <label>Dueño de la Cuenta</label>
+                <p>{{ usuarioSeleccionado.nombre }}</p>
+              </div>
+              <div class="detail-item">
+                <label>ID de Acceso</label>
+                <p>@{{ usuarioSeleccionado.usuario }}</p>
+              </div>
+              <div class="detail-item">
+                <label>Jefe Inmediato</label>
+                <p>{{ usuarioSeleccionado.supervisorNombre || 'No asignado' }}</p>
+              </div>
+              <div class="detail-item">
+                <label>Código Empleado</label>
+                <p class="emp-code">{{ usuarioSeleccionado.empleado }}</p>
+              </div>
+              <div class="detail-item">
+                <label>Estado</label>
+                <span class="status-indicator" [ngClass]="getEstadoClass(usuarioSeleccionado.estado)">
+                  {{ usuarioSeleccionado.estado }}
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Nivel Jerárquico</label>
+                <div class="roles-container">
+                  @for (rol of usuarioSeleccionado.roles; track $index) {
+                    <span class="badge" [ngClass]="getRolClass(rol)">{{ rol }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-primary full-width" (click)="cerrarModales()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    }
+
+  </main>
 </div>

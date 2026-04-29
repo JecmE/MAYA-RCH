@@ -43,6 +43,9 @@ let PayrollController = class PayrollController {
     getConcepts() {
         return this.payrollService.getConcepts();
     }
+    seedTestData() {
+        return this.payrollService.seedTestData();
+    }
 };
 exports.PayrollController = PayrollController;
 __decorate([
@@ -101,6 +104,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PayrollController.prototype, "getConcepts", null);
+__decorate([
+    (0, common_1.Post)('seed-test-data'),
+    (0, roles_decorator_1.Roles)('Empleado', 'Supervisor', 'RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PayrollController.prototype, "seedTestData", null);
 exports.PayrollController = PayrollController = __decorate([
     (0, common_1.Controller)('payroll'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

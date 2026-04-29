@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { TipoPermiso } from '../../entities/tipo-permiso.entity';
 import { DecisionPermiso } from '../../entities/decision-permiso.entity';
@@ -9,6 +9,7 @@ import { VacacionMovimiento } from '../../entities/vacacion-movimiento.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { AdjuntoSolicitud } from '../../entities/adjunto-solicitud.entity';
+import { NoticesService } from '../notices/notices.service';
 import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -32,358 +33,187 @@ export class LeavesService {
     private auditRepository: Repository<AuditLog>,
     @InjectRepository(AdjuntoSolicitud)
     private adjuntoRepository: Repository<AdjuntoSolicitud>,
+    private noticesService: NoticesService,
     private dataSource: DataSource,
   ) {}
 
-  async getTiposPermiso() {
-    const tipos = await this.tipoPermisoRepository.find({
-      where: { activo: true },
-    });
-    return tipos.map((t) => ({
-      tipoPermisoId: t.tipoPermisoId,
-      nombre: t.nombre,
-      requiereDocumento: t.requiereDocumento,
-      descuentaVacaciones: t.descuentaVacaciones,
-    }));
+  async getTiposPermiso(todos = false) {
+    const where: any = {};
+    if (!todos) where.activo = true;
+    const tipos = await this.tipoPermisoRepository.find({ where, order: { nombre: 'ASC' } });
+    return tipos.map(t => ({ ...t, nombre: this.sanitizeString(t.nombre) }));
   }
 
-  private calculateDays(start: Date, end: Date): number {
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
-  }
-
-  async createRequest(createDto: any, empleadoId: number) {
-    const tipoPermiso = await this.tipoPermisoRepository.findOne({
-      where: { tipoPermisoId: createDto.tipoPermisoId },
-    });
-
-    if (!tipoPermiso) {
-      throw new NotFoundException('Tipo de permiso no encontrado');
-    }
-
-    const fechaInicio = new Date(createDto.fechaInicio);
-    const fechaFin = new Date(createDto.fechaFin);
-
-    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
-      throw new BadRequestException('Las fechas proporcionadas no son válidas');
-    }
-
-    if (fechaFin < fechaInicio) {
-      throw new BadRequestException('La fecha fin no puede ser anterior a la fecha de inicio');
-    }
-
-    const diasSolicitados = this.calculateDays(fechaInicio, fechaFin);
-
-    if (diasSolicitados <= 0) {
-      throw new BadRequestException('El rango de fechas no es válido');
-    }
-
-    if (tipoPermiso.descuentaVacaciones) {
-      const saldo = await this.vacacionSaldoRepository.findOne({
-        where: { empleadoId },
-      });
-
-      if (!saldo) {
-        throw new BadRequestException('No tiene saldo de vacaciones configurado');
-      }
-
-      if (saldo.diasDisponibles < diasSolicitados) {
-        throw new BadRequestException(
-          `No tiene suficientes días de vacaciones. Tiene ${saldo.diasDisponibles} días disponibles pero está solicitando ${diasSolicitados} días.`,
-        );
-      }
-    }
-
-    const solicitud = this.solicitudRepository.create({
-      empleadoId,
-      tipoPermisoId: createDto.tipoPermisoId,
-      fechaInicio,
-      fechaFin,
-      horasInicio: createDto.horasInicio || null,
-      horasFin: createDto.horasFin || null,
-      motivo: createDto.motivo,
-      estado: SolicitudPermiso.ESTADO_PENDIENTE,
-    });
-
-    const saved = await this.solicitudRepository.save(solicitud);
-
-    if (createDto.archivo && createDto.nombreArchivo) {
-      await this.saveAttachment(
-        saved.solicitudId,
-        createDto.archivo,
-        createDto.nombreArchivo,
-        createDto.tipoMime || 'application/octet-stream',
-      );
-    }
-
+  async createTipoPermiso(dto: any, usuarioId: number) {
+    const tipo = this.tipoPermisoRepository.create({ ...dto, activo: true });
+    const saved = await this.tipoPermisoRepository.save(tipo);
+    const savedSingle = Array.isArray(saved) ? saved[0] : saved;
     await this.auditRepository.save({
-      usuarioId: null as any,
-      modulo: 'PERMISOS',
-      accion: 'CREATE',
-      entidad: 'SOLICITUD_PERMISO',
-      entidadId: saved.solicitudId,
-      detalle: `Nueva solicitud de ${tipoPermiso.nombre}`,
+      usuarioId, modulo: 'CONFIGURACION', accion: 'CREATE',
+      entidad: 'TIPO_PERMISO', entidadId: savedSingle.tipoPermisoId,
+      detalle: `Tipo de permiso creado: ${savedSingle.nombre}`,
     });
-
-    return {
-      solicitudId: saved.solicitudId,
-      estado: saved.estado,
-      mensaje: 'Solicitud creada exitosamente',
-    };
+    return savedSingle;
   }
 
-  private async saveAttachment(
-    solicitudId: number,
-    base64Data: string,
-    nombreArchivo: string,
-    tipoMime: string,
-  ): Promise<void> {
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    const buffer = Buffer.from(base64Data, 'base64');
-    const safeName = nombreArchivo.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const fileName = `${solicitudId}_${Date.now()}_${safeName}`;
-    const filePath = path.join(uploadsDir, fileName);
-
-    fs.writeFileSync(filePath, buffer);
-
-    const adjunto = this.adjuntoRepository.create({
-      solicitudId,
-      nombreArchivo: nombreArchivo,
-      rutaUrl: `/attachment/${fileName}`,
-      tipoMime,
+  async updateTipoPermiso(id: number, dto: any, usuarioId: number) {
+    const tipo = await this.tipoPermisoRepository.findOne({ where: { tipoPermisoId: id } });
+    if (!tipo) throw new NotFoundException('Tipo no encontrado');
+    Object.assign(tipo, dto);
+    const saved = await this.tipoPermisoRepository.save(tipo);
+    const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+    await this.auditRepository.save({
+      usuarioId, modulo: 'CONFIGURACION', accion: 'UPDATE',
+      entidad: 'TIPO_PERMISO', entidadId: id,
+      detalle: `Tipo de permiso actualizado: ${savedSingle.nombre}`,
     });
-
-    await this.adjuntoRepository.save(adjunto);
+    return savedSingle;
   }
 
-  async getAttachment(fileName: string, res: any): Promise<void> {
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
-    const filePath = path.join(uploadsDir, fileName);
-
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException('Archivo no encontrado');
-    }
-
-    res.sendFile(filePath);
-  }
-
-  async getMyRequests(empleadoId: number) {
+  async getAllRequests() {
     const solicitudes = await this.solicitudRepository.find({
-      where: { empleadoId },
-      relations: ['tipoPermiso', 'decisiones', 'adjuntos'],
+      relations: ['empleado', 'empleado.vacacionSaldo', 'tipoPermiso', 'adjuntos', 'decisiones', 'decisiones.usuario'],
       order: { fechaSolicitud: 'DESC' },
     });
-
-    return solicitudes.map((s) => ({
-      solicitudId: s.solicitudId,
-      tipoPermiso: s.tipoPermiso?.nombre,
-      fechaInicio: s.fechaInicio,
-      fechaFin: s.fechaFin,
-      horasInicio: s.horasInicio,
-      horasFin: s.horasFin,
-      motivo: s.motivo,
-      estado: s.estado,
-      fechaSolicitud: s.fechaSolicitud,
-      decisiones: s.decisiones?.map((d) => ({
-        decision: d.decision,
-        comentario: d.comentario,
-        fechaHora: d.fechaHora,
-      })),
-      adjuntos: s.adjuntos?.map((a) => ({
-        adjuntoId: a.adjuntoId,
-        nombreArchivo: a.nombreArchivo,
-        rutaUrl: a.rutaUrl,
-      })),
+    return solicitudes.map(s => ({
+        ...s,
+        empleadoNombre: this.sanitizeString(`${s.empleado?.nombres} ${s.empleado?.apellidos}`),
+        departamento: this.sanitizeString(s.empleado?.departamento),
+        tipoPermisoNombre: this.sanitizeString(s.tipoPermiso?.nombre),
+        diasSolicitados: this.calculateDays(s.fechaInicio, s.fechaFin),
+        diasDisponibles: s.empleado?.vacacionSaldo?.diasDisponibles ?? 0
     }));
   }
 
-  async getPendingRequests(supervisorEmpleadoId: number) {
-    try {
-      const empleadosRaw = await this.dataSource.query(
-        `SELECT empleado_id, nombres, apellidos, codigo_empleado FROM EMPLEADO WHERE supervisor_id = @0 AND activo = 1`,
-        [supervisorEmpleadoId],
-      );
+  async getPendingRequests(supervisorEmpleadoId: number, estado?: string) {
+    const equipo = await this.empleadoRepository.find({
+        where: { supervisorId: supervisorEmpleadoId, activo: true },
+        select: ['empleadoId']
+    });
 
-      if (empleadosRaw.length === 0) {
-        return [];
-      }
+    if (equipo.length === 0) return [];
+    const ids = equipo.map(e => e.empleadoId);
 
-      const idsStr = empleadosRaw.map((e: any) => e.empleado_id).join(',');
-      const solicitudesRaw = await this.dataSource.query(
-        `SELECT sp.solicitud_id, sp.empleado_id, sp.tipo_permiso_id, sp.fecha_inicio, sp.fecha_fin, sp.horas_inicio, sp.horas_fin, sp.motivo, sp.estado, sp.fecha_solicitud, e.nombres + ' ' + e.apellidos as nombre_empleado, e.codigo_empleado, tp.nombre as tipo_permiso_nombre FROM SOLICITUD_PERMISO sp INNER JOIN EMPLEADO e ON sp.empleado_id = e.empleado_id INNER JOIN TIPO_PERMISO tp ON sp.tipo_permiso_id = tp.tipo_permiso_id WHERE sp.empleado_id IN (${idsStr}) AND sp.estado = @0 ORDER BY sp.fecha_solicitud ASC`,
-        [SolicitudPermiso.ESTADO_PENDIENTE],
-      );
-
-      return solicitudesRaw.map((s: any) => ({
-        solicitudId: s.solicitud_id,
-        empleado: {
-          empleadoId: s.empleado_id,
-          nombreCompleto: s.nombre_empleado,
-          codigoEmpleado: s.codigo_empleado,
-        },
-        tipoPermiso: s.tipo_permiso_nombre,
-        fechaInicio: s.fecha_inicio,
-        fechaFin: s.fecha_fin,
-        horasInicio: s.horas_inicio,
-        horasFin: s.horas_fin,
-        motivo: s.motivo,
-        estado: s.estado,
-        fechaSolicitud: s.fecha_solicitud,
-      }));
-    } catch (error) {
-      console.error('Error in getPendingRequests:', error);
-      throw error;
+    const where: any = { empleadoId: In(ids) };
+    if (estado && estado !== 'todos') {
+        where.estado = estado;
     }
+
+    const solicitudes = await this.solicitudRepository.find({
+      where,
+      relations: ['empleado', 'tipoPermiso', 'adjuntos', 'decisiones', 'decisiones.usuario'],
+      order: { fechaSolicitud: 'DESC' }
+    });
+
+    return solicitudes.map(s => ({
+        ...s,
+        empleadoNombre: this.sanitizeString(`${s.empleado?.nombres} ${s.empleado?.apellidos}`),
+        tipoPermisoNombre: this.sanitizeString(s.tipoPermiso?.nombre),
+        diasSolicitados: this.calculateDays(s.fechaInicio, s.fechaFin)
+    }));
   }
 
   async approveRequest(solicitudId: number, comentario: string, usuarioId: number) {
-    const solicitud = await this.solicitudRepository.findOne({
-      where: { solicitudId },
-      relations: ['tipoPermiso'],
-    });
-
-    if (!solicitud) {
-      throw new NotFoundException('Solicitud no encontrada');
+    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId }, relations: ['tipoPermiso', 'empleado', 'empleado.usuario'] });
+    if (!solicitud || solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) {
+      throw new BadRequestException('Solicitud no válida o ya procesada');
     }
-
-    if (solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) {
-      throw new BadRequestException('La solicitud ya no está pendiente');
-    }
-
-    const diasSolicitados = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
 
     if (solicitud.tipoPermiso?.descuentaVacaciones) {
-      const saldo = await this.vacacionSaldoRepository.findOne({
-        where: { empleadoId: solicitud.empleadoId },
-      });
-
+      const saldo = await this.vacacionSaldoRepository.findOne({ where: { empleadoId: solicitud.empleadoId } });
       if (saldo) {
-        saldo.diasDisponibles = saldo.diasDisponibles - diasSolicitados;
-        saldo.diasUsados = saldo.diasUsados + diasSolicitados;
-        await this.vacacionSaldoRepository.save(saldo);
-
+        const dias = this.calculateDays(solicitud.fechaInicio, solicitud.fechaFin);
+        await this.vacacionSaldoRepository.update(saldo.saldoId, {
+          diasDisponibles: Number(saldo.diasDisponibles) - dias,
+          diasUsados: Number(saldo.diasUsados) + dias
+        });
         await this.vacacionMovimientoRepository.save({
-          empleadoId: solicitud.empleadoId,
-          solicitudId: solicitudId,
-          tipo: VacacionMovimiento.TIPO_CONSUMO,
-          dias: diasSolicitados,
-          fecha: new Date(),
-          comentario: `Uso por solicitud #${solicitudId}`,
+          empleadoId: solicitud.empleadoId, tipo: VacacionMovimiento.TIPO_CONSUMO,
+          dias, fecha: new Date(), comentario: `Uso por solicitud #${solicitudId}`,
         });
       }
     }
 
     solicitud.estado = SolicitudPermiso.ESTADO_APROBADO;
     await this.solicitudRepository.save(solicitud);
-
-    await this.decisionRepository.save({
-      solicitudId,
-      usuarioId,
-      decision: DecisionPermiso.DECISION_APROBADO,
-      comentario,
-      fechaHora: new Date(),
-    });
-
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'PERMISOS',
-      accion: 'APPROVE',
-      entidad: 'SOLICITUD_PERMISO',
-      entidadId: solicitudId,
-      detalle: `Solicitud aprobada: ${diasSolicitados} días`,
-    });
-
-    return { message: 'Solicitud aprobada correctamente' };
+    await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'aprobado', comentario, fechaHora: new Date() });
+    return { message: 'Solicitud aprobada' };
   }
 
   async rejectRequest(solicitudId: number, comentario: string, usuarioId: number) {
-    const solicitud = await this.solicitudRepository.findOne({
-      where: { solicitudId },
-    });
-
-    if (!solicitud) {
-      throw new NotFoundException('Solicitud no encontrada');
-    }
-
-    if (solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) {
-      throw new BadRequestException('La solicitud ya no está pendiente');
-    }
-
+    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId } });
+    if (!solicitud || solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) throw new BadRequestException('Solicitud no válida');
     solicitud.estado = SolicitudPermiso.ESTADO_RECHAZADO;
     await this.solicitudRepository.save(solicitud);
+    await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'rechazado', comentario, fechaHora: new Date() });
+    return { message: 'Solicitud rechazada' };
+  }
 
-    await this.decisionRepository.save({
-      solicitudId,
-      usuarioId,
-      decision: DecisionPermiso.DECISION_RECHAZADO,
-      comentario,
-      fechaHora: new Date(),
+  async getVacationMovements() {
+    const movs = await this.vacacionMovimientoRepository.find({
+      relations: ['empleado'],
+      order: { fecha: 'DESC' },
+      take: 500,
     });
+    return movs.map(m => ({
+      ...m,
+      empleadoNombre: this.sanitizeString(`${m.empleado?.nombres} ${m.empleado?.apellidos}`)
+    }));
+  }
 
-    await this.auditRepository.save({
-      usuarioId,
-      modulo: 'PERMISOS',
-      accion: 'REJECT',
-      entidad: 'SOLICITUD_PERMISO',
-      entidadId: solicitudId,
-      detalle: `Solicitud rechazada: ${comentario}`,
+  async adjustVacationBalance(dto: any, usuarioId: number) {
+    const saldo = await this.vacacionSaldoRepository.findOne({ where: { empleadoId: dto.empleadoId } });
+    if (!saldo) throw new NotFoundException('Saldo no encontrado');
+    const diasNum = Number(dto.dias);
+    const nuevosDisponibles = Number(saldo.diasDisponibles) + diasNum;
+    await this.vacacionSaldoRepository.update(saldo.saldoId, { diasDisponibles: nuevosDisponibles });
+    await this.vacacionMovimientoRepository.save({
+      empleadoId: dto.empleadoId, tipo: diasNum > 0 ? VacacionMovimiento.TIPO_ACUMULACION : VacacionMovimiento.TIPO_CONSUMO,
+      dias: Math.abs(diasNum), fecha: new Date(), comentario: `Ajuste manual RRHH: ${dto.motivo}`
     });
+    return { message: 'Saldo ajustado correctamente' };
+  }
 
-    return { message: 'Solicitud rechazada correctamente' };
+  async getAttachment(fileName: string, res: any) {
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
+    const filePath = path.join(uploadsDir, fileName);
+    if (!fs.existsSync(filePath)) throw new NotFoundException('Archivo no encontrado');
+    res.sendFile(filePath);
+  }
+
+  private sanitizeString(str: string | null | undefined): string {
+    if (!str) return '';
+    return str.replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
+              .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ')
+              .replace(/Rodr\?guez/g, 'Rodríguez').replace(/Garc\?a/g, 'García');
+  }
+
+  private calculateDays(start: any, end: any): number {
+    const diff = new Date(end).getTime() - new Date(start).getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
   }
 
   async getVacationBalance(empleadoId: number) {
-    let saldo = await this.vacacionSaldoRepository.findOne({
-      where: { empleadoId },
-    });
-
+    let saldo = await this.vacacionSaldoRepository.findOne({ where: { empleadoId } });
     if (!saldo) {
-      const empleadoResult = await this.dataSource.query(
-        'SELECT fecha_ingreso FROM EMPLEADO WHERE empleado_id = @0',
-        [empleadoId],
-      );
-
-      if (!empleadoResult || empleadoResult.length === 0) {
-        throw new NotFoundException('Empleado no encontrado');
-      }
-
-      const fechaIngreso = new Date(empleadoResult[0].fecha_ingreso);
-      const hoy = new Date();
-      const aniosTrabajados = Math.floor(
-        (hoy.getTime() - fechaIngreso.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
-      );
-
-      const diasVacaciones = 15 + Math.min(aniosTrabajados, 5);
-
-      saldo = this.vacacionSaldoRepository.create({
-        empleadoId,
-        diasDisponibles: diasVacaciones,
-        diasUsados: 0,
-        fechaCorte: new Date(hoy.getFullYear(), 11, 31),
-      });
-
-      await this.vacacionSaldoRepository.save(saldo);
-
-      await this.vacacionMovimientoRepository.save({
-        empleadoId,
-        tipo: VacacionMovimiento.TIPO_ACUMULACION,
-        dias: diasVacaciones,
-        fecha: new Date(),
-        comentario: `Acumulación inicial por ${aniosTrabajados} años de servicio`,
-      });
+      saldo = await this.vacacionSaldoRepository.save(this.vacacionSaldoRepository.create({ empleadoId, diasDisponibles: 15, diasUsados: 0, fechaCorte: new Date() }));
     }
+    return { empleadoId: saldo.empleadoId, diasDisponibles: saldo.diasDisponibles, diasUsados: saldo.diasUsados, diasTotales: Number(saldo.diasDisponibles) + Number(saldo.diasUsados) };
+  }
 
-    return {
-      empleadoId: saldo.empleadoId,
-      diasDisponibles: saldo.diasDisponibles,
-      diasUsados: saldo.diasUsados,
-      diasLibres: saldo.diasDisponibles,
-      diasTotales: saldo.diasDisponibles + saldo.diasUsados,
-      fechaCorte: saldo.fechaCorte,
-    };
+  async getAllBalances() {
+    const saldos = await this.vacacionSaldoRepository.find({ relations: ['empleado'], order: { empleado: { nombres: 'ASC' } } });
+    return saldos.map(s => ({ ...s, empleadoNombre: this.sanitizeString(`${s.empleado?.nombres} ${s.empleado?.apellidos}`), departamento: this.sanitizeString(s.empleado?.departamento) }));
+  }
+
+  async createRequest(createDto: any, empleadoId: number) {
+    const solicitud = this.solicitudRepository.create({ ...createDto, empleadoId, estado: SolicitudPermiso.ESTADO_PENDIENTE });
+    const saved = await this.solicitudRepository.save(solicitud);
+    const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+    return { solicitudId: savedSingle.solicitudId, estado: savedSingle.estado };
+  }
+
+  async getMyRequests(empleadoId: number) {
+    return await this.solicitudRepository.find({ where: { empleadoId }, relations: ['tipoPermiso', 'decisiones', 'adjuntos'], order: { fechaSolicitud: 'DESC' } });
   }
 }

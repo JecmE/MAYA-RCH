@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { KpiService, EmployeeClassification } from '../../../services/kpi.service';
+import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { KpiService, KpiDashboard } from '../../../services/kpi.service';
 
 @Component({
   selector: 'app-monthly-history',
@@ -9,45 +10,54 @@ import { KpiService, EmployeeClassification } from '../../../services/kpi.servic
   styleUrl: './monthly-history.css',
 })
 export class MonthlyHistory implements OnInit {
-  historyData: { label: string; value: string }[] = [];
+  historyData: KpiDashboard[] = [];
+  isBrowser: boolean;
 
-  constructor(private kpiService: KpiService) {}
-
-  ngOnInit(): void {
-    this.loadClassification();
+  constructor(
+    private kpiService: KpiService,
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
   }
 
-  private loadClassification(): void {
-    this.kpiService.getEmployeeClassifications().subscribe({
-      next: (classifications: EmployeeClassification[]) => {
-        if (classifications.length > 0) {
-          const emp = classifications[0];
-          this.historyData = [
-            { label: 'Empleado', value: emp.nombreCompleto || `ID: ${emp.empleadoId}` },
-            {
-              label: 'Cumplimiento',
-              value: emp.cumplimientoPct ? `${emp.cumplimientoPct}%` : '0%',
-            },
-            { label: 'Clasificación', value: emp.clasificacion || 'N/A' },
-          ];
-        } else {
-          this.setDefaultData();
-        }
+  ngOnInit(): void {
+    if (this.isBrowser) {
+      this.loadHistory();
+    }
+  }
+
+  loadHistory(): void {
+    this.kpiService.getEmployeeHistory(6).subscribe({
+      next: (data: KpiDashboard[]) => {
+        // Ordenar de más reciente a más antiguo para la tabla
+        this.historyData = [...data].sort((a, b) => {
+          if (a.anio !== b.anio) return b.anio! - a.anio!;
+          return b.mes! - a.mes!;
+        });
+        this.cdr.detectChanges();
       },
       error: () => {
-        this.setDefaultData();
+        this.historyData = [];
+        this.cdr.detectChanges();
       },
     });
   }
 
-  private setDefaultData(): void {
-    this.historyData = [
-      { label: 'Mes', value: 'Sin datos' },
-      { label: 'Días trabajados', value: '0' },
-      { label: 'Tardías', value: '0' },
-      { label: 'Faltas', value: '0' },
-      { label: 'Cumplimiento', value: '0%' },
-      { label: 'Clasificación', value: 'N/A' },
+  getMonthName(month: number): string {
+    const names = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     ];
+    return names[month - 1] || 'N/A';
+  }
+
+  getStatusClass(status: string): string {
+    const s = (status || '').toLowerCase();
+    if (s.includes('excelente')) return 'status-excellent';
+    if (s.includes('bueno')) return 'status-good';
+    if (s.includes('observacion')) return 'status-warning';
+    if (s.includes('riesgo')) return 'status-risk';
+    return '';
   }
 }

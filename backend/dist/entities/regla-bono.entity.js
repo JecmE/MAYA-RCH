@@ -24,25 +24,25 @@ __decorate([
     __metadata("design:type", String)
 ], ReglaBono.prototype, "nombre", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ default: 1 }),
-    __metadata("design:type", Boolean)
-], ReglaBono.prototype, "activo", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ name: 'min_dias_trabajados', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'min_dias_trabajados', type: 'int', nullable: true }),
     __metadata("design:type", Number)
 ], ReglaBono.prototype, "minDiasTrabajados", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'max_tardias', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'max_tardias', type: 'int', nullable: true }),
     __metadata("design:type", Number)
 ], ReglaBono.prototype, "maxTardias", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'max_faltas', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'max_faltas', type: 'int', nullable: true }),
     __metadata("design:type", Number)
 ], ReglaBono.prototype, "maxFaltas", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'min_horas', type: 'decimal', precision: 6, scale: 2, nullable: true }),
+    (0, typeorm_1.Column)({ name: 'min_horas', type: 'decimal', precision: 10, scale: 2, nullable: true }),
     __metadata("design:type", Number)
 ], ReglaBono.prototype, "minHoras", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ name: 'monto', type: 'decimal', precision: 10, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], ReglaBono.prototype, "monto", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'vigencia_inicio', type: 'date' }),
     __metadata("design:type", Date)
@@ -51,6 +51,10 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'vigencia_fin', type: 'date', nullable: true }),
     __metadata("design:type", Date)
 ], ReglaBono.prototype, "vigenciaFin", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 1 }),
+    __metadata("design:type", Boolean)
+], ReglaBono.prototype, "activo", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => bono_resultado_entity_1.BonoResultado, (br) => br.reglaBono),
     __metadata("design:type", Array)

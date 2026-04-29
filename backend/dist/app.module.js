@@ -20,6 +20,8 @@ const kpi_module_1 = require("./modules/kpi/kpi.module");
 const reports_module_1 = require("./modules/reports/reports.module");
 const admin_module_1 = require("./modules/admin/admin.module");
 const payroll_module_1 = require("./modules/payroll/payroll.module");
+const notices_module_1 = require("./modules/notices/notices.module");
+const mail_module_1 = require("./modules/mail/mail.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -59,6 +61,8 @@ exports.AppModule = AppModule = __decorate([
             reports_module_1.ReportsModule,
             admin_module_1.AdminModule,
             payroll_module_1.PayrollModule,
+            notices_module_1.NoticesModule,
+            mail_module_1.MailModule,
         ],
     })
 ], AppModule);

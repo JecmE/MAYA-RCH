@@ -2,7 +2,7 @@
   <div class="encabezado">
     <div>
       <h2>Bandeja de Pendientes</h2>
-      <p>Gestiona las solicitudes y tiempos de tu equipo.</p>
+      <p>Gestiona las solicitudes y tiempos de tu equipo de forma eficiente.</p>
     </div>
   </div>
 
@@ -14,9 +14,8 @@
         [class.active]="tab === 'permisos'"
         (click)="setTab('permisos')"
       >
-        <span>📄</span>
         <span>Permisos y Vacaciones</span>
-        <span class="badge">{{ permisosData.length }}</span>
+        <span class="badge" *ngIf="pendingPermisosCount > 0">{{ pendingPermisosCount }}</span>
       </button>
 
       <button
@@ -25,31 +24,22 @@
         [class.active]="tab === 'horas'"
         (click)="setTab('horas')"
       >
-        <span>⏰</span>
         <span>Horas de Proyecto</span>
-        <span class="badge">{{ horasData.length }}</span>
+        <span class="badge" *ngIf="pendingHorasCount > 0">{{ pendingHorasCount }}</span>
       </button>
     </div>
 
     <div class="contenido">
       <div class="filtros">
-        <select>
-          <option>Todos los empleados</option>
-          <option>Carlos Mérida</option>
-          <option>Lucía Torres</option>
-        </select>
-
-        <select>
-          <option>Todas las fechas</option>
-          <option>Esta semana</option>
-        </select>
-
-        <select [(ngModel)]="filtroEstado">
-          <option value="Todos">Todos</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Aprobado">Aprobado</option>
-          <option value="Rechazado">Rechazado</option>
-        </select>
+        <div class="filtro-item">
+          <label>Estado:</label>
+          <select [(ngModel)]="filtroEstado">
+            <option value="Todos">Todos</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Aprobado">Aprobado</option>
+            <option value="Rechazado">Rechazado</option>
+          </select>
+        </div>
       </div>
 
       <div class="tabla-wrapper">
@@ -83,14 +73,14 @@
               </td>
 
               <td *ngIf="tab === 'permisos'">
-                <span [ngClass]="getUrgenciaClass($any(row).urgencia)">
-                  <span *ngIf="$any(row).urgencia === 'Alta'">⚠️</span>
-                  {{ $any(row).urgencia }}
+                <span [ngClass]="getUrgenciaClass($any(row).urgency)">
+                  <span *ngIf="$any(row).urgency === 'Alta'">⚠️</span>
+                  {{ $any(row).urgency }}
                 </span>
               </td>
 
               <td *ngIf="tab === 'horas'" class="centrado fw-700">
-                {{ $any(row).horas }}
+                {{ $any(row).horas }} h
               </td>
 
               <td class="centrado">
@@ -106,7 +96,7 @@
 
             <tr *ngIf="datosFiltrados.length === 0">
               <td [attr.colspan]="tab === 'permisos' ? 6 : 6" class="sin-registros">
-                No hay registros para el filtro seleccionado.
+                No hay registros pendientes para mostrar.
               </td>
             </tr>
           </tbody>
@@ -115,11 +105,11 @@
     </div>
   </div>
 
-  <!-- Modal -->
+  <!-- Modal de Detalle -->
   <div class="modal-backdrop" *ngIf="modalOpen && selectedItem">
     <div class="modal">
       <div class="modal-header">
-        <h3>Detalle de Solicitud</h3>
+        <h3>Detalle de la Solicitud</h3>
         <button type="button" class="btn-close" (click)="closeModal()">✕</button>
       </div>
 
@@ -129,16 +119,24 @@
           <div class="value strong">{{ selectedItem.empleado }}</div>
 
           <ng-container *ngIf="tab === 'permisos'; else horasDetalle">
-            <div class="label">Tipo:</div>
+            <div class="label">Tipo de Permiso:</div>
             <div class="value">{{ $any(selectedItem).tipo }}</div>
 
-            <div class="label">Fechas:</div>
+            <div class="label">Periodo:</div>
             <div class="value">
               {{ selectedItem.fecha }} (Total: {{ $any(selectedItem).dias }} días)
             </div>
 
-            <div class="label">Adjunto:</div>
-            <div class="value link">Ver documento</div>
+            <div class="label">Motivo:</div>
+            <div class="value italic">{{ $any(selectedItem).motivo }}</div>
+
+            <div class="label">Documento:</div>
+            <div class="value">
+              <button *ngIf="$any(selectedItem).adjunto" (click)="downloadAttachment()" class="link-btn">
+                📎 Descargar adjunto
+              </button>
+              <span *ngIf="!$any(selectedItem).adjunto" class="text-muted">Sin adjunto</span>
+            </div>
           </ng-container>
 
           <ng-template #horasDetalle>
@@ -148,26 +146,41 @@
             <div class="label">Fecha:</div>
             <div class="value">{{ selectedItem.fecha }}</div>
 
-            <div class="label">Horas:</div>
+            <div class="label">Horas registradas:</div>
             <div class="value strong">{{ $any(selectedItem).horas }} h</div>
 
-            <div class="label">Actividad:</div>
-            <div class="value">Actualización de requerimientos...</div>
+            <div class="label">Descripción actividad:</div>
+            <div class="value italic">{{ $any(selectedItem).actividad }}</div>
           </ng-template>
         </div>
 
-        <div class="campo">
-          <label>Comentario (Obligatorio)</label>
-          <textarea rows="3" placeholder="Añadir comentario..."></textarea>
+        <div class="campo" *ngIf="selectedItem.estado === 'Pendiente'">
+          <label>Comentario de decisión <span class="required">*</span></label>
+          <textarea
+            [(ngModel)]="comentario"
+            rows="3"
+            placeholder="Explique el motivo de la aprobación o rechazo..."
+          ></textarea>
         </div>
 
-        <div class="acciones-modal">
-          <button type="button" class="btn-rechazar" (click)="closeModal()">
-            ✕ Rechazar
+        <div class="error-modal" *ngIf="errorMessage">
+          ⚠️ {{ errorMessage }}
+        </div>
+
+        <div class="acciones-modal" *ngIf="selectedItem.estado === 'Pendiente'">
+          <button type="button" class="btn-rechazar" (click)="handleRechazar()" [disabled]="isProcessing">
+            <span *ngIf="!isProcessing">✕ Rechazar</span>
+            <span *ngIf="isProcessing">Procesando...</span>
           </button>
-          <button type="button" class="btn-aprobar" (click)="closeModal()">
-            ✓ Aprobar
+          <button type="button" class="btn-aprobar" (click)="handleAprobar()" [disabled]="isProcessing">
+            <span *ngIf="!isProcessing">✓ Aprobar</span>
+            <span *ngIf="isProcessing">Procesando...</span>
           </button>
+        </div>
+
+        <div class="modal-footer-view" *ngIf="selectedItem.estado !== 'Pendiente'">
+          <p class="text-muted">Esta solicitud ya ha sido procesada.</p>
+          <button type="button" class="btn-detalle" (click)="closeModal()">Cerrar</button>
         </div>
       </div>
     </div>

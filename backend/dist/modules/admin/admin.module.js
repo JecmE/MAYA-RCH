@@ -24,12 +24,19 @@ const solicitud_permiso_entity_1 = require("../../entities/solicitud-permiso.ent
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const kpi_mensual_entity_1 = require("../../entities/kpi-mensual.entity");
 const vacacion_movimiento_entity_1 = require("../../entities/vacacion-movimiento.entity");
+const registro_tiempo_entity_1 = require("../../entities/registro-tiempo.entity");
+const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
+const rol_permiso_entity_1 = require("../../entities/rol-permiso.entity");
+const vacacion_saldo_entity_1 = require("../../entities/vacacion-saldo.entity");
+const kpi_module_1 = require("../kpi/kpi.module");
+const common_2 = require("@nestjs/common");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
 exports.AdminModule = AdminModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            (0, common_2.forwardRef)(() => kpi_module_1.KpiModule),
             typeorm_1.TypeOrmModule.forFeature([
                 turno_entity_1.Turno,
                 empleado_turno_entity_1.EmpleadoTurno,
@@ -44,6 +51,10 @@ exports.AdminModule = AdminModule = __decorate([
                 registro_asistencia_entity_1.RegistroAsistencia,
                 kpi_mensual_entity_1.KpiMensual,
                 vacacion_movimiento_entity_1.VacacionMovimiento,
+                registro_tiempo_entity_1.RegistroTiempo,
+                bono_resultado_entity_1.BonoResultado,
+                rol_permiso_entity_1.RolPermiso,
+                vacacion_saldo_entity_1.VacacionSaldo,
             ]),
         ],
         controllers: [admin_controller_1.AdminController],

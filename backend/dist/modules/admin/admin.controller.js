@@ -34,6 +34,12 @@ let AdminController = class AdminController {
     deactivateShift(id, req) {
         return this.adminService.deactivateShift(id, req.user.usuarioId);
     }
+    getAssignments() {
+        return this.adminService.getAssignments();
+    }
+    assignShift(assignDto, req) {
+        return this.adminService.assignShift(assignDto, req.user.usuarioId);
+    }
     getKpiParameters() {
         return this.adminService.getKpiParameters();
     }
@@ -46,11 +52,32 @@ let AdminController = class AdminController {
     createBonusRule(createDto, req) {
         return this.adminService.createBonusRule(createDto, req.user.usuarioId);
     }
+    runEvaluation(body, req) {
+        return this.adminService.runBonusEvaluation(body.mes, body.anio, req.user.usuarioId);
+    }
+    updateBonusRule(id, updateDto, req) {
+        return this.adminService.updateBonusRule(id, updateDto, req.user.usuarioId);
+    }
+    deleteBonusRule(id, req) {
+        return this.adminService.deleteBonusRule(id, req.user.usuarioId);
+    }
     getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo) {
         return this.adminService.getAuditLogs(fechaInicio, fechaFin, usuarioId, modulo);
     }
     getRoles() {
         return this.adminService.getRoles();
+    }
+    createRole(dto, req) {
+        return this.adminService.createRole(dto, req.user.usuarioId);
+    }
+    deleteRole(id, req) {
+        return this.adminService.deleteRole(id, req.user.usuarioId);
+    }
+    getRolePermissions(id) {
+        return this.adminService.getRolePermissions(id);
+    }
+    updateRolePermissions(id, perms, req) {
+        return this.adminService.updateRolePermissions(id, perms, req.user.usuarioId);
     }
     getAdminDashboard() {
         return this.adminService.getAdminDashboardStats();
@@ -60,6 +87,33 @@ let AdminController = class AdminController {
     }
     getSupervisorDashboard(req) {
         return this.adminService.getSupervisorDashboardStats(req.user.empleadoId);
+    }
+    getUsers() {
+        return this.adminService.getUsers();
+    }
+    createUser(dto, req) {
+        return this.adminService.createUser(dto, req.user.usuarioId);
+    }
+    updateUser(id, dto, req) {
+        return this.adminService.updateUser(id, dto, req.user.usuarioId);
+    }
+    toggleUserStatus(id, body, req) {
+        return this.adminService.updateUserStatus(id, body.status, req.user.usuarioId);
+    }
+    resetPassword(id, req) {
+        return this.adminService.resetPassword(id, req.user.usuarioId);
+    }
+    invalidateSession(id, req) {
+        return this.adminService.invalidateUserSession(id, req.user.usuarioId);
+    }
+    deleteUser(id, req) {
+        return this.adminService.deleteUser(id, req.user.usuarioId);
+    }
+    getSystemHealth() {
+        return this.adminService.getSystemHealth();
+    }
+    forceSync(req) {
+        return this.adminService.forceSync(req.user.usuarioId);
     }
 };
 exports.AdminController = AdminController;
@@ -99,6 +153,22 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "deactivateShift", null);
 __decorate([
+    (0, common_1.Get)('shifts/assignments'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getAssignments", null);
+__decorate([
+    (0, common_1.Post)('shifts/assignments'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "assignShift", null);
+__decorate([
     (0, common_1.Get)('kpi-parameters'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __metadata("design:type", Function),
@@ -131,6 +201,34 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "createBonusRule", null);
 __decorate([
+    (0, common_1.Post)('bonus/evaluate'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "runEvaluation", null);
+__decorate([
+    (0, common_1.Put)('bonus-rules/:id'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateBonusRule", null);
+__decorate([
+    (0, common_1.Delete)('bonus-rules/:id'),
+    (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteBonusRule", null);
+__decorate([
     (0, common_1.Get)('audit-logs'),
     (0, roles_decorator_1.Roles)('RRHH', 'Administrador'),
     __param(0, (0, common_1.Query)('fechaInicio')),
@@ -147,6 +245,41 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getRoles", null);
+__decorate([
+    (0, common_1.Post)('roles'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createRole", null);
+__decorate([
+    (0, common_1.Delete)('roles/:id'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteRole", null);
+__decorate([
+    (0, common_1.Get)('roles/:id/permissions'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getRolePermissions", null);
+__decorate([
+    (0, common_1.Put)('roles/:id/permissions'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Array, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateRolePermissions", null);
 __decorate([
     (0, common_1.Get)('dashboard/admin'),
     (0, roles_decorator_1.Roles)('Administrador'),
@@ -169,6 +302,84 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getSupervisorDashboard", null);
+__decorate([
+    (0, common_1.Get)('users'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getUsers", null);
+__decorate([
+    (0, common_1.Post)('users'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createUser", null);
+__decorate([
+    (0, common_1.Put)('users/:id'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "updateUser", null);
+__decorate([
+    (0, common_1.Put)('users/:id/status'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "toggleUserStatus", null);
+__decorate([
+    (0, common_1.Post)('users/:id/reset-password'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Post)('users/:id/invalidate-session'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "invalidateSession", null);
+__decorate([
+    (0, common_1.Delete)('users/:id'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteUser", null);
+__decorate([
+    (0, common_1.Get)('system-health'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "getSystemHealth", null);
+__decorate([
+    (0, common_1.Post)('system-health/sync'),
+    (0, roles_decorator_1.Roles)('Administrador'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "forceSync", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

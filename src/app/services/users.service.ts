@@ -17,6 +17,7 @@ export interface Empleado {
   puesto?: string;
   tarifaHora?: number;
   supervisorId?: number;
+  supervisorNombre?: string;
   nombreCompleto?: string;
   roles?: string[];
 }
@@ -70,6 +71,14 @@ export class UsersService {
     return this.http.get<Empleado>(`${this.apiUrl}/me`);
   }
 
+  updateMyProfile(data: Partial<CreateEmpleadoDto>): Observable<Empleado> {
+    return this.http.put<Empleado>(`${this.apiUrl}/me`, data);
+  }
+
+  changePassword(data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/me/password`, data);
+  }
+
   create(data: CreateEmpleadoDto): Observable<Empleado> {
     return this.http.post<Empleado>(this.apiUrl, data);
   }
@@ -80,6 +89,10 @@ export class UsersService {
 
   deactivate(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  deletePermanent(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}/permanent`);
   }
 
   createUsuario(empleadoId: number, data: CreateUsuarioDto): Observable<Usuario> {

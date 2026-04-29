@@ -6,6 +6,7 @@ export declare class Turno {
     horaSalida: string;
     toleranciaMinutos: number;
     horasEsperadasDia: number;
+    dias: string;
     activo: boolean;
     empleadoTurnos: EmpleadoTurno[];
 }

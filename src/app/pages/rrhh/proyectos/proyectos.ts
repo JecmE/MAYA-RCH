@@ -1,15 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ProjectsService, Proyecto } from '../../../services/projects.service';
-
-interface AsignacionProyecto {
-  id: number;
-  empleado: string;
-  fechaInicio: string;
-  fechaFin: string;
-}
+import { UsersService, Empleado } from '../../../services/users.service';
 
 interface ProyectoItem {
   id: number;
@@ -17,26 +11,10 @@ interface ProyectoItem {
   nombre: string;
   descripcion: string;
   responsable: string;
-  estado: 'Activo' | 'Pausado' | 'Cerrado';
-  empleados: number;
-  horasAsignadas: number;
-  asignaciones: AsignacionProyecto[];
-}
-
-interface ProyectoForm {
-  nombre: string;
-  codigo: string;
-  descripcion: string;
-  responsable: string;
-  estado: 'Activo' | 'Pausado' | 'Cerrado';
-  empleados: number | null;
-  horasAsignadas: number | null;
-}
-
-interface NuevaAsignacionForm {
-  empleado: string;
-  fechaInicio: string;
-  fechaFin: string;
+  estado: string;
+  totalEmpleados: number;
+  horasAcumuladas: number;
+  activo: boolean;
 }
 
 @Component({
@@ -47,335 +25,187 @@ interface NuevaAsignacionForm {
   styleUrl: './proyectos.css',
 })
 export class Proyectos implements OnInit {
-  filtroBusqueda = '';
-  filtroEstado = 'Todos los estados';
-
-  mostrarMensajeExito = false;
-  mensajeExito = '';
-
-  menuAbiertoId: number | null = null;
-
-  modalNuevoProyecto = false;
-  modalDetalleProyecto = false;
-  modalEliminarProyecto = false;
-
-  modoEdicion = false;
-  proyectoEditandoId: number | null = null;
-
-  proyectoSeleccionado: ProyectoItem | null = null;
-  proyectoAEliminar: ProyectoItem | null = null;
-
-  empleadosDisponibles: string[] = [
-    'Carlos Mérida',
-    'Lucía Torres',
-    'Ana Gómez',
-    'Mario Paz',
-    'José Luis',
-    'Daniela Cruz',
-    'Fernando Ruiz',
-    'Patricia Gómez',
-  ];
-
-  nuevoProyecto: ProyectoForm = this.getProyectoVacio();
-
-  nuevaAsignacion: NuevaAsignacionForm = this.getAsignacionVacia();
-  asignacionesTemporales: AsignacionProyecto[] = [];
-
   proyectos: ProyectoItem[] = [];
+  empleados: Empleado[] = [];
+  adminStaff: any[] = []; // Para el selector de responsables
+
+  filtroBusqueda: string = '';
+  filtroEstado: string = 'Todos';
+
+  modalNuevo: boolean = false;
+  modalDetalle: boolean = false;
+  modalAsignar: boolean = false;
+
+  modoEdicion: boolean = false;
+
+  proyectoForm: any = this.getProyectoVacio();
+  asignacionForm: any = { empleadoId: 0, fechaInicio: this.getTodayISO(), fechaFin: '' };
+
+  proyectoSeleccionado: any = null;
+  mostrarMensajeExito: boolean = false;
+  mensajeExito: string = '';
 
   constructor(
     private router: Router,
     private projectsService: ProjectsService,
+    private usersService: UsersService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.loadProyectos();
+    this.loadData();
   }
 
-  private loadProyectos(): void {
+  loadData(): void {
     this.projectsService.getAll().subscribe({
       next: (data: Proyecto[]) => {
-        this.proyectos = data.map((p) => this.mapProyectoToItem(p));
-      },
-      error: () => {
-        this.proyectos = [];
-      },
+        this.proyectos = data.map(p => ({
+          id: p.proyectoId!,
+          codigo: p.codigo,
+          nombre: p.nombre,
+          descripcion: p.descripcion || '-',
+          responsable: p.responsable || 'Sin asignar',
+          estado: p.activo ? 'Activo' : 'Cerrado',
+          totalEmpleados: (p as any).totalEmpleados || 0,
+          horasAcumuladas: (p as any).horasAcumuladas || 0,
+          activo: p.activo
+        }));
+        this.cdr.detectChanges();
+      }
+    });
+
+    this.usersService.getAll('true').subscribe({
+      next: (data: Empleado[]) => {
+        this.empleados = data;
+        this.cdr.detectChanges();
+      }
+    });
+
+    this.projectsService.getAdminStaff().subscribe({
+      next: (data) => {
+        this.adminStaff = data;
+        this.cdr.detectChanges();
+      }
     });
   }
 
-  private mapProyectoToItem(p: Proyecto): ProyectoItem {
-    return {
-      id: p.proyectoId ?? 0,
+  get proyectosFiltrados(): ProyectoItem[] {
+    return this.proyectos.filter(p => {
+      const matchBusqueda = !this.filtroBusqueda ||
+                            p.nombre.toLowerCase().includes(this.filtroBusqueda.toLowerCase()) ||
+                            p.codigo.toLowerCase().includes(this.filtroBusqueda.toLowerCase());
+      const matchEstado = this.filtroEstado === 'Todos' || p.estado === this.filtroEstado;
+      return matchBusqueda && matchEstado;
+    });
+  }
+
+  abrirNuevo(): void {
+    this.modoEdicion = false;
+    this.proyectoForm = this.getProyectoVacio();
+    this.modalNuevo = true;
+  }
+
+  editarProyecto(p: ProyectoItem): void {
+    this.modoEdicion = true;
+    this.proyectoForm = {
+      proyectoId: p.id,
       codigo: p.codigo,
       nombre: p.nombre,
-      descripcion: p.descripcion || '',
-      responsable: '',
-      estado: p.activo ? 'Activo' : 'Cerrado',
-      empleados: 0,
-      horasAsignadas: 0,
-      asignaciones: [],
+      descripcion: p.descripcion,
+      responsable: p.responsable,
+      activo: p.activo
     };
+    this.modalNuevo = true;
+  }
+
+  guardarProyecto(): void {
+    const action = this.modoEdicion
+      ? this.projectsService.update(this.proyectoForm.proyectoId, this.proyectoForm)
+      : this.projectsService.create(this.proyectoForm);
+
+    action.subscribe({
+      next: () => {
+        this.notificar('Proyecto guardado correctamente.');
+        this.modalNuevo = false;
+        this.loadData();
+      },
+      error: (err) => alert(err.error?.message || 'Error al guardar')
+    });
+  }
+
+  verDetalle(p: ProyectoItem): void {
+    this.projectsService.getById(p.id).subscribe({
+      next: (data: any) => {
+        this.proyectoSeleccionado = data;
+        this.modalDetalle = true;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  abrirAsignar(p: ProyectoItem): void {
+    this.proyectoSeleccionado = p;
+    this.asignacionForm = {
+      proyectoId: p.id,
+      empleadoId: 0,
+      fechaInicio: this.getTodayISO(),
+      fechaFin: ''
+    };
+    this.modalAsignar = true;
+  }
+
+  guardarAsignacion(): void {
+    if (!this.asignacionForm.empleadoId || !this.asignacionForm.fechaInicio) {
+      alert('Seleccione empleado y fecha de inicio.');
+      return;
+    }
+
+    this.projectsService.assignEmployee(this.asignacionForm).subscribe({
+      next: () => {
+        this.notificar('Empleado asignado al proyecto.');
+        this.modalAsignar = false;
+        this.loadData();
+      },
+      error: (err) => alert(err.error?.message || 'Error al asignar')
+    });
+  }
+
+  desvincular(empProyId: number): void {
+    if (!confirm('¿Seguro que desea desvincular a este empleado del proyecto?')) return;
+    this.projectsService.unassignEmployee(empProyId).subscribe({
+      next: () => {
+        this.notificar('Empleado desvinculado.');
+        this.modalDetalle = false;
+        this.loadData();
+      }
+    });
+  }
+
+  desactivarProyecto(p: ProyectoItem): void {
+    if (!confirm(`¿Seguro que desea cerrar el proyecto ${p.nombre}?`)) return;
+    this.projectsService.delete(p.id).subscribe({
+      next: () => {
+        this.notificar('Proyecto cerrado.');
+        this.loadData();
+      }
+    });
+  }
+
+  private notificar(msg: string): void {
+    this.mensajeExito = msg;
+    this.mostrarMensajeExito = true;
+    setTimeout(() => this.mostrarMensajeExito = false, 3000);
+  }
+
+  private getProyectoVacio() {
+    return { codigo: '', nombre: '', descripcion: '', responsable: '', activo: true };
+  }
+
+  private getTodayISO(): string {
+    return new Date().toISOString().split('T')[0];
   }
 
   goBack(): void {
     this.router.navigate(['/']);
-  }
-
-  get totalProyectos(): number {
-    return this.proyectos.length;
-  }
-
-  get totalActivos(): number {
-    return this.proyectos.filter((p) => p.estado === 'Activo').length;
-  }
-
-  get totalPausados(): number {
-    return this.proyectos.filter((p) => p.estado === 'Pausado').length;
-  }
-
-  get totalHorasAsignadas(): number {
-    return this.proyectos.reduce((sum, proyecto) => sum + proyecto.horasAsignadas, 0);
-  }
-
-  get proyectosFiltrados(): ProyectoItem[] {
-    const texto = this.filtroBusqueda.trim().toLowerCase();
-
-    return this.proyectos.filter((proyecto) => {
-      const coincideBusqueda =
-        !texto ||
-        proyecto.nombre.toLowerCase().includes(texto) ||
-        proyecto.codigo.toLowerCase().includes(texto) ||
-        proyecto.responsable.toLowerCase().includes(texto);
-
-      const coincideEstado =
-        this.filtroEstado === 'Todos los estados' || proyecto.estado === this.filtroEstado;
-
-      return coincideBusqueda && coincideEstado;
-    });
-  }
-
-  limpiarFiltros(): void {
-    this.filtroBusqueda = '';
-    this.filtroEstado = 'Todos los estados';
-  }
-
-  getEstadoClass(estado: string): string {
-    switch (estado) {
-      case 'Activo':
-        return 'status-badge--green';
-      case 'Pausado':
-        return 'status-badge--amber';
-      case 'Cerrado':
-        return 'status-badge--gray';
-      default:
-        return '';
-    }
-  }
-
-  toggleMenu(id: number, event: Event): void {
-    event.stopPropagation();
-    this.menuAbiertoId = this.menuAbiertoId === id ? null : id;
-  }
-
-  detenerPropagacion(event: Event): void {
-    event.stopPropagation();
-  }
-
-  @HostListener('document:click')
-  cerrarMenuExterno(): void {
-    this.menuAbiertoId = null;
-  }
-
-  abrirModalNuevoProyecto(): void {
-    this.modoEdicion = false;
-    this.proyectoEditandoId = null;
-    this.nuevoProyecto = this.getProyectoVacio();
-    this.nuevaAsignacion = this.getAsignacionVacia();
-    this.asignacionesTemporales = [];
-    this.modalNuevoProyecto = true;
-    this.menuAbiertoId = null;
-  }
-
-  cerrarModalNuevoProyecto(): void {
-    this.modalNuevoProyecto = false;
-  }
-
-  cancelarProyecto(): void {
-    this.modalNuevoProyecto = false;
-    this.modoEdicion = false;
-    this.proyectoEditandoId = null;
-    this.nuevoProyecto = this.getProyectoVacio();
-    this.nuevaAsignacion = this.getAsignacionVacia();
-    this.asignacionesTemporales = [];
-  }
-
-  agregarAsignacionTemporal(): void {
-    if (!this.nuevaAsignacion.empleado) {
-      this.mostrarExito('Selecciona un empleado para asignarlo.');
-      return;
-    }
-
-    const yaExiste = this.asignacionesTemporales.some(
-      (item) => item.empleado === this.nuevaAsignacion.empleado,
-    );
-
-    if (yaExiste) {
-      this.mostrarExito('Ese empleado ya fue agregado a la lista temporal.');
-      return;
-    }
-
-    this.asignacionesTemporales.push({
-      id: Date.now(),
-      empleado: this.nuevaAsignacion.empleado,
-      fechaInicio: this.nuevaAsignacion.fechaInicio,
-      fechaFin: this.nuevaAsignacion.fechaFin,
-    });
-
-    this.nuevoProyecto.empleados = this.asignacionesTemporales.length;
-    this.nuevaAsignacion = this.getAsignacionVacia();
-  }
-
-  eliminarAsignacionTemporal(id: number): void {
-    this.asignacionesTemporales = this.asignacionesTemporales.filter((item) => item.id !== id);
-    this.nuevoProyecto.empleados = this.asignacionesTemporales.length;
-  }
-
-  guardarProyecto(): void {
-    if (
-      !this.nuevoProyecto.nombre.trim() ||
-      !this.nuevoProyecto.codigo.trim() ||
-      !this.nuevoProyecto.responsable.trim()
-    ) {
-      this.mostrarExito('Completa nombre, código y responsable.');
-      return;
-    }
-
-    const proyectoPayload: ProyectoItem = {
-      id: this.proyectoEditandoId ?? Date.now(),
-      codigo: this.nuevoProyecto.codigo.trim(),
-      nombre: this.nuevoProyecto.nombre.trim(),
-      descripcion: this.nuevoProyecto.descripcion.trim(),
-      responsable: this.nuevoProyecto.responsable.trim(),
-      estado: this.nuevoProyecto.estado,
-      empleados: Number(this.nuevoProyecto.empleados ?? this.asignacionesTemporales.length ?? 0),
-      horasAsignadas: Number(this.nuevoProyecto.horasAsignadas ?? 0),
-      asignaciones: [...this.asignacionesTemporales],
-    };
-
-    if (this.modoEdicion && this.proyectoEditandoId !== null) {
-      const index = this.proyectos.findIndex((p) => p.id === this.proyectoEditandoId);
-      if (index >= 0) {
-        this.proyectos[index] = proyectoPayload;
-      }
-      this.mostrarExito('Proyecto actualizado correctamente.');
-    } else {
-      this.proyectos.unshift(proyectoPayload);
-      this.mostrarExito('Proyecto creado correctamente.');
-    }
-
-    this.cancelarProyecto();
-  }
-
-  verProyecto(row: ProyectoItem): void {
-    this.proyectoSeleccionado = {
-      ...row,
-      asignaciones: [...row.asignaciones],
-    };
-    this.modalDetalleProyecto = true;
-    this.menuAbiertoId = null;
-  }
-
-  cerrarDetalleProyecto(): void {
-    this.modalDetalleProyecto = false;
-    this.proyectoSeleccionado = null;
-  }
-
-  editarProyecto(row: ProyectoItem): void {
-    this.modoEdicion = true;
-    this.proyectoEditandoId = row.id;
-
-    this.nuevoProyecto = {
-      nombre: row.nombre,
-      codigo: row.codigo,
-      descripcion: row.descripcion,
-      responsable: row.responsable,
-      estado: row.estado,
-      empleados: row.empleados,
-      horasAsignadas: row.horasAsignadas,
-    };
-
-    this.asignacionesTemporales = row.asignaciones.map((item) => ({ ...item }));
-    this.nuevaAsignacion = this.getAsignacionVacia();
-
-    this.modalNuevoProyecto = true;
-    this.modalDetalleProyecto = false;
-    this.menuAbiertoId = null;
-  }
-
-  asignarProyecto(row: ProyectoItem): void {
-    this.editarProyecto(row);
-    this.mostrarExito(`Puedes agregar empleados al proyecto ${row.nombre}.`);
-  }
-
-  abrirEliminarProyecto(row: ProyectoItem): void {
-    this.proyectoAEliminar = row;
-    this.modalEliminarProyecto = true;
-    this.menuAbiertoId = null;
-  }
-
-  cerrarEliminarProyecto(): void {
-    this.modalEliminarProyecto = false;
-    this.proyectoAEliminar = null;
-  }
-
-  confirmarEliminarProyecto(): void {
-    if (!this.proyectoAEliminar) return;
-
-    this.proyectos = this.proyectos.filter((p) => p.id !== this.proyectoAEliminar?.id);
-    this.mostrarExito('Proyecto eliminado correctamente.');
-    this.cerrarEliminarProyecto();
-  }
-
-  exportarProyecto(): void {
-    if (!this.proyectoSeleccionado) return;
-    this.mostrarExito(
-      `El proyecto ${this.proyectoSeleccionado.nombre} fue exportado correctamente.`,
-    );
-  }
-
-  regenerarProyecto(): void {
-    if (!this.proyectoSeleccionado) return;
-    this.mostrarExito(
-      `El resumen del proyecto ${this.proyectoSeleccionado.nombre} fue regenerado.`,
-    );
-  }
-
-  private getProyectoVacio(): ProyectoForm {
-    return {
-      nombre: '',
-      codigo: '',
-      descripcion: '',
-      responsable: '',
-      estado: 'Activo',
-      empleados: 0,
-      horasAsignadas: 0,
-    };
-  }
-
-  private getAsignacionVacia(): NuevaAsignacionForm {
-    return {
-      empleado: '',
-      fechaInicio: '',
-      fechaFin: '',
-    };
-  }
-
-  private mostrarExito(mensaje: string): void {
-    this.mensajeExito = mensaje;
-    this.mostrarMensajeExito = true;
-
-    setTimeout(() => {
-      this.mostrarMensajeExito = false;
-    }, 2500);
   }
 }

@@ -10,6 +10,7 @@ export interface Turno {
   horaSalida: string;
   toleranciaMinutos: number;
   horasEsperadasDia: number;
+  dias?: string;
   activo: boolean;
 }
 
@@ -25,6 +26,7 @@ export interface ReglaBono {
   maxTardias?: number;
   maxFaltas?: number;
   minHoras?: number;
+  monto?: number;
   vigenciaInicio: string;
   vigenciaFin?: string;
 }
@@ -44,6 +46,17 @@ export interface Rol {
   rolId: number;
   nombre: string;
   descripcion?: string;
+}
+
+export interface PermisoItem {
+  rolPermisoId?: number;
+  modulo: string;
+  ver: boolean;
+  crear: boolean;
+  editar: boolean;
+  aprobar: boolean;
+  exportar: boolean;
+  administrar: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -69,6 +82,23 @@ export class AdminService {
     return this.http.delete<void>(`${this.apiUrl}/shifts/${id}`);
   }
 
+  // Asignación de Turnos
+  getAssignments(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/shifts/assignments`);
+  }
+
+  assignShift(data: any): Observable<any[]> {
+    return this.http.post<any[]>(`${this.apiUrl}/shifts/assignments`, data);
+  }
+
+  runBonusEvaluation(mes: number, anio: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/bonus/evaluate`, { mes, anio });
+  }
+
+  seedJoseCuevas(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/seed-jose-cuevas`, {});
+  }
+
   // Parámetros KPI
   getKpiParameters(): Observable<ParametroKpi> {
     return this.http.get<ParametroKpi>(`${this.apiUrl}/kpi-parameters`);
@@ -85,6 +115,14 @@ export class AdminService {
 
   createBonusRule(data: Partial<ReglaBono>): Observable<ReglaBono[]> {
     return this.http.post<ReglaBono[]>(`${this.apiUrl}/bonus-rules`, data);
+  }
+
+  updateBonusRule(id: number, data: Partial<ReglaBono>): Observable<ReglaBono[]> {
+    return this.http.put<ReglaBono[]>(`${this.apiUrl}/bonus-rules/${id}`, data);
+  }
+
+  deleteBonusRule(id: number): Observable<ReglaBono[]> {
+    return this.http.delete<ReglaBono[]>(`${this.apiUrl}/bonus-rules/${id}`);
   }
 
   // Audit Logs
@@ -107,6 +145,23 @@ export class AdminService {
     return this.http.get<Rol[]>(`${this.apiUrl}/roles`);
   }
 
+  createRole(data: any): Observable<Rol> {
+    return this.http.post<Rol>(`${this.apiUrl}/roles`, data);
+  }
+
+  deleteRole(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/roles/${id}`);
+  }
+
+  // Permisos por Rol
+  getRolePermissions(id: number): Observable<PermisoItem[]> {
+    return this.http.get<PermisoItem[]>(`${this.apiUrl}/roles/${id}/permissions`);
+  }
+
+  updateRolePermissions(id: number, perms: PermisoItem[]): Observable<PermisoItem[]> {
+    return this.http.put<PermisoItem[]>(`${this.apiUrl}/roles/${id}/permissions`, perms);
+  }
+
   // Dashboard Stats
   getAdminDashboardStats(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/dashboard/admin`);
@@ -118,5 +173,42 @@ export class AdminService {
 
   getSupervisorDashboardStats(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/dashboard/supervisor`);
+  }
+
+  // Gestión de Usuarios
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/users`);
+  }
+
+  createUser(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/users`, data);
+  }
+
+  updateUser(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/users/${id}`, data);
+  }
+
+  resetPassword(id: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/users/${id}/reset-password`, {});
+  }
+
+  deleteUser(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/users/${id}`);
+  }
+
+  toggleUserStatus(id: number, status: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/users/${id}/status`, { status });
+  }
+
+  invalidateSession(id: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/users/${id}/invalidate-session`, {});
+  }
+
+  getSystemHealth(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/system-health`);
+  }
+
+  forceSystemSync(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/system-health/sync`, {});
   }
 }

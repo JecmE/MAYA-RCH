@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AdminService, AuditLog } from '../../../services/admin.service';
+import { ReportsService } from '../../../services/reports.service';
 
 interface AuditoriaItem {
   id: number;
@@ -24,95 +24,132 @@ interface AuditoriaItem {
 export class AuditoriaFuncional implements OnInit {
   filtroBusqueda = '';
   filtroModulo = 'Todos los módulos';
-  filtroFecha = '';
+  filtroFechaDesde = this.getTodayISO();
+  filtroFechaHasta = this.getTodayISO();
 
   registros: AuditoriaItem[] = [];
+  isLoading = false;
+
+  // Paginación
+  paginaActual = 1;
+  itemsPorPagina = 10;
+
+  stats = {
+    hoy: 0,
+    aprobaciones: 0,
+    ediciones: 0,
+    sistema: 0
+  };
+
+  modulos = ['Todos los módulos', 'ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLEADO', 'PAYROLL', 'AUTH'];
+
+  private actionMap: { [key: string]: string } = {
+    'LOGIN': 'Inicio de Sesión',
+    'CREATE': 'Creación',
+    'UPDATE': 'Actualización',
+    'DELETE': 'Eliminación',
+    'DEACTIVATE': 'Desactivación',
+    'ACTIVATE': 'Activación',
+    'APPROVE': 'Aprobación',
+    'REJECT': 'Rechazo',
+    'CREATE_BONUS_RULE': 'Creación Regla Bono',
+    'UPDATE_BONUS_RULE': 'Actualización Regla Bono',
+    'RUN_EVALUATION': 'Evaluación de Bonos',
+    'SUBMIT': 'Envío',
+    'ASSIGN': 'Asignación',
+    'CHANGE_PASSWORD': 'Cambio de Contraseña',
+    'LOGOUT': 'Cierre de Sesión'
+  };
 
   constructor(
     private router: Router,
-    private adminService: AdminService,
+    private reportsService: ReportsService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadAuditLogs();
   }
 
-  private loadAuditLogs(): void {
-    this.adminService.getAuditLogs().subscribe({
-      next: (data: AuditLog[]) => {
-        this.registros = data.map((log) => this.mapAuditLogToItem(log));
+  loadAuditLogs(): void {
+    this.isLoading = true;
+    this.paginaActual = 1;
+    this.reportsService.getFunctionalAudit(this.filtroFechaDesde, this.filtroFechaHasta, this.filtroModulo, this.filtroBusqueda).subscribe({
+      next: (data) => {
+        this.registros = data.map(log => ({
+          id: log.audit_id,
+          fecha: this.formatDateTime(log.fecha_hora),
+          usuario: log.usuario || 'Sistema',
+          modulo: log.modulo,
+          accion: this.translateAction(log.accion),
+          entidad: log.entidadId ? `${log.entidad} #${log.entidadId}` : log.entidad,
+          detalle: log.detalle
+        }));
+        this.calculateStats(data);
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
-        this.registros = [];
-      },
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
     });
   }
 
-  private mapAuditLogToItem(log: AuditLog): AuditoriaItem {
-    return {
-      id: log.auditId,
-      fecha: this.formatDateTime(log.fechaHora),
-      usuario: log.usuario,
-      modulo: log.modulo,
-      accion: log.accion,
-      entidad: log.entidadId ? `${log.entidad} #${log.entidadId}` : log.entidad,
-      detalle: log.detalle,
-    };
+  private translateAction(action: string): string {
+    if (!action) return '-';
+    const upperAction = action.toUpperCase();
+    return this.actionMap[upperAction] || action;
+  }
+
+  private calculateStats(data: any[]): void {
+    const today = new Date().toISOString().split('T')[0];
+    this.stats.hoy = data.filter(d => d.fecha_hora.startsWith(today)).length;
+    this.stats.aprobaciones = data.filter(d => d.accion.includes('APPROVE') || d.accion.includes('APROBAR')).length;
+    this.stats.ediciones = data.filter(d => d.accion.includes('UPDATE') || d.accion.includes('EDITAR')).length;
+    this.stats.sistema = data.filter(d => !d.usuario).length;
   }
 
   private formatDateTime(dateStr: string): string {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${month}/${day}/${year} ${hours}:${minutes}`;
+    return date.toLocaleString('es-GT', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   }
 
-  goBack(): void {
-    this.router.navigate(['/']);
+  private getTodayISO(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  get registrosPaginados(): AuditoriaItem[] {
+    const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
+    const fin = inicio + this.itemsPorPagina;
+    return this.registros.slice(inicio, fin);
+  }
+
+  get totalPaginas(): number {
+    return Math.ceil(this.registros.length / this.itemsPorPagina) || 1;
+  }
+
+  cambiarPagina(delta: number): void {
+    const nuevaPagina = this.paginaActual + delta;
+    if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
+      this.paginaActual = nuevaPagina;
+      this.cdr.detectChanges();
+    }
   }
 
   limpiarFiltros(): void {
     this.filtroBusqueda = '';
     this.filtroModulo = 'Todos los módulos';
-    this.filtroFecha = '';
+    this.filtroFechaDesde = this.getTodayISO();
+    this.filtroFechaHasta = this.getTodayISO();
+    this.loadAuditLogs();
   }
 
-  get registrosFiltrados(): AuditoriaItem[] {
-    const texto = this.filtroBusqueda.trim().toLowerCase();
-
-    return this.registros.filter((item) => {
-      const coincideBusqueda =
-        !texto ||
-        item.usuario.toLowerCase().includes(texto) ||
-        item.modulo.toLowerCase().includes(texto) ||
-        item.entidad.toLowerCase().includes(texto) ||
-        item.detalle.toLowerCase().includes(texto) ||
-        item.accion.toLowerCase().includes(texto);
-
-      const coincideModulo =
-        this.filtroModulo === 'Todos los módulos' || item.modulo === this.filtroModulo;
-
-      const coincideFecha =
-        !this.filtroFecha || this.normalizarFechaRegistro(item.fecha) === this.filtroFecha;
-
-      return coincideBusqueda && coincideModulo && coincideFecha;
-    });
-  }
-
-  private normalizarFechaRegistro(fechaTexto: string): string {
-    const soloFecha = fechaTexto.split(' ')[0].trim();
-    const partes = soloFecha.split('/');
-
-    if (partes.length !== 3) {
-      return '';
-    }
-
-    const [mes, dia, anio] = partes;
-
-    return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  goBack(): void {
+    this.router.navigate(['/']);
   }
 }

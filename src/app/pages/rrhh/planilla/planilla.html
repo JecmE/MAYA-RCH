@@ -18,38 +18,39 @@
       </button>
 
       <div class="page-header__content">
-        <h2 class="page-title">Planilla</h2>
+        <h2 class="page-title">Gestión de Planilla</h2>
         <p class="page-subtitle">
-          Genera, revisa y exporta la planilla del período seleccionado.
+          Calcula, revisa y genera las boletas de pago para todo el personal.
         </p>
       </div>
     </div>
 
     <div class="generator-card">
-      <h3 class="section-title section-title--dark">Parámetros de generación</h3>
+      <h3 class="section-title section-title--dark">Cálculo de Nómina</h3>
 
       <div class="generator-grid">
         <div class="form-group">
-          <label class="form-label">Período</label>
+          <label class="form-label">Seleccionar Período</label>
           <select
-            [(ngModel)]="periodo"
+            [(ngModel)]="periodoId"
+            (change)="generarPlanilla()"
             class="form-control"
           >
-            <option value="03-2026">Marzo 2026</option>
-            <option value="02-2026">Febrero 2026</option>
-            <option value="01-2026">Enero 2026</option>
+            <option [ngValue]="null" disabled>Elija un período...</option>
+            @for (p of periodosDisponibles; track p.periodoId) {
+              <option [ngValue]="p.periodoId">{{ p.nombre }} ({{ p.estado }})</option>
+            }
           </select>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Tipo de planilla</label>
+          <label class="form-label">Tipo de Nómina</label>
           <select
             [(ngModel)]="tipoPlanilla"
             class="form-control"
+            disabled
           >
-            <option value="mensual">Mensual</option>
-            <option value="quincenal">Quincenal</option>
-            <option value="semanal">Semanal</option>
+            <option value="mensual">Mensual Estándar</option>
           </select>
         </div>
 
@@ -58,8 +59,9 @@
             type="button"
             (click)="generarPlanilla()"
             class="primary-button"
+            [disabled]="!periodoId || isCalculating"
           >
-            Generar planilla
+            {{ isCalculating ? 'Procesando...' : 'Ejecutar Cálculo' }}
           </button>
         </div>
       </div>
@@ -67,22 +69,22 @@
 
     <div class="stats-grid">
       <div class="stat-card">
-        <p class="stat-card__label">Colaboradores</p>
+        <p class="stat-card__label">Total Colaboradores</p>
         <p class="stat-card__value stat-card__value--default">{{ totalColaboradores }}</p>
       </div>
 
       <div class="stat-card">
-        <p class="stat-card__label">Devengado total</p>
+        <p class="stat-card__label">Bruto Acumulado</p>
         <p class="stat-card__value stat-card__value--blue">{{ totalDevengado }}</p>
       </div>
 
       <div class="stat-card">
-        <p class="stat-card__label">Deducciones</p>
+        <p class="stat-card__label">Total Deducciones</p>
         <p class="stat-card__value stat-card__value--amber">{{ totalDeducciones }}</p>
       </div>
 
       <div class="stat-card">
-        <p class="stat-card__label">Neto a pagar</p>
+        <p class="stat-card__label">Neto a Pagar</p>
         <p class="stat-card__value stat-card__value--green">{{ totalNeto }}</p>
       </div>
     </div>
@@ -92,22 +94,13 @@
         <div class="search-box">
           <input
             type="text"
-            placeholder="Buscar colaborador..."
+            placeholder="Buscar por nombre..."
             class="form-control"
             [(ngModel)]="filtroBusqueda"
           />
         </div>
 
         <div class="filters-group">
-          <select
-            class="form-control form-control--auto"
-            [(ngModel)]="filtroEstado"
-          >
-            <option value="Todos los estados">Todos los estados</option>
-            <option value="Calculado">Calculado</option>
-            <option value="Pendiente">Pendiente</option>
-          </select>
-
           <button
             type="button"
             class="clear-filters-button"
@@ -121,7 +114,7 @@
             class="export-button export-button--excel"
             (click)="exportarExcel()"
           >
-            Exportar Excel
+            Excel
           </button>
 
           <button
@@ -129,7 +122,7 @@
             class="export-button export-button--pdf"
             (click)="exportarPdf()"
           >
-            Exportar PDF
+            PDF
           </button>
         </div>
       </div>
@@ -138,12 +131,11 @@
         <table class="payroll-table">
           <thead>
             <tr class="payroll-table__head-row">
-              <th class="table-head table-head--first">Empleado</th>
-              <th class="table-head">Puesto</th>
-              <th class="table-head">Salario base</th>
-              <th class="table-head">Bonificación</th>
+              <th class="table-head table-head--first">Colaborador</th>
+              <th class="table-head">Sueldo Bruto</th>
+              <th class="table-head">Bonificaciones</th>
               <th class="table-head">Deducciones</th>
-              <th class="table-head">Neto</th>
+              <th class="table-head">Sueldo Neto</th>
               <th class="table-head table-head--center">Estado</th>
               <th class="table-head table-head--last table-head--center">Acciones</th>
             </tr>
@@ -154,7 +146,6 @@
               @for (row of planillaFiltrada; track row.id) {
                 <tr class="payroll-table__row">
                   <td class="table-cell table-cell--first table-cell--strong">{{ row.empleado }}</td>
-                  <td class="table-cell table-cell--muted">{{ row.puesto }}</td>
                   <td class="table-cell">{{ row.salarioBase }}</td>
                   <td class="table-cell table-cell--green">{{ row.bonificacion }}</td>
                   <td class="table-cell table-cell--amber">{{ row.deducciones }}</td>
@@ -171,7 +162,7 @@
                         class="table-button table-button--neutral"
                         (click)="verBoleta(row)"
                       >
-                        Ver boleta
+                        Detalle
                       </button>
 
                       <button
@@ -187,8 +178,12 @@
               }
             } @else {
               <tr>
-                <td colspan="8" class="empty-state-cell">
-                  No se encontraron registros con los filtros seleccionados.
+                <td colspan="7" class="empty-state-cell">
+                  @if (isCalculating) {
+                    Calculando planilla, por favor espere...
+                  } @else {
+                    Seleccione un período y presione "Ejecutar Cálculo" para ver resultados.
+                  }
                 </td>
               </tr>
             }
@@ -198,22 +193,15 @@
 
       <div class="payroll-card__footer">
         <span>Mostrando {{ planillaFiltrada.length }} de {{ totalColaboradores }} registros</span>
-        <div class="pagination-actions">
-          <button type="button" class="pagination-button pagination-button--disabled">
-            Anterior
-          </button>
-          <button type="button" class="pagination-button">
-            Siguiente
-          </button>
-        </div>
       </div>
     </div>
 
+    <!-- Modal Boleta Detalle -->
     @if (modalBoleta && empleadoSeleccionado) {
-      <div class="modal-backdrop">
-        <div class="payroll-modal">
+      <div class="modal-backdrop" (click)="cerrarModalBoleta()">
+        <div class="payroll-modal" (click)="$event.stopPropagation()">
           <div class="payroll-modal__header">
-            <h3>Boleta de pago</h3>
+            <h3>Detalle de Nómina Individual</h3>
             <button
               type="button"
               class="payroll-modal__close"
@@ -227,48 +215,39 @@
             <div class="detail-grid">
               <div class="detail-item">
                 <span class="detail-label">Empleado</span>
-                <span class="detail-value">{{ empleadoSeleccionado.empleado }}</span>
+                <span class="detail-value font-bold">{{ empleadoSeleccionado.empleado }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Puesto</span>
-                <span class="detail-value">{{ empleadoSeleccionado.puesto }}</span>
+                <span class="detail-label">Periodo</span>
+                <span class="detail-value">{{ obtenerNombrePeriodo() }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Salario base</span>
+                <span class="detail-label">Monto Bruto</span>
                 <span class="detail-value">{{ empleadoSeleccionado.salarioBase }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Bonificación</span>
-                <span class="detail-value">{{ empleadoSeleccionado.bonificacion }}</span>
+                <span class="detail-label">Total Bonos</span>
+                <span class="detail-value text-green-600">{{ empleadoSeleccionado.bonificacion }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Deducciones</span>
-                <span class="detail-value">{{ empleadoSeleccionado.deducciones }}</span>
+                <span class="detail-label">Retenciones / Descuentos</span>
+                <span class="detail-value text-amber-600">{{ empleadoSeleccionado.deducciones }}</span>
               </div>
 
               <div class="detail-item">
-                <span class="detail-label">Neto a pagar</span>
-                <span class="detail-value">{{ empleadoSeleccionado.neto }}</span>
-              </div>
-
-              <div class="detail-item">
-                <span class="detail-label">Estado</span>
-                <span class="detail-value">
-                  <span class="status-badge" [class]="getEstadoClass(empleadoSeleccionado.estado)">
-                    {{ empleadoSeleccionado.estado }}
-                  </span>
-                </span>
-              </div>
-
-              <div class="detail-item">
-                <span class="detail-label">Período</span>
-                <span class="detail-value">{{ obtenerNombrePeriodo() }}</span>
+                <span class="detail-label">Neto a Percibir</span>
+                <span class="detail-value font-bold text-lg text-blue-800">{{ empleadoSeleccionado.neto }}</span>
               </div>
             </div>
+          </div>
+
+          <div class="payroll-modal__footer" style="padding: 1rem; border-top: 1px solid #eee; display: flex; gap: 10px;">
+             <button class="table-button table-button--neutral" style="flex: 1">Imprimir Boleta</button>
+             <button class="table-button table-button--blue" style="flex: 1" (click)="cerrarModalBoleta()">Cerrar</button>
           </div>
         </div>
       </div>

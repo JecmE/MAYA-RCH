@@ -69,4 +69,19 @@ export class AttendanceController {
   async getTeamAttendance(@Req() req: any, @Query('fecha') fecha?: string) {
     return this.attendanceService.getTeamAttendance(req.user.empleadoId, fecha);
   }
+
+  @Get('all')
+  @Roles('RRHH', 'Administrador')
+  async getAllAttendance(
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string
+  ) {
+    return this.attendanceService.getAllAttendance(fechaInicio, fechaFin);
+  }
+
+  @Get('adjustments/history')
+  @Roles('RRHH', 'Administrador')
+  async getAdjustmentHistory() {
+    return this.attendanceService.getAdjustmentHistory();
+  }
 }

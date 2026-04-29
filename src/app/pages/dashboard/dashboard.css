@@ -367,8 +367,12 @@
   margin: 0;
   font-size: 2rem;
   font-weight: 600;
-  color: #10b981;
 }
+
+.text-green { color: #10b981; }
+.text-blue { color: #3b82f6; }
+.text-amber { color: #f59e0b; }
+.text-red { color: #ef4444; }
 
 /* Supervisor summary */
 .team-summary-card {
@@ -833,3 +837,69 @@
     padding-right: 2px;
   }
 }
+
+
+/* Notices Styles */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clear-all-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-all-btn:hover {
+  background: #fee2e2;
+}
+
+.notice-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  position: relative;
+  transition: 0.2s;
+}
+
+.notice-content {
+  flex: 1;
+}
+
+.delete-notice-btn {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: 0.2s;
+  align-self: flex-start;
+}
+
+.notice-item:hover .delete-notice-btn {
+  opacity: 1;
+}
+
+.delete-notice-btn:hover {
+  color: #ef4444;
+}
+
+.quick-links-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 8px 0;
+}
+

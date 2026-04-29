@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import { SolicitudPermiso } from '../../entities/solicitud-permiso.entity';
 import { RegistroTiempo } from '../../entities/registro-tiempo.entity';
 import { Proyecto } from '../../entities/proyecto.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 export declare class KpiService {
     private kpiRepository;
     private asistenciaRepository;
@@ -13,8 +14,10 @@ export declare class KpiService {
     private solicitudPermisoRepository;
     private registroTiempoRepository;
     private proyectoRepository;
+    private parametroRepository;
     private dataSource;
-    constructor(kpiRepository: Repository<KpiMensual>, asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroTiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, dataSource: DataSource);
+    constructor(kpiRepository: Repository<KpiMensual>, asistenciaRepository: Repository<RegistroAsistencia>, empleadoRepository: Repository<Empleado>, solicitudPermisoRepository: Repository<SolicitudPermiso>, registroTiempoRepository: Repository<RegistroTiempo>, proyectoRepository: Repository<Proyecto>, parametroRepository: Repository<ParametroSistema>, dataSource: DataSource);
+    private sanitizeString;
     getEmployeeDashboard(empleadoId: number, mes?: number, anio?: number): Promise<{
         mes: number;
         anio: number;
@@ -26,7 +29,11 @@ export declare class KpiService {
         horasTrabajadas: number;
         cumplimientoPct: number;
         clasificacion: string;
+        observacion: string;
     }>;
+    private getKpiThresholds;
+    private calculateKpi;
+    globalRecalculateCurrentMonth(): Promise<void>;
     getSupervisorDashboard(supervisorEmpleadoId: number, mes?: number, anio?: number): Promise<{
         mes: number;
         anio: number;
@@ -35,20 +42,14 @@ export declare class KpiService {
             totalDiasTrabajados: number;
             totalTardias: number;
             promedioCumplimiento: number;
-            comparacionMesAnterior?: undefined;
         };
-        empleados: any[];
-    } | {
-        mes: number;
-        anio: number;
-        cantidadEmpleados: any;
-        resumen: {
-            totalDiasTrabajados: number;
-            totalTardias: number;
-            promedioCumplimiento: number;
-            comparacionMesAnterior: number;
-        };
-        empleados: any;
+        empleados: {
+            empleadoId: number;
+            nombreCompleto: string;
+            diasEsperados: number;
+            cumplimientoPct: number;
+            clasificacion: string;
+        }[];
     }>;
     getHrDashboard(mes?: number, anio?: number): Promise<{
         mes: number;
@@ -60,19 +61,15 @@ export declare class KpiService {
         clasificaciones: {
             Excelente: number;
             Bueno: number;
-            'En observacion': number;
-            'En riesgo': number;
+            Regular: number;
+            'En Riesgo': number;
         };
     }>;
     getEmployeeClassification(empleadoId: number, mes?: number, anio?: number): Promise<{
         empleadoId: number;
-        nombreCompleto: string;
         clasificacion: string;
         cumplimientoPct: number;
-        tardias: number;
-        faltas: number;
     }[]>;
-    private calculateKpi;
     refreshEmployeeKpi(empleadoId: number, mes?: number, anio?: number): Promise<KpiMensual>;
     getEmployeeProfile(empleadoId: number): Promise<{
         empleado: {
@@ -81,28 +78,12 @@ export declare class KpiService {
             departamento: string;
             email: string;
         };
-        historialAsistencia: {
-            fecha: Date;
-            entrada: Date;
-            salida: Date;
-            estado: string;
-        }[];
-        horasPorProyecto: {
-            nombre: string;
-            horas: number;
-        }[];
-        solicitudesRecientes: {
-            tipo: string;
-            fechaInicio: Date;
-            fechaFin: Date;
-            estado: string;
-        }[];
         kpiActual: {
             cumplimientoPct: number;
             clasificacion: string;
             tardias: number;
             faltas: number;
         };
-        comparacionMesAnterior: number;
     }>;
+    saveObservation(empleadoId: number, mes: number, anio: number, observacion: string): Promise<KpiMensual>;
 }

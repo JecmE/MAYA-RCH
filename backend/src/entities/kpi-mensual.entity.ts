@@ -51,6 +51,9 @@ export class KpiMensual {
   @CreateDateColumn({ name: 'fecha_calculo' })
   fechaCalculo: Date;
 
+  @Column({ name: 'observacion', length: 500, nullable: true })
+  observacion: string;
+
   @ManyToOne(() => Empleado, (emp) => emp.kpis)
   @JoinColumn({ name: 'empleado_id' })
   empleado: Empleado;

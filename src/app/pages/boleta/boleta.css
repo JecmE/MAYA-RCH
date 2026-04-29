@@ -50,6 +50,21 @@
   color: #1e293b;
 }
 
+.page-subtitle {
+  margin: 0.4rem 0 0 0;
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.alert-card {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  color: #92400e;
+  font-weight: 500;
+}
+
 .toolbar-card {
   background: #ffffff;
   border: 1px solid #f1f5f9;

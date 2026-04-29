@@ -31,3 +31,4 @@ export * from './acumulacion.entity';
 export * from './solicitud-validaciones.entity';
 export * from './calendario-laboral.entity';
 export * from './saldo-cortes.entity';
+export * from './aviso.entity';

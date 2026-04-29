@@ -7,6 +7,7 @@ export declare class Proyecto {
     codigo: string;
     nombre: string;
     descripcion: string;
+    responsable: string;
     activo: boolean;
     departamento: Departamento;
     empleadoProyectos: EmpleadoProyecto[];

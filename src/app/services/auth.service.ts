@@ -1,23 +1,28 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { isPlatformBrowser } from '@angular/common';
 
 export interface LoginRequest {
   username: string;
   password: string;
 }
 
+export interface UserData {
+  usuarioId: number;
+  username: string;
+  roles: string[];
+  rolId?: number;
+  empleadoId: number;
+  nombreCompleto?: string;
+  email?: string;
+  requirePasswordChange?: boolean;
+}
+
 export interface LoginResponse {
   token: string;
-  user: {
-    usuarioId: number;
-    username: string;
-    roles: string[];
-    empleadoId: number;
-    nombreCompleto?: string;
-    email?: string;
-  };
+  user: UserData;
 }
 
 export interface RegisterRequest {
@@ -43,8 +48,14 @@ export interface ResetPasswordRequest {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private apiUrl = environment.apiUrl + '/auth';
+  private isBrowser: boolean;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, credentials);
@@ -56,35 +67,54 @@ export class AuthService {
     return this.http.post<any>(`${this.apiUrl}/register`, request);
   }
 
-  logout(): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/logout`, {});
+  logout(): void {
+    if (this.isBrowser) {
+        localStorage.clear();
+    }
+    this.http.post<void>(`${this.apiUrl}/logout`, {}).subscribe();
   }
 
   forgotPassword(request: ForgotPasswordRequest): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/forgot-password`, request);
   }
 
+  verifyRecoveryCode(email: string, code: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/verify-recovery-code`, { email, code });
+  }
+
   resetPassword(request: ResetPasswordRequest): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/reset-password`, request);
   }
 
-  getCurrentUser(): Observable<LoginResponse['user']> {
-    return this.http.get<LoginResponse['user']>(`${this.apiUrl}/me`);
+  getCurrentUser(): Observable<UserData> {
+    return this.http.get<UserData>(`${this.apiUrl}/me`);
+  }
+
+  getUserLocal(): UserData | null {
+    if (!this.isBrowser) return null;
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson) : null;
   }
 
   setToken(token: string): void {
-    localStorage.setItem('access_token', token);
+    if (this.isBrowser) {
+      localStorage.setItem('access_token', token);
+    }
   }
 
   getToken(): string | null {
+    if (!this.isBrowser) return null;
     return localStorage.getItem('access_token');
   }
 
   clearToken(): void {
-    localStorage.removeItem('access_token');
+    if (this.isBrowser) {
+      localStorage.removeItem('access_token');
+    }
   }
 
   isAuthenticated(): boolean {
+    if (!this.isBrowser) return false;
     return !!this.getToken();
   }
 }

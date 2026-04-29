@@ -33,4 +33,5 @@ export class ConceptoPlanilla {
   static MODO_FIJO = 'fijo';
   static MODO_PORCENTAJE = 'porcentaje';
   static MODO_HORAS = 'horas';
+  static MODO_VARIABLE = 'variable';
 }

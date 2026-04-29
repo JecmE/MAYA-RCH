@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   Component,
   OnInit,
@@ -6,6 +6,8 @@ import {
   ChangeDetectorRef,
   ElementRef,
   ViewChild,
+  Inject,
+  PLATFORM_ID,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, NavigationEnd } from '@angular/router';
@@ -46,6 +48,7 @@ interface SolicitudItem {
 export class SolicitudPermiso implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  isBrowser: boolean;
 
   modalOpen = false;
   successModalOpen = false;
@@ -74,18 +77,22 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
     private router: Router,
     private leavesService: LeavesService,
     private cdr: ChangeDetectorRef,
-  ) {}
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   ngOnInit(): void {
-    this.loadAllData();
-    this.routerSubscription = this.router.events
-      .pipe(filter((e) => e instanceof NavigationEnd))
-      .subscribe((event) => {
-        const url = (event as NavigationEnd).urlAfterRedirects;
-        if (url === '/solicitudes') {
-          this.loadAllData();
-        }
-      });
+    if (this.isBrowser) {
+      this.loadAllData();
+      this.routerSubscription = this.router.events
+        .pipe(filter((e) => e instanceof NavigationEnd))
+        .subscribe((event) => {
+          if ((event as NavigationEnd).urlAfterRedirects === '/solicitudes') {
+            this.loadAllData();
+          }
+        });
+    }
   }
 
   ngOnDestroy(): void {
@@ -140,11 +147,10 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
     const decision = s.decisiones && s.decisiones.length > 0 ? s.decisiones[0] : undefined;
     return {
       id: s.solicitudId || 0,
-      date: s.fechaSolicitud ? new Date(s.fechaSolicitud).toLocaleDateString('en-US') : '',
+      date: s.fechaSolicitud ? new Date(s.fechaSolicitud).toLocaleDateString('es-GT') : '',
       type: typeof s.tipoPermiso === 'string' ? s.tipoPermiso : s.tipoPermiso?.nombre || 'Permiso',
-      period: `${this.formatDate(s.fechaInicio)} - ${this.formatDate(s.fechaFin)}`,
-      status:
-        s.estado === 'aprobado' ? 'Aprobada' : s.estado === 'rechazado' ? 'Rechazada' : 'Pendiente',
+      period: `${this.formatDateSimple(s.fechaInicio)} - ${this.formatDateSimple(s.fechaFin)}`,
+      status: this.capitalize(s.estado),
       comments: s.motivo || '',
       fechaInicio: s.fechaInicio || '',
       fechaFin: s.fechaFin || '',
@@ -160,10 +166,17 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
     };
   }
 
-  private formatDate(date: string): string {
+  private capitalize(str: string): string {
+    if (!str) return 'Pendiente';
+    const s = str.toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  private formatDateSimple(date: string): string {
     if (!date) return '';
     const d = new Date(date);
-    return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear().toString().slice(-2)}`;
+    const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() + userTimezoneOffset).toLocaleDateString('es-GT');
   }
 
   goBack(): void {
@@ -190,18 +203,6 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
       this.fileInput.nativeElement.value = '';
     }
     this.cdr.detectChanges();
-  }
-
-  openAttachModal(): void {
-    this.modalOpen = true;
-  }
-
-  closeAttachModal(): void {
-    this.modalOpen = false;
-  }
-
-  openSuccessModal(): void {
-    this.successModalOpen = true;
   }
 
   closeSuccessModal(): void {
@@ -237,27 +238,6 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
     return diffDays > 0 ? diffDays : 0;
   }
 
-  private validateDays(): { valid: boolean; message: string } {
-    const tipo = this.selectedTipo;
-    if (!tipo) return { valid: true, message: '' };
-
-    if (!tipo.descuentaVacaciones) {
-      return { valid: true, message: '' };
-    }
-
-    const daysRequested = this.calculateDaysRequested();
-    const daysAvailable = this.vacationBalance.diasDisponibles;
-
-    if (daysRequested > daysAvailable) {
-      return {
-        valid: false,
-        message: `La solicitud pide ${daysRequested} días pero solo tienes ${daysAvailable} días disponibles. Por favor corrige las fechas.`,
-      };
-    }
-
-    return { valid: true, message: '' };
-  }
-
   private fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -271,66 +251,40 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
   }
 
   guardarSolicitud(): void {
-    console.log('=== guardarSolicitud called ===');
-    console.log('tipoPermiso:', this.tipoPermiso);
-    console.log('fechaInicio:', this.fechaInicio);
-    console.log('fechaFin:', this.fechaFin);
-    console.log('vacationBalance:', this.vacationBalance);
-
     if (!this.tipoPermiso || !this.fechaInicio || !this.fechaFin) {
       this.warningMessage =
         'Por favor completa todos los campos obligatorios: tipo, fecha inicio y fecha fin';
       this.warningModalOpen = true;
-      this.cdr.detectChanges();
       return;
     }
 
     const tipo = this.tiposPermiso.find((t) => t.nombre === this.tipoPermiso);
-    console.log('tipo found:', tipo);
 
     if (!tipo) {
       this.warningMessage = 'Tipo de permiso no válido';
       this.warningModalOpen = true;
-      this.cdr.detectChanges();
       return;
     }
 
     if (tipo.requiereDocumento && !this.selectedFile) {
-      this.warningMessage = `El tipo "${tipo.nombre}" requiere adjuntar un documento. Por favor adjunta el archivo correspondiente.`;
+      this.warningMessage = `El tipo "${tipo.nombre}" requiere adjuntar un documento.`;
       this.warningModalOpen = true;
-      this.cdr.detectChanges();
       return;
     }
 
     const daysRequested = this.calculateDaysRequested();
-    console.log('daysRequested:', daysRequested);
 
     if (daysRequested <= 0) {
       this.warningMessage = 'El rango de fechas no es válido';
       this.warningModalOpen = true;
-      this.cdr.detectChanges();
       return;
     }
 
     if (tipo.descuentaVacaciones) {
       const daysAvailable = this.vacationBalance?.diasDisponibles ?? 0;
-      console.log(
-        'daysAvailable:',
-        daysAvailable,
-        'tipo.descuentaVacaciones:',
-        tipo.descuentaVacaciones,
-      );
-
-      if (daysAvailable <= 0) {
-        this.warningMessage = 'No tienes días de vacaciones disponibles';
+      if (daysAvailable <= 0 || daysRequested > daysAvailable) {
+        this.warningMessage = `No tienes suficientes días de vacaciones (${daysAvailable} disponibles).`;
         this.warningModalOpen = true;
-        this.cdr.detectChanges();
-        return;
-      }
-      if (daysRequested > daysAvailable) {
-        this.warningMessage = `La solicitud pide ${daysRequested} días pero solo tienes ${daysAvailable} días disponibles. Por favor selecciona un rango de fechas menor.`;
-        this.warningModalOpen = true;
-        this.cdr.detectChanges();
         return;
       }
     }
@@ -338,11 +292,8 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
     if (!this.motivo || this.motivo.trim().length < 10) {
       this.warningMessage = 'Por favor ingresa un motivo con al menos 10 caracteres';
       this.warningModalOpen = true;
-      this.cdr.detectChanges();
       return;
     }
-
-    console.log('=== VALIDATION PASSED, SENDING REQUEST ===');
 
     const requestData: any = {
       tipoPermisoId: tipo.tipoPermisoId,
@@ -352,11 +303,10 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
     };
 
     if (this.selectedFile) {
-      const fileType = this.selectedFile.type || 'application/octet-stream';
       this.fileToBase64(this.selectedFile).then((base64) => {
         requestData.archivo = base64;
         requestData.nombreArchivo = this.selectedFileName;
-        requestData.tipoMime = fileType;
+        requestData.tipoMime = this.selectedFile?.type || 'application/octet-stream';
         this.sendRequest(requestData);
       });
     } else {
@@ -367,15 +317,12 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
   private sendRequest(requestData: any): void {
     this.leavesService.createRequest(requestData).subscribe({
       next: () => {
-        this.openSuccessModal();
+        this.successModalOpen = true;
         this.limpiarFormulario();
-        this.loadSolicitudes();
-        this.loadVacationBalance();
-        this.cdr.detectChanges();
+        this.loadAllData();
       },
       error: (err) => {
-        const message = err.error?.message || err.message || 'Error al crear la solicitud';
-        this.backendErrorMessage = message;
+        this.backendErrorMessage = err.error?.message || 'Error al crear la solicitud';
         this.backendErrorModalOpen = true;
         this.cdr.detectChanges();
       },
@@ -388,15 +335,11 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const fileName = rutaUrl.split('_').slice(2).join('_').replace(/^\//, '');
-        a.download = fileName || 'archivo';
+        a.download = 'adjunto_permiso';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-      },
-      error: (err) => {
-        console.error('Error descargando archivo:', err);
       },
     });
   }
@@ -418,25 +361,11 @@ export class SolicitudPermiso implements OnInit, OnDestroy {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'Aprobada':
-        return 'status-approved';
-      case 'Pendiente':
-        return 'status-pending';
-      case 'Rechazada':
-        return 'status-rejected';
-      default:
-        return 'status-default';
+      case 'Aprobado': return 'status-approved';
+      case 'Pendiente': return 'status-pending';
+      case 'Rechazado': return 'status-rejected';
+      default: return 'status-default';
     }
-  }
-
-  getValidationMessage(): string {
-    if (!this.tipoPermiso) return '';
-    const tipo = this.tiposPermiso.find((t) => t.nombre === this.tipoPermiso);
-    if (!tipo) return '';
-    const messages: string[] = [];
-    if (tipo.requiereDocumento) messages.push('Este tipo requiere documento');
-    if (tipo.descuentaVacaciones) messages.push('Esta solicitud descuenta vacaciones');
-    return messages.join(' - ');
   }
 
   get selectedTipo(): TipoPermiso | undefined {

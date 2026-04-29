@@ -55,7 +55,8 @@ VALUES
 ('EMP-007', 'Fernando', 'Ruiz', 'fernando.ruiz@mayacr.com', '55512351', '2023-05-20', 'Operaciones', 'Coordinador', 80.00, NULL, 1),
 ('EMP-008', 'Patricia', 'Hernández', 'patricia.hernandez@mayacr.com', '55512352', '2022-08-10', 'Finanzas', 'Contadora', 78.00, NULL, 1),
 ('EMP-009', 'María', 'Pérez', 'maria.perez@mayacr.com', '55512353', '2019-03-01', 'RRHH', 'Jefe RRHH', 95.00, NULL, 1),
-('EMP-010', 'Edgar', 'García', 'edgar.garcia@mayacr.com', '55512354', '2023-09-15', 'Tecnología', 'Developer', 60.00, NULL, 1);
+('EMP-010', 'Edgar', 'García', 'edgar.garcia@mayacr.com', '55512354', '2023-09-15', 'Tecnología', 'Developer', 60.00, NULL, 1),
+('EMP-011', 'María', 'García', 'maria.garcia@mayacr.com', '55512355', '2024-01-10', 'Tecnología', 'Analista de Sistemas', 65.00, NULL, 1);
 
 -- Actualizar supervisores (supervisor_id)
 UPDATE EMPLEADO SET supervisor_id = 9 WHERE codigo_empleado = 'EMP-006'; -- Daniela reporta a María

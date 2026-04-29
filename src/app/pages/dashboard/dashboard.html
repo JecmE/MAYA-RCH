@@ -19,161 +19,161 @@
 
     <div class="dashboard-grid">
       <div class="dashboard-left">
-        @if (role !== 'admin') {
-          <div class="summary-grid" [class.summary-grid-two]="role !== 'rrhh'">
-            @if (role !== 'rrhh') {
-              <div class="card section-card">
-                <div class="card-header">
-                  <h3 class="card-title">Marcaje de hoy</h3>
+        <!-- SECCIÓN DE MARCAJE Y RESUMEN (Ahora visible para todos, incluido Admin) -->
+        <div class="summary-grid summary-grid-two">
+          <div class="card section-card">
+            <div class="card-header">
+              <h3 class="card-title">Marcaje de hoy</h3>
+            </div>
+
+            <div class="card-body">
+              <div class="info-list">
+                <div class="info-row">
+                  <span class="info-label">Turno:</span>
+                  <span class="info-badge">{{ turnoNombre || 'Sin turno' }}</span>
                 </div>
 
-                <div class="card-body">
-                  <div class="info-list">
-                    <div class="info-row">
-                      <span class="info-label">Turno:</span>
-                      <span class="info-badge">{{ turnoNombre || 'Sin turno' }}</span>
-                    </div>
+                <div class="info-row">
+                  <span class="info-label">Tolerancia:</span>
+                  <span class="info-value">{{ toleranciaMinutos }} minutos</span>
+                </div>
 
-                    <div class="info-row">
-                      <span class="info-label">Tolerancia:</span>
-                      <span class="info-value">{{ toleranciaMinutos }} minutos</span>
-                    </div>
-
-                    @if (horaEntradaTurno && horaSalidaTurno) {
-                      <div class="info-row">
-                        <span class="info-label">Horario:</span>
-                        <span class="info-value"
-                          >{{ formatShiftTime(horaEntradaTurno) }} -
-                          {{ formatShiftTime(horaSalidaTurno) }}</span
-                        >
-                      </div>
-                    }
-
-                    <div class="info-row">
-                      <span class="info-label">Estado del día:</span>
-                      <span
-                        class="info-status"
-                        [class.status-complete]="marcaEstado === 'Completa'"
-                        [class.status-entry]="marcaEstado === 'Entrada'"
-                        [class.status-pending]="marcaEstado === 'Pendiente'"
-                      >
-                        {{ marcaEstado }}
-                      </span>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="info-row">
-                      <span class="info-label">Entrada registrada:</span>
-                      <span class="info-value">
-                        {{ horaEntradaReal }}
-                      </span>
-                    </div>
-
-                    <div class="info-row">
-                      <span class="info-label">Salida registrada:</span>
-                      <span class="info-value">
-                        {{ horaSalidaReal }}
-                      </span>
-                    </div>
+                @if (horaEntradaTurno && horaSalidaTurno) {
+                  <div class="info-row">
+                    <span class="info-label">Horario:</span>
+                    <span class="info-value">
+                      {{ formatShiftTime(horaEntradaTurno) }} -
+                      {{ formatShiftTime(horaSalidaTurno) }}
+                      @if (isNocturnalShift()) {
+                        <small class="text-slate-400 font-bold">(Mañana)</small>
+                      }
+                    </span>
                   </div>
+                }
 
-                  <div class="action-area">
-                    <div class="action-grid">
-                      <button
-                        [disabled]="!canCheckIn"
-                        (click)="marcarEntrada()"
-                        class="primary-button"
-                        [title]="checkInDisabledReason"
-                      >
-                        Marcar entrada
-                      </button>
+                <div class="info-row">
+                  <span class="info-label">Estado del día:</span>
+                  <span
+                    class="info-status"
+                    [class.status-complete]="marcaEstado === 'Completa'"
+                    [class.status-entry]="marcaEstado === 'Entrada'"
+                    [class.status-pending]="marcaEstado === 'Pendiente'"
+                  >
+                    {{ marcaEstado }}
+                  </span>
+                </div>
 
-                      <button
-                        [disabled]="!canCheckOut"
-                        (click)="marcarSalida()"
-                        class="primary-button"
-                        [title]="checkOutDisabledReason"
-                      >
-                        Marcar salida
-                      </button>
-                    </div>
+                <div class="divider"></div>
 
-                    @if (checkInDisabledReason && !canCheckIn) {
-                      <div class="info-box">
-                        <span>ℹ️</span>
-                        <span>{{ checkInDisabledReason }}</span>
-                      </div>
-                    }
+                <div class="info-row">
+                  <span class="info-label">Entrada registrada:</span>
+                  <span class="info-value">
+                    {{ horaEntradaReal }}
+                  </span>
+                </div>
 
-                    @if (checkOutDisabledReason && !canCheckOut) {
-                      <div class="info-box">
-                        <span>ℹ️</span>
-                        <span>{{ checkOutDisabledReason }}</span>
-                      </div>
-                    }
-
-                    @if (marcaError) {
-                      <div class="error-box">
-                        <span>⚠️</span>
-                        <span>{{ marcaError }}</span>
-                      </div>
-                    }
-
-                    @if (marcaSuccess || marcaEstado !== 'Pendiente') {
-                      <div class="success-box">
-                        <span>✅</span>
-                        <span>
-                          {{
-                            marcaSuccess ||
-                              (marcaEstado === 'Entrada'
-                                ? 'Entrada registrada exitosamente a las ' + horaEntradaReal
-                                : 'Tu jornada de hoy ha sido completada')
-                          }}
-                        </span>
-                      </div>
-                    }
-                  </div>
+                <div class="info-row">
+                  <span class="info-label">Salida registrada:</span>
+                  <span class="info-value">
+                    {{ horaSalidaReal }}
+                  </span>
                 </div>
               </div>
-            }
 
-            <div class="card section-card">
-              <div class="card-header">
-                <h3 class="card-title">Mi Resumen</h3>
-              </div>
+              <div class="action-area">
+                <div class="action-grid">
+                  <button
+                    [disabled]="!canCheckIn"
+                    (click)="marcarEntrada()"
+                    class="primary-button"
+                    [title]="checkInDisabledReason"
+                  >
+                    Marcar entrada
+                  </button>
 
-              <div class="card-body">
-                <div class="kpi-grid" [class.kpi-grid-rrhh]="role === 'rrhh'">
-                  <div class="kpi-box">
-                    <p class="kpi-label">Llegadas tardes</p>
-                    <p class="kpi-value">{{ tardiasMes }}</p>
-                  </div>
-
-                  <div class="kpi-box">
-                    <p class="kpi-label">Horas trabajadas</p>
-                    <p class="kpi-value">{{ horasTrabajadas }}<span>h</span></p>
-                  </div>
-
-                  <div class="kpi-box">
-                    <p class="kpi-label">Permisos pendientes</p>
-                    <p class="kpi-value">{{ permisosPendientes }}</p>
-                  </div>
-
-                  <div class="kpi-box">
-                    <p class="kpi-label">Rendimiento</p>
-                    <p class="kpi-value">{{ cumplimiento }}<span>%</span></p>
-                  </div>
+                  <button
+                    [disabled]="!canCheckOut"
+                    (click)="marcarSalida()"
+                    class="primary-button"
+                    [title]="checkOutDisabledReason"
+                  >
+                    Marcar salida
+                  </button>
                 </div>
 
-                <div class="classification-box">
-                  <p class="classification-label">Clasificación general</p>
-                  <p class="classification-value">{{ clasificacion }}</p>
-                </div>
+                @if (marcaEstado === 'Pendiente' && checkInDisabledReason && !canCheckIn) {
+                  <div class="info-box">
+                    <span>ℹ️</span>
+                    <span>{{ checkInDisabledReason }}</span>
+                  </div>
+                }
+
+                @if (marcaEstado === 'Entrada' && checkOutDisabledReason && !canCheckOut) {
+                  <div class="info-box">
+                    <span>ℹ️</span>
+                    <span>{{ checkOutDisabledReason }}</span>
+                  </div>
+                }
+
+                @if (marcaError) {
+                  <div class="error-box">
+                    <span>⚠️</span>
+                    <span>{{ marcaError }}</span>
+                  </div>
+                }
+
+                @if (marcaSuccess || marcaEstado !== 'Pendiente') {
+                  <div class="success-box">
+                    <span>✅</span>
+                    <span>
+                      {{
+                        marcaSuccess ||
+                          (marcaEstado === 'Entrada'
+                            ? 'Entrada registrada a las ' + horaEntradaReal
+                            : 'Jornada completada. Podrás marcar de nuevo mañana.')
+                      }}
+                    </span>
+                  </div>
+                }
               </div>
             </div>
           </div>
-        }
+
+          <div class="card section-card">
+            <div class="card-header">
+              <h3 class="card-title">Mi Resumen</h3>
+            </div>
+
+            <div class="card-body">
+              <div class="kpi-grid">
+                <div class="kpi-box">
+                  <p class="kpi-label">Llegadas tardes</p>
+                  <p class="kpi-value">{{ tardiasMes }}</p>
+                </div>
+
+                <div class="kpi-box">
+                  <p class="kpi-label">Horas trabajadas</p>
+                  <p class="kpi-value">{{ horasTrabajadas }}<span>h</span></p>
+                </div>
+
+                <div class="kpi-box">
+                  <p class="kpi-label">Permisos pendientes</p>
+                  <p class="kpi-value">{{ permisosPendientes }}</p>
+                </div>
+
+                <div class="kpi-box">
+                  <p class="kpi-label">Rendimiento</p>
+                  <p class="kpi-value">{{ cumplimiento }}<span>%</span></p>
+                </div>
+              </div>
+
+              <div class="classification-box">
+                <p class="classification-label">Clasificación general</p>
+                <p class="classification-value" [ngClass]="getClassificationClass()">{{ clasificacion }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         @if (role === 'supervisor') {
           <div class="card team-summary-card">
@@ -224,7 +224,7 @@
 
                 <div class="status-box status-amber">
                   <p class="status-label">Sesiones Activas</p>
-                  <p class="status-value">0</p>
+                  <p class="status-value">{{ adminStats.sesionesActivas || 0 }}</p>
                 </div>
 
                 <div class="status-box status-red">
@@ -234,7 +234,7 @@
 
                 <div class="status-box status-orange">
                   <p class="status-label">Intentos Fallidos</p>
-                  <p class="status-value">0</p>
+                  <p class="status-value">{{ adminStats.intentosFallidos || 0 }}</p>
                 </div>
 
                 <div class="status-box status-purple">
@@ -303,28 +303,43 @@
           @if (role === 'admin') {
             <div class="quick-links-grid">
               <a routerLink="/admin/usuarios" class="quick-link">
-                <span class="quick-link-icon">[U]</span>
+                <span class="quick-link-icon">👥</span>
                 <span class="quick-link-text">Usuarios</span>
               </a>
               <a routerLink="/admin/roles" class="quick-link">
-                <span class="quick-link-icon">[R]</span>
+                <span class="quick-link-icon">🛡️</span>
                 <span class="quick-link-text">Roles</span>
               </a>
               <a routerLink="/admin/parametros" class="quick-link">
-                <span class="quick-link-icon">[P]</span>
+                <span class="quick-link-icon">⚙️</span>
                 <span class="quick-link-text">Parámetros</span>
               </a>
               <a routerLink="/admin/auditoria" class="quick-link">
-                <span class="quick-link-icon">[A]</span>
+                <span class="quick-link-icon">🔍</span>
                 <span class="quick-link-text">Auditoría</span>
               </a>
               <a routerLink="/admin/seguridad" class="quick-link">
-                <span class="quick-link-icon">[S]</span>
+                <span class="quick-link-icon">🔒</span>
                 <span class="quick-link-text">Seguridad</span>
               </a>
               <a routerLink="/admin/soporte" class="quick-link">
-                <span class="quick-link-icon">[?]</span>
+                <span class="quick-link-icon">🛠️</span>
                 <span class="quick-link-text">Soporte</span>
+              </a>
+
+              <div class="quick-links-divider"></div>
+
+              <a routerLink="/asistencia" class="quick-link">
+                <span class="quick-link-icon">📅</span>
+                <span class="quick-link-text">Mi Asistencia</span>
+              </a>
+              <a routerLink="/solicitudes" class="quick-link">
+                <span class="quick-link-icon">📄</span>
+                <span class="quick-link-text">Mis Solicitudes</span>
+              </a>
+              <a routerLink="/perfil" class="quick-link">
+                <span class="quick-link-icon">👤</span>
+                <span class="quick-link-text">Mi Perfil</span>
               </a>
             </div>
           }
@@ -332,36 +347,63 @@
           @if (role === 'rrhh') {
             <div class="quick-links-grid">
               <a routerLink="/rrhh/empleados" class="quick-link">
-                <span class="quick-link-icon">[E]</span>
+                <span class="quick-link-icon">👥</span>
                 <span class="quick-link-text">Empleados</span>
               </a>
-              <a routerLink="/rrhh/asistencia" class="quick-link">
-                <span class="quick-link-icon">[H]</span>
-                <span class="quick-link-text">Asistencia</span>
+              <a routerLink="/rrhh/planilla" class="quick-link">
+                <span class="quick-link-icon">💵</span>
+                <span class="quick-link-text">Planilla</span>
               </a>
               <a routerLink="/rrhh/turnos" class="quick-link">
-                <span class="quick-link-icon">[T]</span>
+                <span class="quick-link-icon">⏱️</span>
                 <span class="quick-link-text">Turnos</span>
               </a>
+              <a routerLink="/rrhh/asistencia" class="quick-link">
+                <span class="quick-link-icon">📅</span>
+                <span class="quick-link-text">Asistencia</span>
+              </a>
               <a routerLink="/rrhh/permisos" class="quick-link">
-                <span class="quick-link-icon">[L]</span>
+                <span class="quick-link-icon">📄</span>
                 <span class="quick-link-text">Permisos</span>
               </a>
               <a routerLink="/rrhh/proyectos" class="quick-link">
-                <span class="quick-link-icon">[J]</span>
+                <span class="quick-link-icon">📂</span>
                 <span class="quick-link-text">Proyectos</span>
               </a>
               <a routerLink="/rrhh/bonos" class="quick-link">
-                <span class="quick-link-icon">[B]</span>
+                <span class="quick-link-icon">💰</span>
                 <span class="quick-link-text">Bonos</span>
               </a>
               <a routerLink="/rrhh/reportes" class="quick-link">
-                <span class="quick-link-icon">[X]</span>
+                <span class="quick-link-icon">📊</span>
                 <span class="quick-link-text">Reportes</span>
               </a>
               <a routerLink="/rrhh/auditoria" class="quick-link">
-                <span class="quick-link-icon">[A]</span>
+                <span class="quick-link-icon">🔍</span>
                 <span class="quick-link-text">Auditoría</span>
+              </a>
+              <a routerLink="/rrhh/kpis" class="quick-link">
+                <span class="quick-link-icon">🏆</span>
+                <span class="quick-link-text">KPIs Globales</span>
+              </a>
+
+              <div class="quick-links-divider"></div>
+
+              <a routerLink="/asistencia" class="quick-link">
+                <span class="quick-link-icon">📅</span>
+                <span class="quick-link-text">Mi Asistencia</span>
+              </a>
+              <a routerLink="/solicitudes" class="quick-link">
+                <span class="quick-link-icon">📄</span>
+                <span class="quick-link-text">Mis Solicitudes</span>
+              </a>
+              <a routerLink="/timesheet" class="quick-link">
+                <span class="quick-link-icon">🕐</span>
+                <span class="quick-link-text">Mi Timesheet</span>
+              </a>
+              <a routerLink="/perfil" class="quick-link">
+                <span class="quick-link-icon">👤</span>
+                <span class="quick-link-text">Mi Perfil</span>
               </a>
             </div>
           }
@@ -414,136 +456,32 @@
         <div class="card side-card">
           <div class="card-header card-header-between">
             <h3 class="card-title">Avisos</h3>
-            <span class="notice-badge">3 Nuevos</span>
+            <div class="header-actions">
+              <span class="notice-badge">{{ notices.length }} Nuevos</span>
+              @if (notices.length > 0) {
+                <button class="clear-all-btn" (click)="limpiarTodo()" title="Limpiar todos los avisos persistentes">🗑️</button>
+              }
+            </div>
           </div>
 
-          @if (role === 'admin') {
-            <div class="notices-scroll">
-              <div class="notices-list">
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-red">!</div>
-                  <div>
-                    <p class="notice-title">Intentos fallidos de acceso</p>
-                    <p class="notice-text">
-                      Múltiples intentos desde la IP 192.168.1.100 bloqueados.
-                    </p>
+          <div class="notices-scroll">
+            <div class="notices-list">
+              @for (notice of notices; track $index) {
+                <div class="notice-item" [class.notice-item-last]="$last">
+                  <div class="notice-icon" [class]="'notice-icon-' + notice.color">{{ notice.icon }}</div>
+                  <div class="notice-content">
+                    <p class="notice-title">{{ notice.title }}</p>
+                    <p class="notice-text">{{ notice.text }}</p>
                   </div>
+                  <button class="delete-notice-btn" (click)="eliminarAviso(notice)" title="Eliminar aviso">✕</button>
                 </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-blue">i</div>
-                  <div>
-                    <p class="notice-title">Actualización de sistema</p>
-                    <p class="notice-text">Parche de seguridad v1.0.2 aplicado correctamente.</p>
-                  </div>
+              } @empty {
+                <div class="empty-notices">
+                  <p>No tienes avisos nuevos en este momento.</p>
                 </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-amber">⚠</div>
-                  <div>
-                    <p class="notice-title">Uso de CPU elevado</p>
-                    <p class="notice-text">
-                      El servidor de base de datos alcanzó 85% de uso a las 14:00.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-blue">i</div>
-                  <div>
-                    <p class="notice-title">Respaldo completado</p>
-                    <p class="notice-text">
-                      La copia de seguridad nocturna finalizó correctamente.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-green">✓</div>
-                  <div>
-                    <p class="notice-title">Monitoreo activo</p>
-                    <p class="notice-text">
-                      Todos los servicios críticos se encuentran operando normalmente.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item notice-item-last">
-                  <div class="notice-icon notice-icon-amber">⚠</div>
-                  <div>
-                    <p class="notice-title">Espacio en disco</p>
-                    <p class="notice-text">
-                      El almacenamiento del servidor principal llegó al 78% de uso.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              }
             </div>
-          }
-
-          @if (role !== 'admin') {
-            <div class="notices-scroll">
-              <div class="notices-list">
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-blue">i</div>
-                  <div>
-                    <p class="notice-title">Boleta de pago disponible</p>
-                    <p class="notice-text">
-                      Tu boleta de febrero ya está disponible para descargar.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-amber">📊</div>
-                  <div>
-                    <p class="notice-title">Actualización de KPIs</p>
-                    <p class="notice-text">Tu KPI del mes ha sido actualizado y revisado.</p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-green">✓</div>
-                  <div>
-                    <p class="notice-title">Solicitud aprobada</p>
-                    <p class="notice-text">
-                      Tus vacaciones del 20 al 25 de marzo han sido aprobadas.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-blue">i</div>
-                  <div>
-                    <p class="notice-title">Recordatorio de marcaje</p>
-                    <p class="notice-text">
-                      No olvides registrar tu salida antes de finalizar tu jornada.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item">
-                  <div class="notice-icon notice-icon-amber">📌</div>
-                  <div>
-                    <p class="notice-title">Nueva política interna</p>
-                    <p class="notice-text">
-                      Se actualizó la política de permisos y vacaciones para este trimestre.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="notice-item notice-item-last">
-                  <div class="notice-icon notice-icon-green">✓</div>
-                  <div>
-                    <p class="notice-title">Timesheet validado</p>
-                    <p class="notice-text">
-                      Tus horas registradas de esta semana fueron revisadas correctamente.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
+          </div>
         </div>
       </div>
     </div>

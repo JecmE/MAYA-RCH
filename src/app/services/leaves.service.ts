@@ -61,8 +61,28 @@ export class LeavesService {
 
   constructor(private http: HttpClient) {}
 
-  getTypes(): Observable<TipoPermiso[]> {
-    return this.http.get<TipoPermiso[]>(`${this.apiUrl}/types`);
+  getTypes(todos = false): Observable<TipoPermiso[]> {
+    return this.http.get<TipoPermiso[]>(`${this.apiUrl}/types`, { params: { todos: todos.toString() } });
+  }
+
+  createType(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/types`, data);
+  }
+
+  updateType(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/types/${id}`, data);
+  }
+
+  getAllRequests(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/all`);
+  }
+
+  getAllBalances(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/balances`);
+  }
+
+  getVacationMovements(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/movements`);
   }
 
   createRequest(request: Partial<SolicitudPermiso>): Observable<SolicitudPermiso> {
@@ -91,6 +111,10 @@ export class LeavesService {
 
   getVacationBalanceByEmployee(employeeId: number): Observable<VacationBalance> {
     return this.http.get<VacationBalance>(`${this.apiUrl}/vacation-balance/${employeeId}`);
+  }
+
+  adjustBalance(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/balances/adjust`, data);
   }
 
   downloadAttachment(rutaUrl: string): Observable<Blob> {

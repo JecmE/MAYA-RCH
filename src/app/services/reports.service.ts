@@ -4,32 +4,36 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface MonthlyAttendanceReport {
-  empleadoId: number;
   nombreCompleto: string;
-  codigoEmpleado: string;
   departamento: string;
-  diasTrabajados: number;
+  diasAsistidos: number;
   tardias: number;
-  faltas: number;
-  horasTrabajadas: number;
+  horasTrabajadasTotal: number;
 }
 
 export interface BonusEligibilityReport {
   empleadoId: number;
   nombreCompleto: string;
-  reglaBonoId: number;
+  departamento: string;
   reglaNombre: string;
   elegible: boolean;
+  cumplimientoPct: number;
+  monto: number;
+  detalles: {
+    asistencias: number;
+    laborables: number;
+    tardias: number;
+    faltas: number;
+    horas: string;
+  };
   motivoNoElegible?: string;
 }
 
 export interface ProjectHoursReport {
-  proyectoId: number;
   proyectoNombre: string;
-  empleadoId: number;
+  proyectoCodigo: string;
   nombreEmpleado: string;
   horasTotales: number;
-  horasValidadas: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,25 +42,58 @@ export class ReportsService {
 
   constructor(private http: HttpClient) {}
 
-  getMonthlyAttendance(anio: number, mes: number): Observable<MonthlyAttendanceReport[]> {
+  getMonthlyAttendance(fechaInicio: string, fechaFin: string, departamento?: string): Observable<MonthlyAttendanceReport[]> {
     return this.http.get<MonthlyAttendanceReport[]>(`${this.apiUrl}/monthly-attendance`, {
-      params: { anio, mes },
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos' },
     });
   }
 
-  getBonusEligibility(anio: number, mes: number): Observable<BonusEligibilityReport[]> {
+  getBonusEligibility(mes: number, anio: number, departamento?: string): Observable<BonusEligibilityReport[]> {
     return this.http.get<BonusEligibilityReport[]>(`${this.apiUrl}/bonus-eligibility`, {
-      params: { anio, mes },
+      params: { mes, anio, departamento: departamento || 'Todos' },
     });
   }
 
-  getProjectHours(
-    proyectoId: number,
-    fechaInicio: string,
-    fechaFin: string,
-  ): Observable<ProjectHoursReport[]> {
+  getBonusEligibilityRange(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<BonusEligibilityReport[]> {
+    return this.http.get<BonusEligibilityReport[]>(`${this.apiUrl}/bonus-eligibility`, {
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' },
+    });
+  }
+
+  getProjectHours(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<ProjectHoursReport[]> {
     return this.http.get<ProjectHoursReport[]>(`${this.apiUrl}/project-hours`, {
-      params: { proyectoId, fechaInicio, fechaFin },
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' },
+    });
+  }
+
+  getVacationBalances(fechaInicio: string, fechaFin: string, departamento?: string, proyecto?: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/vacation-balances`, {
+      params: { fechaInicio, fechaFin, departamento: departamento || 'Todos', proyecto: proyecto || 'Todos los proyectos' }
+    });
+  }
+
+  getGlobalKpis(mes: number, anio: number, departamento?: string, supervisorId?: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/global-kpis`, {
+      params: { mes, anio, departamento: departamento || 'Todos', supervisorId: supervisorId || 'Todos' }
+    });
+  }
+
+  getSupervisors(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/supervisors`);
+  }
+
+  getDepartments(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/departments`);
+  }
+
+  getFunctionalAudit(fi?: string, ff?: string, modulo?: string, accion?: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/functional-audit`, {
+      params: {
+        fi: fi || '',
+        ff: ff || '',
+        modulo: modulo || 'Todos los módulos',
+        accion: accion || ''
+      }
     });
   }
 }

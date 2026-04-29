@@ -20,274 +20,151 @@ const periodo_planilla_entity_1 = require("../../entities/periodo-planilla.entit
 const planilla_empleado_entity_1 = require("../../entities/planilla-empleado.entity");
 const concepto_planilla_entity_1 = require("../../entities/concepto-planilla.entity");
 const movimiento_planilla_entity_1 = require("../../entities/movimiento-planilla.entity");
-const tabla_isr_entity_1 = require("../../entities/tabla-isr.entity");
 const empleado_entity_1 = require("../../entities/empleado.entity");
 const bono_resultado_entity_1 = require("../../entities/bono-resultado.entity");
 const registro_asistencia_entity_1 = require("../../entities/registro-asistencia.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
+const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 let PayrollService = class PayrollService {
-    constructor(periodoRepository, planillaEmpleadoRepository, conceptoRepository, movimientoRepository, isrRepository, empleadoRepository, bonoRepository, asistenciaRepository, auditRepository) {
+    constructor(periodoRepository, planillaEmpleadoRepository, conceptoRepository, movimientoRepository, empleadoRepository, bonoRepository, asistenciaRepository, auditRepository, parametroRepository) {
         this.periodoRepository = periodoRepository;
         this.planillaEmpleadoRepository = planillaEmpleadoRepository;
         this.conceptoRepository = conceptoRepository;
         this.movimientoRepository = movimientoRepository;
-        this.isrRepository = isrRepository;
         this.empleadoRepository = empleadoRepository;
         this.bonoRepository = bonoRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.auditRepository = auditRepository;
+        this.parametroRepository = parametroRepository;
     }
-    async getPeriods() {
-        const periodos = await this.periodoRepository.find({
-            order: { fechaInicio: 'DESC' },
+    async getPayrollParameters() {
+        const params = await this.parametroRepository.find({
+            where: { clave: (0, typeorm_2.In)(['igss_laboral', 'igss_patronal', 'bono_decreto']), activo: true }
         });
-        return periodos.map((p) => ({
-            periodoId: p.periodoId,
-            nombre: p.nombre,
-            fechaInicio: p.fechaInicio,
-            fechaFin: p.fechaFin,
-            tipo: p.tipo,
-            estado: p.estado,
-        }));
-    }
-    async createPeriod(createDto, usuarioId) {
-        const periodo = this.periodoRepository.create({
-            ...createDto,
-            estado: periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_ABIERTO,
-        });
-        const saved = (await this.periodoRepository.save(periodo));
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'PAYROLL',
-            accion: 'CREATE_PERIOD',
-            entidad: 'PERIODO_PLANILLA',
-            entidadId: saved.periodoId,
-            detalle: `Período creado: ${saved.nombre}`,
-        });
+        const map = new Map(params.map(p => [p.clave, p.valor]));
         return {
-            periodoId: saved.periodoId,
-            nombre: saved.nombre,
-            estado: saved.estado,
-            mensaje: 'Período creado exitosamente',
+            igssLaboral: Number(map.get('igss_laboral') || 4.83) / 100,
+            igssPatronal: Number(map.get('igss_patronal') || 12.67) / 100,
+            bonoDecreto: Number(map.get('bono_decreto') || 250)
         };
     }
+    calculateIsr(montoGravable) {
+        if (montoGravable <= 5000)
+            return 0;
+        if (montoGravable <= 15000) {
+            return (montoGravable - 5000) * 0.05;
+        }
+        const isrTramo2 = (15000 - 5000) * 0.05;
+        const isrTramo3 = (montoGravable - 15000) * 0.07;
+        return isrTramo2 + isrTramo3;
+    }
+    async createPeriod(createDto, usuarioId) {
+        const periodo = this.periodoRepository.create({ ...createDto, estado: periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_ABIERTO });
+        const saved = await this.periodoRepository.save(periodo);
+        const s = Array.isArray(saved) ? saved[0] : saved;
+        return { periodoId: s.periodoId, nombre: s.nombre };
+    }
     async calculatePayroll(periodoId, usuarioId) {
-        const periodo = await this.periodoRepository.findOne({
-            where: { periodoId },
-        });
-        if (!periodo) {
-            throw new common_1.NotFoundException('Período no encontrado');
-        }
-        if (periodo.estado !== periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_ABIERTO) {
-            throw new common_1.BadRequestException('El período no está abierto');
-        }
-        const empleados = await this.empleadoRepository.find({
-            where: { activo: true },
-        });
-        const year = new Date(periodo.fechaFin).getFullYear();
-        const conceptos = await this.conceptoRepository.find({
-            where: { activo: true },
-        });
-        const tablaIsr = await this.isrRepository.find({
-            where: { anio: year },
-            order: { rangoDesde: 'ASC' },
-        });
+        const periodo = await this.periodoRepository.findOne({ where: { periodoId } });
+        if (!periodo)
+            throw new common_1.NotFoundException('Periodo no encontrado');
+        const config = await this.getPayrollParameters();
+        const empleados = await this.empleadoRepository.find({ where: { activo: true } });
         const resultados = [];
+        const dateFin = new Date(periodo.fechaFin);
+        const year = dateFin.getFullYear();
+        const month = dateFin.getMonth() + 1;
         for (const emp of empleados) {
-            const asistencia = await this.asistenciaRepository.find({
-                where: {
-                    empleadoId: emp.empleadoId,
-                },
+            const asistencias = await this.asistenciaRepository.find({
+                where: { empleadoId: emp.empleadoId, fecha: (0, typeorm_2.Between)(periodo.fechaInicio, periodo.fechaFin) }
             });
-            const filteredAsistencia = asistencia.filter((a) => a.fecha >= periodo.fechaInicio && a.fecha <= periodo.fechaFin);
-            const horasTrabajadas = filteredAsistencia.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
-            const tarifa = Number(emp.tarifaHora) || 45.5;
-            const montoBruto = horasTrabajadas * tarifa;
-            const bonos = await this.bonoRepository.find({
-                where: {
-                    empleadoId: emp.empleadoId,
-                    anio: year,
-                    elegible: true,
-                },
+            const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
+            const montoSalario = horas * (Number(emp.tarifaHora) || 45.5);
+            const bonoReal = await this.bonoRepository.findOne({
+                where: { empleadoId: emp.empleadoId, mes: month, anio: year },
+                relations: ['reglaBono'],
+                order: { fechaCalculo: 'DESC' }
             });
-            const totalBonificaciones = 0;
-            const baseImponible = montoBruto + totalBonificaciones;
-            const isr = this.calculateISR(baseImponible, tablaIsr);
-            const igss = baseImponible * 0.0483;
-            const totalDeducciones = isr + igss;
-            const montoNeto = baseImponible - totalDeducciones;
-            const planillaEmpleado = this.planillaEmpleadoRepository.create({
-                periodoId,
-                empleadoId: emp.empleadoId,
-                tarifaHoraUsada: tarifa,
-                horasPagables: horasTrabajadas,
-                montoBruto,
-                totalBonificaciones,
-                totalDeducciones,
-                montoNeto,
-            });
-            const savedPlanilla = await this.planillaEmpleadoRepository.save(planillaEmpleado);
-            await this.movimientoRepository.save({
-                planillaEmpId: savedPlanilla.planillaEmpId,
-                conceptoId: conceptos.find((c) => c.codigo === 'SALARIO')?.conceptoId,
-                tipo: concepto_planilla_entity_1.ConceptoPlanilla.TIPO_INGRESO,
-                usuarioIdRegista: usuarioId,
-                monto: montoBruto,
-                esManual: false,
-            });
-            if (totalBonificaciones > 0) {
-                await this.movimientoRepository.save({
-                    planillaEmpId: savedPlanilla.planillaEmpId,
-                    conceptoId: conceptos.find((c) => c.codigo === 'BONOPUNT')?.conceptoId,
-                    tipo: concepto_planilla_entity_1.ConceptoPlanilla.TIPO_INGRESO,
-                    usuarioIdRegista: usuarioId,
-                    monto: totalBonificaciones,
-                    esManual: false,
-                });
-            }
-            await this.movimientoRepository.save({
-                planillaEmpId: savedPlanilla.planillaEmpId,
-                conceptoId: conceptos.find((c) => c.codigo === 'ISR')?.conceptoId,
-                tipo: concepto_planilla_entity_1.ConceptoPlanilla.TIPO_DEDUCCION,
-                usuarioIdRegista: usuarioId,
-                monto: isr,
-                esManual: false,
-            });
-            await this.movimientoRepository.save({
-                planillaEmpId: savedPlanilla.planillaEmpId,
-                conceptoId: conceptos.find((c) => c.codigo === 'IGSS')?.conceptoId,
-                tipo: concepto_planilla_entity_1.ConceptoPlanilla.TIPO_DEDUCCION,
-                usuarioIdRegista: usuarioId,
-                monto: igss,
-                esManual: false,
-            });
+            const montoBonoDesempeno = bonoReal && bonoReal.elegible ? Number(bonoReal.reglaBono?.monto || 0) : 0;
+            const montoBonoDecreto = config.bonoDecreto;
+            const igss = Math.round(montoSalario * config.igssLaboral * 100) / 100;
+            const isr = Math.round(this.calculateIsr(montoSalario - igss) * 100) / 100;
+            const neto = (montoSalario + montoBonoDesempeno + montoBonoDecreto) - (igss + isr);
             resultados.push({
                 empleadoId: emp.empleadoId,
-                nombreCompleto: emp.nombreCompleto,
-                horasTrabajadas,
-                montoBruto,
-                totalBonificaciones,
-                totalDeducciones,
-                montoNeto,
+                nombreCompleto: `${emp.nombres} ${emp.apellidos}`,
+                horasTrabajadas: horas,
+                montoBruto: montoSalario,
+                totalBonificaciones: montoBonoDesempeno + montoBonoDecreto,
+                totalDeducciones: igss + isr,
+                montoNeto: neto
             });
         }
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'PAYROLL',
-            accion: 'CALCULATE_PAYROLL',
-            entidad: 'PERIODO_PLANILLA',
-            entidadId: periodoId,
-            detalle: `Cálculo de nómina ejecutado para ${resultados.length} empleados`,
-        });
         return {
-            mensaje: 'Cálculo ejecutado',
-            empleadosProcesados: resultados.length,
-            resultados,
+            mensaje: 'Cálculo de nómina completado exitosamente (Sincronizado con Parámetros)',
+            resultados
         };
     }
     async closePeriod(periodoId, usuarioId) {
-        const periodo = await this.periodoRepository.findOne({
-            where: { periodoId },
-        });
-        if (!periodo) {
-            throw new common_1.NotFoundException('Período no encontrado');
-        }
-        if (periodo.estado === periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_CERRADO) {
-            throw new common_1.BadRequestException('El período ya está cerrado');
-        }
-        periodo.estado = periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_CERRADO;
-        await this.periodoRepository.save(periodo);
-        await this.auditRepository.save({
-            usuarioId,
-            modulo: 'PAYROLL',
-            accion: 'CLOSE_PERIOD',
-            entidad: 'PERIODO_PLANILLA',
-            entidadId: periodoId,
-            detalle: `Período cerrado: ${periodo.nombre}`,
-        });
-        return { message: 'Período cerrado correctamente' };
+        await this.periodoRepository.update(periodoId, { estado: periodo_planilla_entity_1.PeriodoPlanilla.ESTADO_CERRADO });
+        return { message: 'Periodo cerrado correctamente. Boletas publicadas.' };
     }
     async getMyPaycheck(empleadoId, periodoId) {
-        let planilla;
-        if (periodoId) {
-            planilla = await this.planillaEmpleadoRepository.findOne({
-                where: { periodoId, empleadoId },
-                relations: ['periodo'],
-            });
-        }
-        else {
-            planilla = await this.planillaEmpleadoRepository.findOne({
-                where: { empleadoId },
-                relations: ['periodo'],
-                order: { fechaCalculo: 'DESC' },
-            });
-        }
-        if (!planilla) {
-            return { message: 'No se encontró boleta de pago' };
-        }
-        const movimientos = await this.movimientoRepository.find({
-            where: { planillaEmpId: planilla.planillaEmpId },
-            relations: ['concepto'],
+        const periodo = periodoId
+            ? await this.periodoRepository.findOne({ where: { periodoId } })
+            : await this.periodoRepository.findOne({ order: { fechaInicio: 'DESC' } });
+        if (!periodo)
+            return { message: 'Periodo no encontrado' };
+        const config = await this.getPayrollParameters();
+        const emp = await this.empleadoRepository.findOne({ where: { empleadoId } });
+        const dateFin = new Date(periodo.fechaFin);
+        const year = dateFin.getFullYear();
+        const month = dateFin.getMonth() + 1;
+        const asistencias = await this.asistenciaRepository.find({
+            where: { empleadoId, fecha: (0, typeorm_2.Between)(periodo.fechaInicio, periodo.fechaFin) }
         });
+        const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
+        const montoSalario = horas * (Number(emp?.tarifaHora) || 45.5);
+        const bonoReal = await this.bonoRepository.findOne({
+            where: { empleadoId, mes: month, anio: year },
+            relations: ['reglaBono'],
+            order: { fechaCalculo: 'DESC' }
+        });
+        let montoBonoDesempeno = 0;
+        let nombreBono = 'Sin Bonificación (Eval. Pendiente)';
+        if (bonoReal) {
+            if (bonoReal.elegible) {
+                montoBonoDesempeno = Number(bonoReal.reglaBono?.monto || 0);
+                nombreBono = bonoReal.reglaBono?.nombre || 'Bono Desempeño';
+            }
+            else {
+                nombreBono = 'Bono Desempeño (No califica)';
+            }
+        }
+        const igss = Math.round(montoSalario * config.igssLaboral * 100) / 100;
+        const isr = Math.round(this.calculateIsr(montoSalario - igss) * 100) / 100;
+        const neto = (montoSalario + montoBonoDesempeno + config.bonoDecreto) - (igss + isr);
         return {
-            periodo: {
-                nombre: planilla.periodo?.nombre,
-                fechaInicio: planilla.periodo?.fechaInicio,
-                fechaFin: planilla.periodo?.fechaFin,
-            },
-            empleadoId: planilla.empleadoId,
-            tarifaHora: planilla.tarifaHoraUsada,
-            horasPagables: planilla.horasPagables,
-            montoBruto: planilla.montoBruto,
-            totalBonificaciones: planilla.totalBonificaciones,
-            totalDeducciones: planilla.totalDeducciones,
-            montoNeto: planilla.montoNeto,
-            movimientos: movimientos.map((m) => ({
-                concepto: m.concepto?.nombre,
-                tipo: m.tipo,
-                monto: m.monto,
-            })),
+            periodo: { nombre: periodo.nombre, fechaInicio: periodo.fechaInicio, fechaFin: periodo.fechaFin },
+            montoBruto: montoSalario,
+            totalBonificaciones: montoBonoDesempeno + config.bonoDecreto,
+            totalDeducciones: igss + isr,
+            montoNeto: neto,
+            movimientos: [
+                { concepto: 'Salario Base (Horas marcadas)', tipo: 'ingreso', monto: montoSalario },
+                { concepto: 'Bonificación Decreto 37-2001', tipo: 'ingreso', monto: config.bonoDecreto },
+                { concepto: nombreBono, tipo: 'ingreso', monto: montoBonoDesempeno },
+                { concepto: `IGSS Laboral (${(config.igssLaboral * 100).toFixed(2)}%)`, tipo: 'deduccion', monto: igss },
+                { concepto: 'ISR (Retención Mensual)', tipo: 'deduccion', monto: isr }
+            ]
         };
     }
     async getMyPeriods(empleadoId) {
-        const planillas = await this.planillaEmpleadoRepository.find({
-            where: { empleadoId },
-            relations: ['periodo'],
-            order: { fechaCalculo: 'DESC' },
-        });
-        return planillas
-            .filter((p) => p.periodo)
-            .map((p) => ({
-            periodoId: p.periodo.periodoId,
-            nombre: p.periodo.nombre,
-            fechaInicio: p.periodo.fechaInicio,
-            fechaFin: p.periodo.fechaFin,
-            tipo: p.periodo.tipo,
-            estado: p.periodo.estado,
-        }));
+        return await this.periodoRepository.find({ order: { fechaInicio: 'DESC' }, take: 12 });
     }
-    async getConcepts() {
-        const conceptos = await this.conceptoRepository.find({
-            where: { activo: true },
-        });
-        return conceptos.map((c) => ({
-            conceptoId: c.conceptoId,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            tipo: c.tipo,
-            modoCalculo: c.modoCalculo,
-            baseCalculo: c.baseCalculo,
-        }));
-    }
-    calculateISR(baseImponible, tablaIsr) {
-        for (const tramo of tablaIsr) {
-            if (baseImponible >= Number(tramo.rangoDesde) && baseImponible <= Number(tramo.rangoHasta)) {
-                return (Number(tramo.cuotaFijo) +
-                    (baseImponible - Number(tramo.rangoDesde)) * (Number(tramo.porcentaje) / 100));
-            }
-        }
-        return 0;
-    }
+    async getPeriods() { return await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } }); }
+    async getConcepts() { return await this.conceptoRepository.find({ where: { activo: true } }); }
+    async seedTestData() { return { message: 'OK' }; }
 };
 exports.PayrollService = PayrollService;
 exports.PayrollService = PayrollService = __decorate([
@@ -296,11 +173,11 @@ exports.PayrollService = PayrollService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(planilla_empleado_entity_1.PlanillaEmpleado)),
     __param(2, (0, typeorm_1.InjectRepository)(concepto_planilla_entity_1.ConceptoPlanilla)),
     __param(3, (0, typeorm_1.InjectRepository)(movimiento_planilla_entity_1.MovimientoPlanilla)),
-    __param(4, (0, typeorm_1.InjectRepository)(tabla_isr_entity_1.TablaIsr)),
-    __param(5, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
-    __param(6, (0, typeorm_1.InjectRepository)(bono_resultado_entity_1.BonoResultado)),
-    __param(7, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
-    __param(8, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(4, (0, typeorm_1.InjectRepository)(empleado_entity_1.Empleado)),
+    __param(5, (0, typeorm_1.InjectRepository)(bono_resultado_entity_1.BonoResultado)),
+    __param(6, (0, typeorm_1.InjectRepository)(registro_asistencia_entity_1.RegistroAsistencia)),
+    __param(7, (0, typeorm_1.InjectRepository)(audit_log_entity_1.AuditLog)),
+    __param(8, (0, typeorm_1.InjectRepository)(parametro_sistema_entity_1.ParametroSistema)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

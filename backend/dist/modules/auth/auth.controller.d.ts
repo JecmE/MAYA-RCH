@@ -11,10 +11,12 @@ export declare class AuthController {
         user: {
             usuarioId: number;
             username: string;
+            roles: string[];
+            rolId: number;
             empleadoId: number;
             nombreCompleto: string;
             email: string;
-            roles: any;
+            requirePasswordChange: boolean;
         };
     }>;
     logout(req: any): Promise<{
@@ -22,23 +24,20 @@ export declare class AuthController {
     }>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto, req: any): Promise<{
         message: string;
-        resetToken?: undefined;
-    } | {
-        message: string;
-        resetToken: string;
     }>;
-    resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
+    verifyCode(body: {
+        email: string;
+        code: string;
+    }, req: any): Promise<{
         message: string;
     }>;
+    resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void>;
     getProfile(req: any): Promise<{
         usuarioId: number;
         username: string;
         empleadoId: number;
         nombreCompleto: string;
         email: string;
-        telefono: string;
-        puesto: string;
-        departamento: string;
         roles: string[];
         ultimoLogin: Date;
     }>;

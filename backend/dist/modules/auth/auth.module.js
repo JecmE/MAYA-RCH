@@ -20,13 +20,21 @@ const empleado_entity_1 = require("../../entities/empleado.entity");
 const reset_password_token_entity_1 = require("../../entities/reset-password-token.entity");
 const audit_log_entity_1 = require("../../entities/audit-log.entity");
 const rol_entity_1 = require("../../entities/rol.entity");
+const parametro_sistema_entity_1 = require("../../entities/parametro-sistema.entity");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([usuario_entity_1.Usuario, empleado_entity_1.Empleado, reset_password_token_entity_1.ResetPasswordToken, audit_log_entity_1.AuditLog, rol_entity_1.Rol]),
+            typeorm_1.TypeOrmModule.forFeature([
+                usuario_entity_1.Usuario,
+                empleado_entity_1.Empleado,
+                reset_password_token_entity_1.ResetPasswordToken,
+                audit_log_entity_1.AuditLog,
+                rol_entity_1.Rol,
+                parametro_sistema_entity_1.ParametroSistema,
+            ]),
             passport_1.PassportModule.register({ defaultStrategy: 'jwt' }),
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],

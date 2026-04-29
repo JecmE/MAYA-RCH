@@ -21,8 +21,23 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Get()
-  findAll() {
+  findAll(@Req() req: any) {
+    const roles = req.user.roles || [];
+    const isAdmin = roles.includes('Administrador') || roles.includes('RRHH');
+
+    // Si NO es RRHH o Admin, filtramos solo sus proyectos asignados (para su Timesheet personal)
+    if (!isAdmin) {
+      return this.projectsService.findMyProjects(req.user.empleadoId);
+    }
+
+    // Para RRHH/Admin devolvemos todo el catálogo para gestión
     return this.projectsService.findAll();
+  }
+
+  @Get('staff')
+  @Roles('RRHH', 'Administrador')
+  getAdminStaff() {
+    return this.projectsService.getAdminStaff();
   }
 
   @Get(':id')
@@ -40,6 +55,18 @@ export class ProjectsController {
   @Roles('RRHH', 'Administrador')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateDto: any, @Req() req: any) {
     return this.projectsService.update(id, updateDto, req.user.usuarioId);
+  }
+
+  @Post('assign')
+  @Roles('RRHH', 'Administrador')
+  assignEmployee(@Body() dto: any, @Req() req: any) {
+    return this.projectsService.assignEmployee(dto, req.user.usuarioId);
+  }
+
+  @Delete('unassign/:empProyId')
+  @Roles('RRHH', 'Administrador')
+  unassignEmployee(@Param('empProyId', ParseIntPipe) empProyId: number, @Req() req: any) {
+    return this.projectsService.unassignEmployee(empProyId, req.user.usuarioId);
   }
 
   @Delete(':id')

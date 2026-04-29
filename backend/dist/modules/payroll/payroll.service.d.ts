@@ -3,39 +3,30 @@ import { PeriodoPlanilla } from '../../entities/periodo-planilla.entity';
 import { PlanillaEmpleado } from '../../entities/planilla-empleado.entity';
 import { ConceptoPlanilla } from '../../entities/concepto-planilla.entity';
 import { MovimientoPlanilla } from '../../entities/movimiento-planilla.entity';
-import { TablaIsr } from '../../entities/tabla-isr.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { BonoResultado } from '../../entities/bono-resultado.entity';
 import { RegistroAsistencia } from '../../entities/registro-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 export declare class PayrollService {
     private periodoRepository;
     private planillaEmpleadoRepository;
     private conceptoRepository;
     private movimientoRepository;
-    private isrRepository;
     private empleadoRepository;
     private bonoRepository;
     private asistenciaRepository;
     private auditRepository;
-    constructor(periodoRepository: Repository<PeriodoPlanilla>, planillaEmpleadoRepository: Repository<PlanillaEmpleado>, conceptoRepository: Repository<ConceptoPlanilla>, movimientoRepository: Repository<MovimientoPlanilla>, isrRepository: Repository<TablaIsr>, empleadoRepository: Repository<Empleado>, bonoRepository: Repository<BonoResultado>, asistenciaRepository: Repository<RegistroAsistencia>, auditRepository: Repository<AuditLog>);
-    getPeriods(): Promise<{
-        periodoId: number;
-        nombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        tipo: string;
-        estado: string;
-    }[]>;
+    private parametroRepository;
+    constructor(periodoRepository: Repository<PeriodoPlanilla>, planillaEmpleadoRepository: Repository<PlanillaEmpleado>, conceptoRepository: Repository<ConceptoPlanilla>, movimientoRepository: Repository<MovimientoPlanilla>, empleadoRepository: Repository<Empleado>, bonoRepository: Repository<BonoResultado>, asistenciaRepository: Repository<RegistroAsistencia>, auditRepository: Repository<AuditLog>, parametroRepository: Repository<ParametroSistema>);
+    private getPayrollParameters;
+    private calculateIsr;
     createPeriod(createDto: any, usuarioId: number): Promise<{
         periodoId: number;
         nombre: string;
-        estado: string;
-        mensaje: string;
     }>;
     calculatePayroll(periodoId: number, usuarioId: number): Promise<{
         mensaje: string;
-        empleadosProcesados: number;
         resultados: any[];
     }>;
     closePeriod(periodoId: number, usuarioId: number): Promise<{
@@ -44,9 +35,6 @@ export declare class PayrollService {
     getMyPaycheck(empleadoId: number, periodoId?: number): Promise<{
         message: string;
         periodo?: undefined;
-        empleadoId?: undefined;
-        tarifaHora?: undefined;
-        horasPagables?: undefined;
         montoBruto?: undefined;
         totalBonificaciones?: undefined;
         totalDeducciones?: undefined;
@@ -54,17 +42,14 @@ export declare class PayrollService {
         movimientos?: undefined;
     } | {
         periodo: {
-            nombre: any;
-            fechaInicio: any;
-            fechaFin: any;
+            nombre: string;
+            fechaInicio: Date;
+            fechaFin: Date;
         };
-        empleadoId: any;
-        tarifaHora: any;
-        horasPagables: any;
-        montoBruto: any;
-        totalBonificaciones: any;
-        totalDeducciones: any;
-        montoNeto: any;
+        montoBruto: number;
+        totalBonificaciones: number;
+        totalDeducciones: number;
+        montoNeto: number;
         movimientos: {
             concepto: string;
             tipo: string;
@@ -72,21 +57,10 @@ export declare class PayrollService {
         }[];
         message?: undefined;
     }>;
-    getMyPeriods(empleadoId: number): Promise<{
-        periodoId: number;
-        nombre: string;
-        fechaInicio: Date;
-        fechaFin: Date;
-        tipo: string;
-        estado: string;
-    }[]>;
-    getConcepts(): Promise<{
-        conceptoId: number;
-        codigo: string;
-        nombre: string;
-        tipo: string;
-        modoCalculo: string;
-        baseCalculo: number;
-    }[]>;
-    private calculateISR;
+    getMyPeriods(empleadoId: number): Promise<PeriodoPlanilla[]>;
+    getPeriods(): Promise<PeriodoPlanilla[]>;
+    getConcepts(): Promise<ConceptoPlanilla[]>;
+    seedTestData(): Promise<{
+        message: string;
+    }>;
 }

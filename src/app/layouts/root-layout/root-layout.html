@@ -3,269 +3,151 @@
     <div class="sidebar__brand">
       <h1 class="sidebar__title">MAYA RCH</h1>
       <p class="sidebar__role">
-        {{ role }}
+        {{ roleDisplayName }}
       </p>
     </div>
 
     <nav class="sidebar__nav">
 
+      <!-- SECCIÓN GENERAL -->
       <div class="sidebar__section">
-        <p class="sidebar__section-title">
+        <p class="sidebar__section-title" (click)="toggleSection('general')">
+          <span class="sidebar__section-arrow" [class.sidebar__section-arrow--collapsed]="collapsedSections['general']">▼</span>
           General
         </p>
 
-        <a
-          routerLink="/"
-          routerLinkActive="sidebar__link--active"
-          [routerLinkActiveOptions]="{ exact: true }"
-          class="sidebar__link"
-        >
-          Dashboard
-        </a>
+        @if (!collapsedSections['general']) {
+          <div class="sidebar__links-container">
+            @if (canAccess('Dashboard')) {
+              <a routerLink="/" routerLinkActive="sidebar__link--active" [routerLinkActiveOptions]="{ exact: true }" class="sidebar__link">
+                Dashboard
+              </a>
+            }
 
-        @if (showEmpleadoMenu) {
-          <a
-            routerLink="/asistencia"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Asistencia
-          </a>
+            @if (canAccess('Permisos')) {
+              <a routerLink="/asistencia" routerLinkActive="sidebar__link--active" class="sidebar__link">Asistencia</a>
+              <a routerLink="/solicitudes" routerLinkActive="sidebar__link--active" class="sidebar__link">Solicitudes</a>
+            }
 
-          <a
-            routerLink="/solicitudes"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Solicitudes
-          </a>
+            @if (canAccess('Proyectos')) {
+              <a routerLink="/timesheet" routerLinkActive="sidebar__link--active" class="sidebar__link">Timesheet</a>
+            }
 
-          <a
-            routerLink="/timesheet"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Timesheet
-          </a>
+            @if (canAccess('Planilla')) {
+              <a routerLink="/boleta" routerLinkActive="sidebar__link--active" class="sidebar__link">Boleta</a>
+            }
 
-          <a
-            routerLink="/boleta"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Boleta
-          </a>
+            @if (canAccess('Reportes')) {
+              <a routerLink="/kpi" routerLinkActive="sidebar__link--active" class="sidebar__link">KPIs</a>
+            }
 
-          <a
-            routerLink="/perfil"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Perfil
-          </a>
-
-          <a
-            routerLink="/kpi"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            KPIs
-          </a>
+            <a routerLink="/perfil" routerLinkActive="sidebar__link--active" class="sidebar__link">Perfil</a>
+          </div>
         }
       </div>
 
-      @if (isSupervisor) {
+      <!-- SECCIÓN SUPERVISOR -->
+      @if (canAccess('Empleados') && (role === 'supervisor' || role === 'admin')) {
         <div class="sidebar__section">
-          <p class="sidebar__section-title">
+          <p class="sidebar__section-title" (click)="toggleSection('supervisor')">
+            <span class="sidebar__section-arrow" [class.sidebar__section-arrow--collapsed]="collapsedSections['supervisor']">▼</span>
             Supervisor
           </p>
 
-          <a
-            routerLink="/supervisor/pendientes"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Pendientes
-          </a>
-
-          <a
-            routerLink="/supervisor/asistencia"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Asistencia equipo
-          </a>
-
-          <a
-            routerLink="/supervisor/timesheet"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Timesheet equipo
-          </a>
-
-          <a
-            routerLink="/supervisor/kpi"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            KPI equipo
-          </a>
+          @if (!collapsedSections['supervisor']) {
+            <div class="sidebar__links-container">
+              @if (canAccess('Permisos')) {
+                <a routerLink="/supervisor/pendientes" routerLinkActive="sidebar__link--active" class="sidebar__link">Pendientes</a>
+              }
+              <a routerLink="/supervisor/asistencia" routerLinkActive="sidebar__link--active" class="sidebar__link">Asistencia equipo</a>
+              <a routerLink="/supervisor/timesheet" routerLinkActive="sidebar__link--active" class="sidebar__link">Timesheet equipo</a>
+              @if (canAccess('Reportes')) {
+                <a routerLink="/supervisor/kpi" routerLinkActive="sidebar__link--active" class="sidebar__link">KPI equipo</a>
+              }
+            </div>
+          }
         </div>
       }
 
-      @if (isRrhh) {
+      <!-- SECCIÓN RRHH -->
+      @if (!mustChangePassword && (role === 'rrhh' || role === 'admin')) {
         <div class="sidebar__section">
-          <p class="sidebar__section-title">
+          <p class="sidebar__section-title" (click)="toggleSection('rrhh')">
+            <span class="sidebar__section-arrow" [class.sidebar__section-arrow--collapsed]="collapsedSections['rrhh']">▼</span>
             RRHH
           </p>
 
-          <a
-            routerLink="/rrhh/empleados"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Empleados
-          </a>
-
-          <a
-            routerLink="/rrhh/planilla"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Planilla
-          </a>
-
-          <a
-            routerLink="/rrhh/turnos"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Turnos
-          </a>
-
-          <a
-            routerLink="/rrhh/asistencia"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Asistencia general
-          </a>
-
-          <a
-            routerLink="/rrhh/permisos"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Permisos
-          </a>
-
-          <a
-            routerLink="/rrhh/proyectos"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Proyectos
-          </a>
-
-          <a
-            routerLink="/rrhh/bonos"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Bonos
-          </a>
-
-          <a
-            routerLink="/rrhh/reportes"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Reportes
-          </a>
-
-          <a
-            routerLink="/rrhh/auditoria"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Auditoría
-          </a>
-
-          <a
-            routerLink="/rrhh/kpis"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            KPIs globales
-          </a>
+          @if (!collapsedSections['rrhh']) {
+            <div class="sidebar__links-container">
+              @if (canAccess('Empleados')) {
+                <a routerLink="/rrhh/empleados" routerLinkActive="sidebar__link--active" class="sidebar__link">Empleados</a>
+              }
+              @if (canAccess('Planilla')) {
+                <a routerLink="/rrhh/planilla" routerLinkActive="sidebar__link--active" class="sidebar__link">Planilla</a>
+                <a routerLink="/rrhh/bonos" routerLinkActive="sidebar__link--active" class="sidebar__link">Bonos</a>
+              }
+              @if (canAccess('Configuración')) {
+                <a routerLink="/rrhh/turnos" routerLinkActive="sidebar__link--active" class="sidebar__link">Turnos</a>
+              }
+              @if (canAccess('Permisos')) {
+                <a routerLink="/rrhh/asistencia" routerLinkActive="sidebar__link--active" class="sidebar__link">Asistencia general</a>
+                <a routerLink="/rrhh/permisos" routerLinkActive="sidebar__link--active" class="sidebar__link">Permisos</a>
+              }
+              @if (canAccess('Proyectos')) {
+                <a routerLink="/rrhh/proyectos" routerLinkActive="sidebar__link--active" class="sidebar__link">Proyectos</a>
+              }
+              @if (canAccess('Reportes')) {
+                <a routerLink="/rrhh/reportes" routerLinkActive="sidebar__link--active" class="sidebar__link">Reportes</a>
+                <a routerLink="/rrhh/kpis" routerLinkActive="sidebar__link--active" class="sidebar__link">KPIs globales</a>
+              }
+              @if (canAccess('Auditoria')) {
+                <a routerLink="/rrhh/auditoria" routerLinkActive="sidebar__link--active" class="sidebar__link">Auditoría</a>
+              }
+            </div>
+          }
         </div>
       }
 
-      @if (isAdmin) {
+      <!-- SECCIÓN ADMIN -->
+      @if (!mustChangePassword && role === 'admin') {
         <div class="sidebar__section">
-          <p class="sidebar__section-title">
+          <p class="sidebar__section-title" (click)="toggleSection('admin')">
+            <span class="sidebar__section-arrow" [class.sidebar__section-arrow--collapsed]="collapsedSections['admin']">▼</span>
             Admin
           </p>
 
-          <a
-            routerLink="/admin/usuarios"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Usuarios
-          </a>
-
-          <a
-            routerLink="/admin/roles"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Roles y permisos
-          </a>
-
-          <a
-            routerLink="/admin/parametros"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Parámetros
-          </a>
-
-          <a
-            routerLink="/admin/auditoria"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Auditoría logs
-          </a>
-
-          <a
-            routerLink="/admin/seguridad"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Seguridad
-          </a>
-
-          <a
-            routerLink="/admin/soporte"
-            routerLinkActive="sidebar__link--active"
-            class="sidebar__link"
-          >
-            Soporte
-          </a>
+          @if (!collapsedSections['admin']) {
+            <div class="sidebar__links-container">
+              <a routerLink="/admin/usuarios" routerLinkActive="sidebar__link--active" class="sidebar__link">Usuarios</a>
+              <a routerLink="/admin/roles" routerLinkActive="sidebar__link--active" class="sidebar__link">Roles y permisos</a>
+              <a routerLink="/admin/parametros" routerLinkActive="sidebar__link--active" class="sidebar__link">Parámetros</a>
+              <a routerLink="/admin/seguridad" routerLinkActive="sidebar__link--active" class="sidebar__link">Seguridad</a>
+              <a routerLink="/admin/soporte" routerLinkActive="sidebar__link--active" class="sidebar__link">Soporte</a>
+              <a routerLink="/admin/auditoria" routerLinkActive="sidebar__link--active" class="sidebar__link">Auditoría logs</a>
+            </div>
+          }
         </div>
       }
+
+      <!-- SECCIÓN AUDITOR -->
+      @if (role === 'auditor') {
+        <div class="sidebar__section">
+          <p class="sidebar__section-title">Auditoría</p>
+          <div class="sidebar__links-container">
+            @if (canAccess('Auditoria')) {
+              <a routerLink="/admin/auditoria" routerLinkActive="sidebar__link--active" class="sidebar__link">Logs de Sistema</a>
+            }
+            @if (canAccess('Reportes')) {
+              <a routerLink="/rrhh/reportes" routerLinkActive="sidebar__link--active" class="sidebar__link">Reportes de Control</a>
+            }
+          </div>
+        </div>
+      }
+
     </nav>
 
     <div class="sidebar__footer">
-      <button
-        (click)="logout()"
-        class="logout-button"
-      >
-        Cerrar sesión
-      </button>
+      <button (click)="logout()" class="logout-button">Cerrar sesión</button>
     </div>
   </aside>
 

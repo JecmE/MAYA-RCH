@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { KpiService, KpiDashboard } from '../../../services/kpi.service';
 
 @Component({
@@ -10,14 +11,23 @@ import { KpiService, KpiDashboard } from '../../../services/kpi.service';
 })
 export class TopCards implements OnInit {
   kpiData: { label: string; value: string }[] = [];
+  isBrowser: boolean;
 
-  constructor(private kpiService: KpiService) {}
-
-  ngOnInit(): void {
-    this.loadKpiData();
+  constructor(
+    private kpiService: KpiService,
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) platformId: object,
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
   }
 
-  private loadKpiData(): void {
+  ngOnInit(): void {
+    if (this.isBrowser) {
+      this.loadKpiData();
+    }
+  }
+
+  public loadKpiData(): void {
     this.kpiService.getEmployeeDashboard().subscribe({
       next: (kpi: KpiDashboard) => {
         this.kpiData = [
@@ -35,6 +45,7 @@ export class TopCards implements OnInit {
           { label: 'Cumplimiento', value: kpi.cumplimientoPct ? `${kpi.cumplimientoPct}%` : '0%' },
           { label: 'Clasificación', value: kpi.clasificacion || 'N/A' },
         ];
+        this.cdr.detectChanges();
       },
       error: () => {
         this.kpiData = [
@@ -46,6 +57,7 @@ export class TopCards implements OnInit {
           { label: 'Cumplimiento', value: '0%' },
           { label: 'Clasificación', value: 'N/A' },
         ];
+        this.cdr.detectChanges();
       },
     });
   }

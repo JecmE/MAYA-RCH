@@ -31,7 +31,10 @@ let AuthController = class AuthController {
         return this.authService.logout(req.user.usuarioId);
     }
     async forgotPassword(forgotPasswordDto, req) {
-        return this.authService.forgotPassword(forgotPasswordDto.email, req.ip, req.headers['user-agent']);
+        return this.authService.forgotPassword(forgotPasswordDto.email, req.ip);
+    }
+    async verifyCode(body, req) {
+        return this.authService.verifyCodeAndResetPassword(body.email, body.code, req.ip);
     }
     async resetPassword(resetPasswordDto) {
         return this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
@@ -71,6 +74,15 @@ __decorate([
     __metadata("design:paramtypes", [forgot_password_dto_1.ForgotPasswordDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('verify-recovery-code'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyCode", null);
 __decorate([
     (0, common_1.Post)('reset-password'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

@@ -61,11 +61,65 @@
   color: #64748b;
 }
 
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-  align-items: start;
+.charts-full-width {
+  width: 100%;
+}
+
+.history-full-width {
+  width: 100%;
+}
+
+.observation-card {
+  background: linear-gradient(135deg, #004f71 0%, #003d58 100%);
+  color: white;
+  border-radius: 1.5rem;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 79, 113, 0.2);
+  margin-bottom: 0.5rem;
+}
+
+.observation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.observation-header .section-title {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.date-badge {
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+.observation-content {
+  position: relative;
+  padding-left: 3rem;
+}
+
+.quote-icon {
+  position: absolute;
+  left: 0;
+  top: -1.5rem;
+  font-size: 5rem;
+  color: rgba(255, 255, 255, 0.1);
+  font-family: serif;
+  line-height: 1;
+}
+
+.observation-text {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: #ffffff;
+  font-style: italic;
+  margin: 0;
 }
 
 .classification-card {
@@ -188,11 +242,6 @@
 
   .page-title {
     font-size: 1.75rem;
-  }
-
-  .content-grid {
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 2rem;
   }
 
   .classification-grid {

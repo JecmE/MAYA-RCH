@@ -1,397 +1,183 @@
 <div class="audit-page">
-  <div class="audit-topbar">
-    <div class="audit-header">
-      <button (click)="goBack()" class="back-button" type="button" aria-label="Volver">
-        ←
+  <header class="audit-header">
+    <div class="header-left">
+      <h2 class="audit-title">Auditoría y Logs del Sistema</h2>
+      <p class="audit-subtitle">Monitoreo de trazabilidad técnica, accesos y estabilidad del servidor.</p>
+    </div>
+
+    <div class="audit-tabs">
+      <button (click)="setTab('funcional')" [class.audit-tab--active]="activeTab === 'funcional'" class="audit-tab">Auditoría Funcional</button>
+      <button (click)="setTab('acceso')" [class.audit-tab--active]="activeTab === 'acceso'" class="audit-tab">Logs de Acceso</button>
+      <button (click)="setTab('errores')" [class.audit-tab--active]="activeTab === 'errores'" class="audit-tab">Logs de Errores</button>
+    </div>
+  </header>
+
+  <!-- PANEL DE FILTROS FIJO -->
+  <div class="filters-panel-fixed">
+    <div class="filters-row">
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input type="text" class="search-input" [(ngModel)]="searchTerm" placeholder="Buscar por usuario, IP, detalle..." (input)="currentPage = 1">
+      </div>
+
+      <div class="filter-group" *ngIf="activeTab !== 'acceso'">
+        <select class="filter-control" [(ngModel)]="filtroModulo" (change)="currentPage = 1">
+          <option value="">Cualquier Módulo</option>
+          @for (m of getModulosUnicos(); track m) { <option [value]="m">{{ m }}</option> }
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select class="filter-control" [(ngModel)]="filtroUsuario" (change)="currentPage = 1">
+          <option value="">Cualquier Usuario</option>
+          @for (u of getUsuariosUnicos(); track u) { <option [value]="u">{{ u }}</option> }
+        </select>
+      </div>
+
+      <div class="filter-group" *ngIf="activeTab === 'funcional'">
+        <select class="filter-control" [(ngModel)]="filtroSeveridad" (change)="currentPage = 1">
+          <option value="">Severidad: Todas</option>
+          <option value="Alta">Alta</option>
+          <option value="Media">Media</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <input type="date" class="filter-control" [(ngModel)]="filtroFechaInicio" (change)="currentPage = 1">
+      </div>
+
+      <button (click)="limpiarFiltros()" class="btn-clear-filters" title="Limpiar filtros">
+        Limpiar
       </button>
-
-      <div class="audit-header__content">
-        <h2 class="audit-title">Auditoría y Logs</h2>
-        <p class="audit-subtitle">
-          Supervisa la trazabilidad técnica, operativa y errores del sistema.
-        </p>
-      </div>
-    </div>
-
-    <button class="advanced-button" type="button" (click)="toggleFiltros()">
-      <span>Opciones avanzadas</span>
-      <span class="advanced-button__icon" [class.advanced-button__icon--open]="showFiltros">⌄</span>
-    </button>
-  </div>
-
-  @if (showFiltros) {
-    <div class="advanced-panel">
-      <h3 class="advanced-panel__title">Filtros avanzados</h3>
-
-      <div class="advanced-grid">
-        <div class="field-group">
-          <label class="field-label">Módulo</label>
-          <select [(ngModel)]="filtroModulo" class="form-control">
-            <option value="">Todos los módulos</option>
-            @for (item of getModulosUnicos(); track item) {
-              <option [value]="item">{{ item }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Usuario</label>
-          <select [(ngModel)]="filtroUsuario" class="form-control">
-            <option value="">Todos los usuarios</option>
-            @for (item of getUsuariosUnicos(); track item) {
-              <option [value]="item">{{ item }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Fecha inicio</label>
-          <input [(ngModel)]="filtroFechaInicio" type="date" class="form-control" />
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Fecha fin</label>
-          <input [(ngModel)]="filtroFechaFin" type="date" class="form-control" />
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Tipo de evento</label>
-          <select [(ngModel)]="filtroTipoEvento" class="form-control">
-            <option value="">Todos los tipos</option>
-            @for (item of getEventosUnicos(); track item) {
-              <option [value]="item">{{ item }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Severidad</label>
-          <select [(ngModel)]="filtroSeveridad" class="form-control">
-            <option value="">Todas las severidades</option>
-            <option value="Alta">Alta</option>
-            <option value="Media">Media</option>
-            <option value="Baja">Baja</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="advanced-actions">
-        <button class="secondary-button" type="button" (click)="limpiarFiltrosAvanzados()">
-          Limpiar filtros
-        </button>
-      </div>
-    </div>
-  }
-
-  <div class="stats-grid">
-    <div class="stat-card">
-      <p class="stat-card__label">Eventos hoy</p>
-      <p class="stat-card__value stat-card__value--blue">{{ totalEventosHoy }}</p>
-    </div>
-
-    <div class="stat-card">
-      <p class="stat-card__label">Logins</p>
-      <p class="stat-card__value stat-card__value--green">{{ totalLogins }}</p>
-    </div>
-
-    <div class="stat-card">
-      <p class="stat-card__label">Cambios</p>
-      <p class="stat-card__value stat-card__value--amber">{{ totalCambios }}</p>
-    </div>
-
-    <div class="stat-card">
-      <p class="stat-card__label">Errores altos</p>
-      <p class="stat-card__value stat-card__value--purple">{{ erroresAltos }}</p>
     </div>
   </div>
 
   <div class="audit-card">
-    <div class="tabs-bar">
-      <button
-        type="button"
-        class="tab-button"
-        [class.tab-button--active]="activeTab === 'funcional'"
-        (click)="setTab('funcional')"
-      >
-        Auditoría funcional
-      </button>
-
-      <button
-        type="button"
-        class="tab-button"
-        [class.tab-button--active]="activeTab === 'acceso'"
-        (click)="setTab('acceso')"
-      >
-        Logs de acceso
-      </button>
-
-      <button
-        type="button"
-        class="tab-button"
-        [class.tab-button--active]="activeTab === 'errores'"
-        (click)="setTab('errores')"
-      >
-        Logs de errores
-        <span class="tab-badge">{{ erroresData.length }}</span>
-      </button>
-    </div>
-
-    <div class="audit-card__filters">
-      <div class="search-box">
-        <input
-          [(ngModel)]="searchTerm"
-          type="text"
-          placeholder="Buscar evento..."
-          class="form-control"
-        />
-      </div>
-
-      <div class="filters-group">
-        @if (activeTab === 'funcional') {
-          <select [(ngModel)]="filtroAccion" class="form-control form-control--auto">
-            <option value="">Todas las acciones</option>
-            <option value="Bloqueo">Bloqueo</option>
-            <option value="Cálculo">Cálculo</option>
-            <option value="Cierre">Cierre</option>
-            <option value="Creación">Creación</option>
-            <option value="Edición">Edición</option>
-          </select>
-        }
-
-        <input
-          [(ngModel)]="filtroFecha"
-          type="date"
-          class="form-control form-control--auto"
-        />
-      </div>
-    </div>
-
-    @if (activeTab === 'funcional') {
-      <div class="audit-table-wrapper">
-        <table class="audit-table audit-table--wide">
-          <thead>
-            <tr class="audit-table__head-row">
-              <th class="table-head table-head--first">Fecha / Hora</th>
-              <th class="table-head">Usuario</th>
-              <th class="table-head">Módulo</th>
-              <th class="table-head">Acción</th>
-              <th class="table-head">Descripción</th>
-              <th class="table-head">Severidad</th>
-              <th class="table-head table-head--last table-head--center">Ver</th>
-            </tr>
-          </thead>
-
-          <tbody class="audit-table__body">
-            @for (row of filteredAuditoriaData; track row.id) {
-              <tr class="audit-table__row">
-                <td class="table-cell table-cell--first table-cell--mono">{{ row.fecha }}</td>
-                <td class="table-cell table-cell--strong">{{ row.usuario }}</td>
-                <td class="table-cell">
-                  <span class="module-badge">{{ row.modulo }}</span>
-                </td>
-                <td class="table-cell">
-                  <span [class]="getAccionClass(row.accion)">
-                    {{ row.accion }}
-                  </span>
-                </td>
-                <td class="table-cell table-cell--muted">{{ row.descripcion }}</td>
-                <td class="table-cell">
-                  <span [class]="getSeveridadClass(row.severidad)">
-                    {{ row.severidad }}
-                  </span>
-                </td>
-                <td class="table-cell table-cell--last table-cell--center">
-                  <button class="icon-button" type="button" (click)="abrirDetalle(row)">
-                    Ver
-                  </button>
-                </td>
-              </tr>
-            }
-
-            @if (filteredAuditoriaData.length === 0) {
-              <tr>
-                <td colspan="7" class="empty-state">No se encontraron registros.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-
-    @if (activeTab === 'acceso') {
-      <div class="audit-table-wrapper">
+    <div class="table-wrapper">
+      <!-- TABLA FUNCIONAL -->
+      @if (activeTab === 'funcional') {
         <table class="audit-table">
           <thead>
-            <tr class="audit-table__head-row">
-              <th class="table-head table-head--first">Fecha / Hora</th>
-              <th class="table-head">Usuario</th>
-              <th class="table-head">Acción</th>
-              <th class="table-head">IP</th>
-              <th class="table-head">Dispositivo / Navegador</th>
-              <th class="table-head table-head--last">ID Sesión</th>
+            <tr>
+              <th>Fecha y Hora</th>
+              <th>Responsable</th>
+              <th>Módulo</th>
+              <th>Acción</th>
+              <th>Descripción</th>
+              <th class="text-center">Ver</th>
             </tr>
           </thead>
-
-          <tbody class="audit-table__body">
-            @for (row of filteredAccesosData; track row.id) {
-              <tr class="audit-table__row">
-                <td class="table-cell table-cell--first table-cell--mono">{{ row.fecha }}</td>
-                <td class="table-cell table-cell--strong">{{ row.usuario }}</td>
-                <td class="table-cell">
-                  <span class="badge" [class.badge--green]="row.accion.includes('exitoso')" [class.badge--red]="row.accion.includes('fallido')">
-                    {{ row.accion }}
-                  </span>
-                </td>
-                <td class="table-cell table-cell--mono">{{ row.ip }}</td>
-                <td class="table-cell table-cell--muted">{{ row.dispositivo }}</td>
-                <td class="table-cell table-cell--last table-cell--mono">{{ row.sesion || '-' }}</td>
-              </tr>
-            }
-
-            @if (filteredAccesosData.length === 0) {
+          <tbody>
+            @for (row of paginatedData; track row.id) {
               <tr>
-                <td colspan="6" class="empty-state">No se encontraron registros.</td>
+                <td class="mono-cell">{{ row.fecha }}</td>
+                <td>
+                  <div class="user-tag">
+                    <span class="user-avatar">{{ row.usuario.charAt(0).toUpperCase() }}</span>
+                    <span>@{{ row.usuario }}</span>
+                  </div>
+                </td>
+                <td><span class="badge badge--slate">{{ row.modulo }}</span></td>
+                <td><span [ngClass]="getAccionClass(row.accion)">{{ row.accion }}</span></td>
+                <td class="text-muted">{{ row.descripcion }}</td>
+                <td class="text-center">
+                  <button class="btn-detail" (click)="abrirDetalle(row)">👁</button>
+                </td>
               </tr>
             }
           </tbody>
         </table>
-      </div>
-    }
+      }
 
-    @if (activeTab === 'errores') {
-      <div class="audit-table-wrapper">
+      <!-- TABLA ACCESOS -->
+      @if (activeTab === 'acceso') {
         <table class="audit-table">
           <thead>
-            <tr class="audit-table__head-row">
-              <th class="table-head table-head--first">Fecha / Hora</th>
-              <th class="table-head">Módulo</th>
-              <th class="table-head">Tipo de error</th>
-              <th class="table-head">Mensaje técnico</th>
-              <th class="table-head table-head--last">Severidad</th>
+            <tr>
+              <th>Timestamp</th>
+              <th>Usuario</th>
+              <th>IP Origen</th>
+              <th>Resultado / Acción</th>
+              <th>Dispositivo</th>
             </tr>
           </thead>
-
-          <tbody class="audit-table__body">
-            @for (row of filteredErroresData; track row.id) {
-              <tr class="audit-table__row">
-                <td class="table-cell table-cell--first table-cell--mono">{{ row.fecha }}</td>
-                <td class="table-cell table-cell--strong">{{ row.modulo }}</td>
-                <td class="table-cell">{{ row.error }}</td>
-                <td class="table-cell table-cell--muted">{{ row.mensaje }}</td>
-                <td class="table-cell table-cell--last">
-                  <span [class]="getSeveridadClass(row.severidad)">
-                    {{ row.severidad }}
-                  </span>
-                </td>
-              </tr>
-            }
-
-            @if (filteredErroresData.length === 0) {
+          <tbody>
+            @for (row of paginatedData; track row.id) {
               <tr>
-                <td colspan="5" class="empty-state">No se encontraron registros.</td>
+                <td class="mono-cell">{{ row.fecha }}</td>
+                <td class="fw-700">@{{ row.usuario }}</td>
+                <td class="mono-cell">{{ row.ip }}</td>
+                <td><span class="badge" [ngClass]="row.accion.includes('Fallido') ? 'badge--red' : 'badge--green'">{{ row.accion }}</span></td>
+                <td class="text-muted">{{ row.dispositivo }}</td>
               </tr>
             }
           </tbody>
         </table>
-      </div>
-    }
+      }
 
-    <div class="audit-card__footer">
-      <span>
-        @if (activeTab === 'funcional') {
-          Mostrando {{ filteredAuditoriaData.length }} registros
-        }
-        @if (activeTab === 'acceso') {
-          Mostrando {{ filteredAccesosData.length }} registros
-        }
-        @if (activeTab === 'errores') {
-          Mostrando {{ filteredErroresData.length }} registros
-        }
-      </span>
+      <!-- TABLA ERRORES -->
+      @if (activeTab === 'errores') {
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Módulo</th>
+              <th>Tipo Error</th>
+              <th>Mensaje Técnico</th>
+              <th>Severidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of paginatedData; track row.id) {
+              <tr>
+                <td class="mono-cell">{{ row.fecha }}</td>
+                <td class="fw-700">{{ row.modulo }}</td>
+                <td class="text-red">{{ row.error }}</td>
+                <td class="text-muted">{{ row.mensaje }}</td>
+                <td>
+                  <span class="severity" [ngClass]="getSeveridadClass(row.severidad)"></span>
+                  {{ row.severidad }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
 
-      <div class="pagination-actions">
-        <button class="pagination-button pagination-button--disabled" type="button">
-          Anterior
-        </button>
-        <button class="pagination-button" type="button">
-          Siguiente
-        </button>
+    <!-- PAGINACIÓN PREMIUM -->
+    <div class="pagination-footer">
+      <span class="pagination-info">Mostrando página {{ currentPage }} de {{ totalPages }}</span>
+      <div class="pagination-buttons">
+        <button class="btn-page" (click)="prevPage()" [disabled]="currentPage === 1">Anterior</button>
+        <button class="btn-page" (click)="nextPage()" [disabled]="currentPage === totalPages">Siguiente</button>
       </div>
     </div>
   </div>
 </div>
 
-@if (showDetalle && eventoSeleccionado) {
-  <div class="modal-backdrop">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 class="modal-title">Detalle del evento</h3>
-        <button type="button" class="modal-close" (click)="cerrarDetalle()">✕</button>
+<!-- MODAL DETALLE -->
+<div class="modal-overlay" *ngIf="showDetalle">
+  <div class="detail-modal">
+    <div class="modal-header">
+      <h3>Detalle del Evento #{{ eventoSeleccionado?.id }}</h3>
+      <button (click)="cerrarDetalle()" class="btn-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-item"><label>Usuario</label><p>@{{ eventoSeleccionado?.usuario }}</p></div>
+        <div class="detail-item"><label>Módulo</label><p>{{ eventoSeleccionado?.modulo }}</p></div>
+        <div class="detail-item"><label>Acción Realizada</label><p>{{ eventoSeleccionado?.accion }}</p></div>
+        <div class="detail-item"><label>Fecha y Hora</label><p>{{ eventoSeleccionado?.fecha }}</p></div>
       </div>
-
-      <div class="modal-body">
-        <div class="detail-section">
-          <h4 class="detail-section__title">Información general</h4>
-          <div class="detail-box">
-            <div class="detail-grid">
-              <div><span class="detail-label">Fecha y hora:</span> <span class="detail-value detail-value--mono">{{ eventoSeleccionado.fecha }}</span></div>
-              <div><span class="detail-label">Usuario:</span> <span class="detail-value">{{ eventoSeleccionado.usuario }}</span></div>
-              <div><span class="detail-label">Módulo:</span> <span class="detail-value">{{ eventoSeleccionado.modulo }}</span></div>
-              <div><span class="detail-label">Acción:</span> <span class="detail-value">{{ eventoSeleccionado.accion }}</span></div>
-            </div>
-          </div>
-        </div>
-
-        @if (eventoSeleccionado.anterior || eventoSeleccionado.nuevo) {
-          <div class="detail-section">
-            <h4 class="detail-section__title">Cambios realizados</h4>
-            <div class="changes-grid">
-              <div class="change-box change-box--before">
-                <p class="change-box__title">Antes</p>
-                <p class="change-box__value">{{ eventoSeleccionado.anterior || 'N/A' }}</p>
-              </div>
-              <div class="change-box change-box--after">
-                <p class="change-box__title">Después</p>
-                <p class="change-box__value">{{ eventoSeleccionado.nuevo || 'N/A' }}</p>
-              </div>
-            </div>
-          </div>
-        }
-
-        <div class="detail-section">
-          <h4 class="detail-section__title">Mensaje técnico</h4>
-          <div class="technical-box">
-            <p>Event: {{ eventoSeleccionado.evento }}</p>
-            <p>Description: {{ eventoSeleccionado.descripcion }}</p>
-            <p>Timestamp: {{ eventoSeleccionado.fecha }}</p>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4 class="detail-section__title">Origen del evento</h4>
-          <div class="origin-box">
-            <div class="detail-grid">
-              <div><span class="detail-label">IP de origen:</span> <span class="detail-value detail-value--mono">{{ eventoSeleccionado.ip }}</span></div>
-              <div><span class="detail-label">Severidad:</span> <span [class]="getSeveridadClass(eventoSeleccionado.severidad)">{{ eventoSeleccionado.severidad }}</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4 class="detail-section__title">Observaciones</h4>
-          <textarea
-            [(ngModel)]="observacion"
-            class="form-control textarea-control"
-            rows="4"
-            placeholder="Agregar observaciones o notas sobre este evento (opcional)"
-          ></textarea>
+      <div class="detail-item">
+        <label>Valor / Descripción Técnica</label>
+        <div class="diff-card diff-card--new">
+          <div class="diff-content">{{ eventoSeleccionado?.descripcion }}</div>
         </div>
       </div>
-
-      <div class="modal-footer">
-        <button type="button" class="secondary-button" (click)="cerrarDetalle()">Cerrar</button>
-        <button type="button" class="primary-button" (click)="guardarObservacion()">Guardar observación</button>
-      </div>
+      <button (click)="cerrarDetalle()" class="btn-save">Cerrar</button>
     </div>
   </div>
-}
+</div>

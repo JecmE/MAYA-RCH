@@ -3,12 +3,13 @@
     <div class="header-row">
       <div class="header-copy">
         <h2 class="page-title">KPIs del Equipo</h2>
-        <p class="page-subtitle">Rendimiento agregado y clasificación de tus colaboradores.</p>
+        <p class="page-subtitle">Rendimiento agregado y clasificación de tus colaboradores bajo tu cargo.</p>
       </div>
 
-      <select [(ngModel)]="periodoSeleccionado" class="period-select">
-        <option value="Marzo 2026">Marzo 2026</option>
-        <option value="Febrero 2026">Febrero 2026</option>
+      <select class="period-select" [(ngModel)]="periodoSeleccionado" (change)="onPeriodChange()">
+        @for (opt of periodosDisponibles; track opt.label) {
+          <option [ngValue]="opt">{{ opt.label }}</option>
+        }
       </select>
     </div>
 
@@ -16,12 +17,15 @@
       <div class="hero-card">
         <div class="hero-icon">★</div>
         <p class="hero-label">Promedio del Equipo</p>
-        <div class="hero-value">{{ promedioEquipo }}<span>%</span></div>
-        <div class="hero-trend">↗ {{ comparacionMesAnterior }}</div>
+        <div class="hero-value">{{ dataActual?.promedioEquipo?.toFixed(1) || '0.0' }}<span>%</span></div>
+        <div class="hero-trend" [class.hero-trend--down]="(dataActual?.comparacionMesAnterior || 0) < 0">
+          {{ (dataActual?.comparacionMesAnterior || 0) >= 0 ? '↗' : '↘' }}
+          {{ dataActual?.comparacionMesAnterior || 0 }}% vs mes anterior
+        </div>
       </div>
 
       <div class="chart-card">
-        <h3 class="section-title">Comparativa por Colaborador</h3>
+        <h3 class="section-title">Comparativa de Cumplimiento</h3>
 
         <div class="fake-chart">
           <div class="chart-grid-line chart-grid-line--1"></div>
@@ -29,7 +33,7 @@
           <div class="chart-grid-line chart-grid-line--3"></div>
 
           <div class="chart-columns">
-            @for (item of chartData; track item.name) {
+            @for (item of dataActual?.chartData; track item.name) {
               <div class="chart-col">
                 <div class="bar-wrapper">
                   <div
@@ -41,6 +45,10 @@
                 <span class="chart-name">{{ item.name }}</span>
                 <span class="chart-value">{{ item.kpi }}%</span>
               </div>
+            } @empty {
+              <div class="w-full h-full flex items-center justify-center text-slate-300 italic text-sm">
+                Sin datos de equipo este mes
+              </div>
             }
           </div>
         </div>
@@ -49,7 +57,7 @@
 
     <div class="table-card">
       <div class="table-header">
-        <h3 class="table-title">Ranking y Detalle</h3>
+        <h3 class="table-title">Ranking de Desempeño</h3>
       </div>
 
       <div class="table-toolbar">
@@ -66,7 +74,8 @@
           <option>Todas las clasificaciones</option>
           <option>Excelente</option>
           <option>Bueno</option>
-          <option>Regular</option>
+          <option>En observacion</option>
+          <option>En riesgo</option>
         </select>
       </div>
 
@@ -76,7 +85,7 @@
             <tr>
               <th class="text-center small-col">#</th>
               <th>Empleado</th>
-              <th class="text-center">KPI</th>
+              <th class="text-center">Cumplimiento</th>
               <th class="text-center">Clasificación</th>
               <th class="text-center">Alertas</th>
               <th class="text-center">Acciones</th>
@@ -97,13 +106,13 @@
 
                 <td class="text-center">
                   <div class="kpi-cell">
-                    <span>{{ row.kpi }}</span>
+                    <span class="font-bold">{{ row.kpi }}</span>
                     <span
                       class="trend-icon"
                       [class.trend-icon--up]="row.tendencia === 'up'"
                       [class.trend-icon--down]="row.tendencia === 'down'"
                     >
-                      ↗
+                      {{ row.tendencia === 'up' ? '↗' : '↘' }}
                     </span>
                   </div>
                 </td>
@@ -118,22 +127,20 @@
                   @if (row.alerta) {
                     <span class="risk-badge">⚠ Riesgo</span>
                   } @else {
-                    <span class="empty-dash">-</span>
+                    <span class="text-slate-300">-</span>
                   }
                 </td>
 
                 <td class="text-center">
                   <button type="button" class="profile-button" (click)="verPerfil(row)">
-                    Ver Perfil
+                    Ver Detalle
                   </button>
                 </td>
               </tr>
-            }
-
-            @if (equipoFiltrado.length === 0) {
+            } @empty {
               <tr>
                 <td colspan="6" class="empty-state">
-                  No se encontraron colaboradores con los filtros seleccionados.
+                  No se encontraron colaboradores con los criterios seleccionados.
                 </td>
               </tr>
             }
@@ -143,255 +150,123 @@
     </div>
   </main>
 
+  <!-- Modal de Perfil Detallado (UI Fiel a Capturas) -->
   @if (modalPerfil && empleadoSeleccionado) {
     <div class="modal-overlay" (click)="cerrarModal()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>Perfil de {{ empleadoSeleccionado.empleado }}</h3>
+          <h3 class="modal-title">Perfil de {{ empleadoSeleccionado.empleado }}</h3>
           <button type="button" class="close-button" (click)="cerrarModal()">✕</button>
         </div>
 
         <div class="modal-body">
           <section class="modal-section">
-            <h4>Datos Básicos</h4>
-            <div class="info-grid">
-              <div>
-                <span>Empleado:</span><strong>{{ empleadoSeleccionado.empleado }}</strong>
+            <h4 class="section-label">DATOS BÁSICOS</h4>
+            <div class="basic-info-card">
+              <div class="info-row">
+                <div class="info-group">
+                  <span class="info-label">Empleado:</span>
+                  <span class="info-value font-bold">{{ empleadoSeleccionado.empleado }}</span>
+                </div>
+                <div class="info-group">
+                  <span class="info-label">Puesto:</span>
+                  <span class="info-value">{{ empleadoProfileData?.empleado?.puesto || '-' }}</span>
+                </div>
               </div>
-              <div>
-                <span>Puesto:</span
-                ><strong>{{ empleadoProfileData?.empleado?.puesto || '-' }}</strong>
-              </div>
-              <div>
-                <span>Departamento:</span
-                ><strong>{{ empleadoProfileData?.empleado?.departamento || '-' }}</strong>
-              </div>
-              <div>
-                <span>Correo:</span
-                ><strong>{{ empleadoProfileData?.empleado?.email || '-' }}</strong>
+              <div class="info-row">
+                <div class="info-group">
+                  <span class="info-label">Departamento:</span>
+                  <span class="info-value">{{ empleadoProfileData?.empleado?.departamento || '-' }}</span>
+                </div>
+                <div class="info-group">
+                  <span class="info-label">Correo:</span>
+                  <span class="info-value">{{ empleadoProfileData?.empleado?.email || '-' }}</span>
+                </div>
               </div>
             </div>
           </section>
 
           <section class="modal-section">
-            <h4>KPI Actual</h4>
-            <div class="kpi-highlight">
-              <p>Rendimiento del Mes</p>
-              <div class="kpi-highlight__value">
-                {{ empleadoProfileData?.kpiActual?.cumplimientoPct ?? empleadoSeleccionado.kpi }}
-              </div>
-              <span
-                [class]="
-                  getClasificacionClass(
-                    empleadoProfileData?.kpiActual?.clasificacion ||
-                      empleadoSeleccionado.clasificacion
-                  )
-                "
-              >
-                {{
-                  empleadoProfileData?.kpiActual?.clasificacion ||
-                    empleadoSeleccionado.clasificacion
-                }}
+            <h4 class="section-label">KPI ACTUAL</h4>
+            <div class="kpi-main-banner">
+              <p class="banner-title">Rendimiento del Mes</p>
+              <div class="banner-value">{{ empleadoProfileData?.kpiActual?.cumplimientoPct || empleadoSeleccionado.kpiNum }}%</div>
+              <span class="banner-badge" [class]="getClasificacionClass(empleadoProfileData?.kpiActual?.clasificacion || empleadoSeleccionado.clasificacion)">
+                {{ empleadoProfileData?.kpiActual?.clasificacion || empleadoSeleccionado.clasificacion }}
               </span>
             </div>
           </section>
 
           <section class="modal-section">
-            <h4>Historial de Asistencia (Últimos 7 días)</h4>
-            <div class="list-block">
-              @if (empleadoProfileData?.historialAsistencia?.length) {
-                @for (
-                  asistencia of empleadoProfileData!.historialAsistencia;
-                  track asistencia.fecha
-                ) {
-                  <div class="list-row">
-                    <span>{{ formatDate(asistencia.fecha) }}</span>
-                    <div class="list-row__right">
-                      <span
-                        >Entrada: <strong>{{ formatTime(asistencia.entrada) }}</strong></span
-                      >
-                      <span
-                        >Salida: <strong>{{ formatTime(asistencia.salida) }}</strong></span
-                      >
-                      <span
-                        class="mini-badge"
-                        [class.mini-badge--green]="asistencia.estado === 'a_tiempo'"
-                        [class.mini-badge--amber]="asistencia.estado === 'tarde'"
-                      >
-                        {{ asistencia.estado === 'a_tiempo' ? 'A tiempo' : 'Tarde' }}
-                      </span>
-                    </div>
-                  </div>
-                }
-              } @else {
-                <div class="list-row">
-                  <span>Sin datos de asistencia</span>
-                </div>
-              }
-            </div>
-          </section>
-
-          <section class="modal-section">
-            <h4>Horas por Proyecto (Este Mes)</h4>
-            <div class="project-hours">
-              @if (empleadoProfileData?.horasPorProyecto?.length) {
-                @for (proyecto of empleadoProfileData!.horasPorProyecto; track proyecto.nombre) {
-                  <div class="project-hour-card">
-                    <div class="project-hour-copy">
-                      <span>{{ proyecto.nombre }}</span>
-                      <div class="progress">
-                        <div class="progress__fill progress__fill--amber" style="width: 75%"></div>
-                      </div>
-                    </div>
-                    <strong>{{ proyecto.horas }}h</strong>
-                  </div>
-                }
-              } @else {
-                <div class="project-hour-card">
-                  <span>Sin horas registradas este mes</span>
-                </div>
-              }
-            </div>
-          </section>
-
-          <section class="modal-section">
-            <h4>Solicitudes Recientes</h4>
-            <div class="list-block">
-              @if (empleadoProfileData?.solicitudesRecientes?.length) {
-                @for (
-                  solicitud of empleadoProfileData!.solicitudesRecientes;
-                  track solicitud.fechaInicio
-                ) {
-                  <div class="list-row">
-                    <div>
-                      <strong>{{ solicitud.tipo }}</strong>
-                      <p>
-                        {{ formatDate(solicitud.fechaInicio) }} -
-                        {{ formatDate(solicitud.fechaFin) }}
-                      </p>
-                    </div>
-                    <span
-                      class="mini-badge"
-                      [class.mini-badge--green]="solicitud.estado === 'aprobado'"
-                      [class.mini-badge--amber]="solicitud.estado === 'pendiente'"
-                      [class.mini-badge--red]="solicitud.estado === 'rechazado'"
-                    >
-                      {{
-                        solicitud.estado === 'aprobado'
-                          ? 'Aprobado'
-                          : solicitud.estado === 'pendiente'
-                            ? 'Pendiente'
-                            : 'Rechazado'
-                      }}
+            <h4 class="section-label">👤 HISTORIAL DE ASISTENCIA (ÚLTIMOS 7 DÍAS)</h4>
+            <div class="list-container">
+              @for (asist of empleadoProfileData?.historialAsistencia; track $index) {
+                <div class="list-item">
+                  <span class="item-date">{{ formatDate(asist.fecha) }}</span>
+                  <div class="item-details">
+                    <span>Entrada: <strong>{{ formatTime(asist.entrada) }}</strong></span>
+                    <span>Salida: <strong>{{ formatTime(asist.salida) }}</strong></span>
+                    <span class="mini-badge" [class.mini-badge--green]="asist.estado === 'a_tiempo'" [class.mini-badge--amber]="asist.estado === 'tarde'">
+                      {{ asist.estado === 'a_tiempo' ? 'A tiempo' : 'Tarde' }}
                     </span>
                   </div>
-                }
-              } @else {
-                <div class="list-row">
-                  <span>Sin solicitudes recientes</span>
                 </div>
+              } @empty {
+                <p class="empty-msg">Sin datos de asistencia recientes.</p>
               }
             </div>
           </section>
 
           <section class="modal-section">
-            <h4>KPI Actual</h4>
-            <div class="kpi-highlight">
-              <p>Rendimiento del Mes</p>
-              <div class="kpi-highlight__value">{{ empleadoSeleccionado.kpi }}</div>
-              <span [class]="getClasificacionClass(empleadoSeleccionado.clasificacion)">
-                {{ empleadoSeleccionado.clasificacion }}
-              </span>
-            </div>
-          </section>
-
-          <section class="modal-section">
-            <h4>Historial de Asistencia (Últimos 7 días)</h4>
-            <div class="list-block">
-              @for (dia of ['Lun 24/03', 'Mar 25/03', 'Mié 26/03', 'Jue 27/03']; track dia) {
-                <div class="list-row">
-                  <span>{{ dia }}</span>
-                  <div class="list-row__right">
-                    <span>Entrada: <strong>08:02</strong></span>
-                    <span>Salida: <strong>17:15</strong></span>
-                    <span class="mini-badge mini-badge--green">A tiempo</span>
+            <h4 class="section-label">📋 HORAS POR PROYECTO (ESTE MES)</h4>
+            <div class="project-container">
+              @for (proj of empleadoProfileData?.horasPorProyecto; track $index) {
+                <div class="project-row">
+                  <div class="project-info">
+                    <span class="project-name">{{ proj.nombre }}</span>
+                    <div class="project-progress">
+                      <div class="progress-bar" [style.width.%]="(proj.horas / 160) * 100"></div>
+                    </div>
                   </div>
+                  <span class="project-total">{{ proj.horas }}h</span>
                 </div>
+              } @empty {
+                <p class="empty-msg">Sin registros de tiempo este mes.</p>
               }
             </div>
           </section>
 
           <section class="modal-section">
-            <h4>Horas por Proyecto (Este Mes)</h4>
-            <div class="project-hours">
-              <div class="project-hour-card">
-                <div class="project-hour-copy">
-                  <span>Proyecto CRH</span>
-                  <div class="progress">
-                    <div class="progress__fill progress__fill--amber" style="width: 75%"></div>
+            <h4 class="section-label">📄 SOLICITUDES RECIENTES</h4>
+            <div class="list-container">
+              @for (sol of empleadoProfileData?.solicitudesRecientes; track $index) {
+                <div class="list-item">
+                  <div class="item-info">
+                    <span class="item-title">{{ sol.tipo }}</span>
+                    <span class="item-subtitle">{{ formatDate(sol.fechaInicio) }} - {{ formatDate(sol.fechaFin) }}</span>
                   </div>
+                  <span class="mini-badge" [class.mini-badge--green]="sol.estado === 'aprobado'" [class.mini-badge--amber]="sol.estado === 'pendiente'" [class.mini-badge--red]="sol.estado === 'rechazado'">
+                    {{ capitalize(sol.estado) }}
+                  </span>
                 </div>
-                <strong>45h</strong>
-              </div>
-
-              <div class="project-hour-card">
-                <div class="project-hour-copy">
-                  <span>Proyecto RRHH</span>
-                  <div class="progress">
-                    <div class="progress__fill progress__fill--blue" style="width: 40%"></div>
-                  </div>
-                </div>
-                <strong>24h</strong>
-              </div>
+              } @empty {
+                <p class="empty-msg">Sin solicitudes recientes.</p>
+              }
             </div>
           </section>
 
           <section class="modal-section">
-            <h4>Solicitudes Recientes</h4>
-            <div class="list-block">
-              <div class="list-row">
-                <div>
-                  <strong>Vacaciones</strong>
-                  <p>20/03/26 - 25/03/26</p>
-                </div>
-                <span class="mini-badge mini-badge--green">Aprobado</span>
-              </div>
-
-              <div class="list-row">
-                <div>
-                  <strong>Permiso Médico</strong>
-                  <p>10/03/26</p>
-                </div>
-                <span class="mini-badge mini-badge--amber">Pendiente</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="modal-section">
-            <h4>Observaciones Generales</h4>
-
+            <h4 class="section-label text-slate-400">OBSERVACIONES GENERALES</h4>
             <textarea
               rows="3"
-              class="modal-textarea"
+              class="observation-textarea"
               placeholder="Agregar observación sobre el desempeño del colaborador..."
               [(ngModel)]="observacionTemporal"
             ></textarea>
-
-            @if (observacionError) {
-              <div class="form-message form-message--error">
-                {{ observacionError }}
-              </div>
-            }
-
-            @if (observacionGuardadaMensaje) {
-              <div class="form-message form-message--success">
-                {{ observacionGuardadaMensaje }}
-              </div>
-            }
-
-            <div class="modal-actions">
-              <button type="button" class="save-observation-button" (click)="guardarObservacion()">
-                Guardar observación
+            <div class="observation-footer">
+              <span class="success-txt" *ngIf="observacionGuardadaMensaje">{{ observacionGuardadaMensaje }}</span>
+              <button type="button" class="btn-save" (click)="guardarObservacion()" [disabled]="isSavingObservation">
+                {{ isSavingObservation ? 'Guardando...' : 'Guardar observación' }}
               </button>
             </div>
           </section>
