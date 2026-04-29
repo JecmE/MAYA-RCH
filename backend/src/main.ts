@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 import * as express from 'express';
 
 async function bootstrap() {
-  console.log('--- SISTEMA MAYA RCH INICIANDO ---');
+  console.log('--- PROCESO DE ARRANQUE MAYA RCH ---');
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({ origin: '*', credentials: true });
@@ -13,11 +13,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // Azure usa el puerto de la variable PORT por defecto
+  // Azure Linux usa PORT o 8080 por defecto
   const port = process.env.PORT || 8080;
 
-  // Escuchar en 0.0.0.0 es LO MÁS IMPORTANTE en Azure Linux
+  // Escuchar en 0.0.0.0 y avisar a la consola
   await app.listen(port, '0.0.0.0');
-  console.log(`✅ Servidor escuchando en: http://0.0.0.0:${port}`);
+  console.log(`🚀 SERVIDOR ACTIVO EN PUERTO: ${port}`);
 }
 bootstrap();
