@@ -28,8 +28,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // Simplificación absoluta para Azure: Puerto automático
-  const port = process.env.PORT || 8080;
+  // En Azure Windows, process.env.PORT es el puerto asignado automáticamente.
+  const port = process.env.PORT || 3000;
 
   await app.listen(port);
   console.log(`MAYA RCH API running on port: ${port}`);
