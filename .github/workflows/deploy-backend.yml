@@ -17,18 +17,23 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Build and Install
+      - name: Build and Package
         run: |
           cd backend
           npm install
           npm run build
-          # Dejamos node_modules para que Azure no tenga que instalar nada
-          npm prune --production
+          # Crear una carpeta limpia solo con lo necesario para ejecutar
+          mkdir ../deploy
+          cp -r dist/* ../deploy/
+          cp package.json ../deploy/
+          cp package-lock.json ../deploy/
+          cd ../deploy
+          npm install --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend
+          package: deploy
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
