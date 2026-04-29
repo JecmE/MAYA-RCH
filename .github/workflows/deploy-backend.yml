@@ -17,25 +17,20 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Build
+      - name: Install dependencies
         run: |
           cd backend
           npm install
-          npm run build
 
-      - name: Create Deployment Package
+      - name: Build
         run: |
-          mkdir deploy
-          cp -r backend/dist/* deploy/
-          cp backend/package.json deploy/
-          cp backend/package-lock.json deploy/
-          cd deploy
-          npm install --production
+          cd backend
+          npx nest build
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: deploy
+          package: backend
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
