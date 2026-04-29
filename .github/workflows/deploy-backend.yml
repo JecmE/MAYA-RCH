@@ -23,14 +23,15 @@ jobs:
           npm install
           npx nest build
 
-      - name: Create Deployment Package
+      - name: Create Production Bundle
         run: |
-          # Copiamos TODO el contenido de dist a la raíz de la carpeta de despliegue
           mkdir -p release
+          # Copiamos el contenido de dist a la raíz del paquete
           cp -r backend/dist/* release/
           cp backend/package.json release/
           cp backend/package-lock.json release/
           cd release
+          # Instalamos solo lo necesario para que vuele en Azure
           npm install --production
 
       - name: Deploy to Azure Web App

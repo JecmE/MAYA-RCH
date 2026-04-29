@@ -17,10 +17,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // Puerto dinámico de Azure
+  // En Azure Linux, el puerto es dinámico.
+  // Escuchar en 0.0.0.0 es obligatorio.
   const port = process.env.PORT || 8080;
 
-  // IP 0.0.0.0 es necesaria para que Azure detecte el servicio
   await app.listen(port, '0.0.0.0');
+  console.log(`MAYA RCH online on port: ${port}`);
 }
 bootstrap();
