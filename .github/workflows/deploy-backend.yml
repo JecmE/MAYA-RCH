@@ -17,23 +17,18 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Build Backend
+      - name: Build and Package
         run: |
           cd backend
           npm install
           npm run build
-
-      - name: Prepare Artifact
-        run: |
-          mkdir deploy_package
-          cp -r backend/dist/* deploy_package/
-          cp backend/package.json deploy_package/
-          cp backend/package-lock.json deploy_package/
+          # Eliminar dependencias de desarrollo para que el paquete pese menos
+          npm prune --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: deploy_package
+          package: backend
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
