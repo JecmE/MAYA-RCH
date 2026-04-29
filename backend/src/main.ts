@@ -5,13 +5,12 @@ import { AppModule } from './app.module';
 import * as express from 'express';
 
 async function bootstrap() {
-  console.log('--- STARTING MAYA RCH PRODUCTION SERVER ---');
+  console.log('--- MAYA RCH: INICIANDO MOTOR DE PRODUCCION ---');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    origin: '*', // Permitir conexión desde el frontend de Azure
     credentials: true,
   });
 
@@ -19,11 +18,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // Azure Linux port mapping
+  // Azure usa el puerto de la variable PORT por defecto
   const port = process.env.PORT || 8080;
 
-  // Listening on 0.0.0.0 is MANDATORY for Azure Container Instances
+  // Escuchar en 0.0.0.0 es obligatorio en Azure Linux para que el tráfico fluya
   await app.listen(port, '0.0.0.0');
-  console.log(`🚀 Server is up and running on port ${port}`);
+  console.log(`✅ MAYA RCH ONLINE: Puerto ${port}`);
 }
 bootstrap();

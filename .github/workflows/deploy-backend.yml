@@ -21,12 +21,26 @@ jobs:
         run: |
           cd backend
           npm install
+          # Usamos npx para asegurar que use el compilador local
           npx nest build
+
+      - name: Prepare Production Artifact
+        run: |
+          # Creamos una carpeta limpia 'deploy_ready'
+          mkdir deploy_ready
+          # Copiamos el código compilado a la RAIZ de esa carpeta
+          cp -r backend/dist/* deploy_ready/
+          # Copiamos los archivos de configuración
+          cp backend/package.json deploy_ready/
+          cp backend/package-lock.json deploy_ready/
+          # Instalamos solo las librerías necesarias para correr (sin compiladores)
+          cd deploy_ready
+          npm install --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend
+          package: deploy_ready
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
