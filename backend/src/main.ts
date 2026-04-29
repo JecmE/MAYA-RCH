@@ -17,10 +17,10 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // Azure usa el puerto de la variable PORT
+  // Puerto dinámico de Azure
   const port = process.env.PORT || 8080;
 
-  // 0.0.0.0 es obligatorio en Azure
+  // IP 0.0.0.0 es necesaria para que Azure detecte el servicio
   await app.listen(port, '0.0.0.0');
 }
 bootstrap();

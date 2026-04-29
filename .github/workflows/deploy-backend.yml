@@ -21,12 +21,11 @@ jobs:
         run: |
           cd backend
           npm install
-          # Usamos npx para asegurar que encuentre Nest
           npx nest build
 
-      - name: Zip Bundle for Azure
+      - name: Create Deployment Package
         run: |
-          # Creamos un paquete con solo lo que Azure necesita para correr
+          # Copiamos TODO el contenido de dist a la raíz de la carpeta de despliegue
           mkdir -p release
           cp -r backend/dist/* release/
           cp backend/package.json release/
