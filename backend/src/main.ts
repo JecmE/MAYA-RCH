@@ -9,8 +9,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  // CORS TOTAL: Permitimos todo para asegurar que el Login no se bloquee
   app.enableCors({
-    origin: '*',
+    origin: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
@@ -18,11 +20,11 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // En Azure Linux, el puerto es asignado por la infraestructura
+  // Azure Linux asigna el puerto en process.env.PORT
   const port = process.env.PORT || 8080;
 
-  // IMPORTANTE: Escuchar en 0.0.0.0 es vital para que Azure lo detecte
+  // 0.0.0.0 es OBLIGATORIO en Azure para que el sitio sea visible
   await app.listen(port, '0.0.0.0');
-  console.log(`✅ Servidor en línea en el puerto: ${port}`);
+  console.log(`✅ SERVIDOR LISTO Y ESCUCHANDO EN EL PUERTO: ${port}`);
 }
 bootstrap();

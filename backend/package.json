@@ -1,6 +1,7 @@
 {
   "name": "maya-rch-api",
   "version": "1.0.0",
+  "description": "API REST for MAYA CRH System",
   "main": "main.js",
   "scripts": {
     "start": "node main.js"
