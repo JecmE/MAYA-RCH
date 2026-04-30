@@ -207,9 +207,44 @@ export class LeavesService {
   }
 
   async createRequest(createDto: any, empleadoId: number) {
-    const solicitud = this.solicitudRepository.create({ ...createDto, empleadoId, estado: SolicitudPermiso.ESTADO_PENDIENTE });
+    const { archivo, nombreArchivo, tipoMime, ...datosSolicitud } = createDto;
+
+    const solicitud = this.solicitudRepository.create({
+      ...datosSolicitud,
+      empleadoId,
+      estado: SolicitudPermiso.ESTADO_PENDIENTE,
+    });
+
     const saved = await this.solicitudRepository.save(solicitud);
     const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+
+    // SI HAY ARCHIVO, PROCESARLO
+    if (archivo && nombreArchivo) {
+      try {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'solicitudes');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        const fileName = `${Date.now()}_${nombreArchivo.replace(/\s+/g, '_')}`;
+        const filePath = path.join(uploadsDir, fileName);
+
+        // Convertir base64 a archivo físico
+        fs.writeFileSync(filePath, Buffer.from(archivo, 'base64'));
+
+        // Guardar referencia en la DB
+        await this.adjuntoRepository.save({
+          solicitudId: savedSingle.solicitudId,
+          nombreArchivo: nombreArchivo,
+          rutaUrl: fileName, // Guardamos el nombre para el endpoint de descarga
+          tipoMime: tipoMime || 'application/pdf'
+        });
+      } catch (error) {
+        console.error('Error guardando adjunto:', error);
+        // No bloqueamos la solicitud si falla el adjunto, pero lo logueamos
+      }
+    }
+
     return { solicitudId: savedSingle.solicitudId, estado: savedSingle.estado };
   }
 
