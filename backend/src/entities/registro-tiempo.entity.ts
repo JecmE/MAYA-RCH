@@ -40,6 +40,9 @@ export class RegistroTiempo {
   @Column({ name: 'horas_validadas', type: 'decimal', precision: 4, scale: 2, nullable: true })
   horasValidadas: number;
 
+  @Column({ name: 'adjunto_url', length: 500, nullable: true })
+  adjuntoUrl: string;
+
   @ManyToOne(() => Empleado, (emp) => emp.registroTiempos)
   @JoinColumn({ name: 'empleado_id' })
   empleado: Empleado;

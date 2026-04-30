@@ -63,4 +63,10 @@ export class TimesheetsService {
       params: { proyectoId, fechaInicio, fechaFin },
     });
   }
+
+  downloadAttachment(fileName: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/attachment/${fileName}`, {
+      responseType: 'blob'
+    });
+  }
 }

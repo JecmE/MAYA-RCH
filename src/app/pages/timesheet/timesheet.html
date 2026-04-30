@@ -70,6 +70,20 @@
             <span class="field-hint">Mínimo 10 caracteres</span>
           </div>
 
+          <div class="form-group">
+            <label class="form-label"> Comprobante (Opcional) </label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button type="button" (click)="fileInput.click()" class="btn btn-secondary" style="margin-top: 0;">
+                📎 Adjuntar Archivo
+              </button>
+              @if (selectedFileName) {
+                <span style="font-size: 0.85rem; color: #64748b;">{{ selectedFileName }}</span>
+                <button type="button" (click)="clearFile()" style="background: none; border: none; color: #dc2626; cursor: pointer;">✕</button>
+              }
+            </div>
+            <input type="file" #fileInput style="display: none;" (change)='onFileSelected($event)' accept=".pdf,image/*">
+          </div>
+
           <div class="actions-row">
             <div class="button-group">
               <button type="button" (click)="limpiar()" class="btn btn-secondary">Limpiar</button>
@@ -132,6 +146,7 @@
               <th>Horas</th>
               <th>Estado</th>
               <th>Comentario</th>
+              <th>Adjunto</th>
             </tr>
           </thead>
 
@@ -149,6 +164,13 @@
                     </span>
                   </td>
                   <td class="table-muted">{{ row.comments || '-' }}</td>
+                  <td>
+                    @if (row.adjuntoUrl) {
+                      <button (click)="downloadAttachment(row.adjuntoUrl)" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" title="Descargar comprobante">📎</button>
+                    } @else {
+                      -
+                    }
+                  </td>
                 </tr>
               }
             } @else {

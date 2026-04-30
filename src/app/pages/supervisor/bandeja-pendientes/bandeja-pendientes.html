@@ -151,6 +151,14 @@
 
             <div class="label">Descripción actividad:</div>
             <div class="value italic">{{ $any(selectedItem).actividad }}</div>
+
+            <div class="label">Comprobante:</div>
+            <div class="value">
+              <button *ngIf="$any(selectedItem).adjunto" (click)="downloadAttachment()" class="link-btn">
+                📎 Descargar comprobante
+              </button>
+              <span *ngIf="!$any(selectedItem).adjunto" class="text-muted">Sin adjunto</span>
+            </div>
           </ng-template>
         </div>
 

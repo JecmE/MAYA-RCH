@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
 import { TimesheetsService } from './timesheets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -77,5 +78,10 @@ export class TimesheetsController {
     @Query('fechaFin') fechaFin: string,
   ) {
     return this.timesheetsService.getProjectSummary(fechaInicio, fechaFin);
+  }
+
+  @Get('attachment/:fileName')
+  getAttachment(@Param('fileName') fileName: string, @Res() res: any) {
+    return this.timesheetsService.getAttachment(fileName, res);
   }
 }

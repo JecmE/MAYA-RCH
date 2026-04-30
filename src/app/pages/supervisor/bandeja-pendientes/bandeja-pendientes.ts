@@ -30,6 +30,7 @@ interface HoraItem {
   horas: number;
   estado: string;
   actividad: string;
+  adjunto?: string;
 }
 
 @Component({
@@ -109,7 +110,8 @@ export class BandejaPendientes implements OnInit {
           fecha: this.formatDate(entry.fecha),
           horas: entry.horas,
           estado: this.capitalize(entry.estado),
-          actividad: entry.actividadDescripcion || ''
+          actividad: entry.actividadDescripcion || '',
+          adjunto: entry.adjuntoUrl
         }));
         this.cdr.detectChanges();
       },
@@ -231,23 +233,24 @@ export class BandejaPendientes implements OnInit {
   }
 
   downloadAttachment(): void {
-    if (this.tab === 'permisos' && this.selectedItem?.adjunto) {
-      const url = this.selectedItem.adjunto;
-      this.leavesService.downloadAttachment(url).subscribe({
-        next: (blob) => {
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = downloadUrl;
-          a.download = 'adjunto_permiso';
-          a.click();
-          window.URL.revokeObjectURL(downloadUrl);
-        },
-        error: () => {
-          this.errorMessage = 'No se pudo descargar el archivo.';
-          this.cdr.detectChanges();
-        }
-      });
-    }
+    if (!this.selectedItem?.adjunto) return;
+
+    const service = this.tab === 'permisos' ? this.leavesService : this.timesheetsService;
+
+    service.downloadAttachment(this.selectedItem.adjunto).subscribe({
+      next: (blob) => {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `adjunto_${this.tab}_${this.selectedItem.id}`;
+        a.click();
+        window.URL.revokeObjectURL(downloadUrl);
+      },
+      error: () => {
+        this.errorMessage = 'No se pudo descargar el archivo.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   get pendingPermisosCount(): number {
