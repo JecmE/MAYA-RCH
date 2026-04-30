@@ -17,20 +17,19 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Build
+      - name: Install and Build
         run: |
           cd backend
           npm install
           npx nest build
 
-      - name: Package for Azure
+      - name: Create Production Bundle
         run: |
-          # Creamos una carpeta limpia. Azure no vera "backend" ni "dist".
-          mkdir -p release_package
-          cp -r backend/dist/* release_package/
-          cp backend/package.json release_package/
-          cp backend/package-lock.json release_package/
-          cd release_package
+          mkdir -p release
+          cp -r backend/dist/* release/
+          cp backend/package.json release/
+          cp backend/package-lock.json release/
+          cd release
           npm install --production
 
       - name: Deploy to Azure Web App
@@ -38,5 +37,5 @@ jobs:
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: release_package
+          package: release
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
