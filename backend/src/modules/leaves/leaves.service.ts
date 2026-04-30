@@ -249,6 +249,10 @@ export class LeavesService {
   }
 
   async getMyRequests(empleadoId: number) {
-    return await this.solicitudRepository.find({ where: { empleadoId }, relations: ['tipoPermiso', 'decisiones', 'adjuntos'], order: { fechaSolicitud: 'DESC' } });
+    return await this.solicitudRepository.find({
+      where: { empleadoId },
+      relations: ['tipoPermiso', 'decisiones', 'adjuntos'],
+      order: { fechaSolicitud: 'DESC' }
+    });
   }
 }
