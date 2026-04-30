@@ -42,8 +42,9 @@ export class TimesheetsService {
     const proyecto = await this.proyectoRepository.findOne({ where: { proyectoId: dto.proyectoId } });
     if (!proyecto) throw new NotFoundException('Proyecto no encontrado');
     const registro = this.tiempoRepository.create({ ...dto, empleadoId, estado: 'pendiente' });
-    const saved = await this.tiempoRepository.save(registro);
-    return { tiempoId: saved.tiempoId, mensaje: 'Creado' };
+    const saved: any = await this.tiempoRepository.save(registro);
+    const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+    return { tiempoId: savedSingle.tiempoId, mensaje: 'Creado' };
   }
 
   async getTeamTimesheets(supId: number, start?: string, end?: string) {
