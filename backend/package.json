@@ -1,10 +1,11 @@
 {
   "name": "maya-rch-api",
   "version": "1.0.0",
-  "main": "main.js",
+  "description": "API REST for MAYA CRH System",
   "scripts": {
-    "start": "node main.js",
-    "build": "nest build"
+    "build": "nest build",
+    "start": "nest start",
+    "start:prod": "node dist/main"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

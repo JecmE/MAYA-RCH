@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import * as express from 'express';
 
 async function bootstrap() {
-  console.log('--- SYSTEM STARTING ---');
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
   app.enableCors({
     origin: '*',
@@ -16,10 +17,10 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // Azure requiere que escuchemos en 0.0.0.0 y en el puerto que ellos dan (PORT)
+  // Configuración estándar de Azure
   const port = process.env.PORT || 8080;
 
+  // Escuchar en 0.0.0.0 es vital para Azure Linux
   await app.listen(port, '0.0.0.0');
-  console.log(`✅ SERVER RUNNING ON PORT: ${port}`);
 }
 bootstrap();
