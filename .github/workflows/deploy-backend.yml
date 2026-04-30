@@ -21,6 +21,7 @@ jobs:
         run: |
           cd backend
           npm install
+          # Usamos npx para asegurar que use el nest local
           npx nest build
 
       - name: Deploy to Azure Web App
