@@ -17,19 +17,21 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Fast Build
+      - name: Build
         run: |
           cd backend
           npm install
           npx nest build
 
-      - name: Create Ready-to-Run Package
+      - name: Create Production Package
         run: |
-          mkdir bundle
-          cp -r backend/dist/* bundle/
-          cp backend/package.json bundle/
-          cp backend/package-lock.json bundle/
-          cd bundle
+          mkdir -p release
+          # Copiamos lo que se compiló a la RAIZ de la carpeta release
+          # Esto asegura que main.js esté en el lugar que Azure espera
+          find backend/dist -name "main.js" -exec cp {} release/ \;
+          cp backend/package.json release/
+          cp backend/package-lock.json release/
+          cd release
           npm install --production
 
       - name: Deploy to Azure Web App
@@ -37,5 +39,5 @@ jobs:
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: bundle
+          package: release
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}

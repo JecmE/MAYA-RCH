@@ -4,13 +4,11 @@ import { AppModule } from './app.module';
 import * as express from 'express';
 
 async function bootstrap() {
-  console.log('--- SISTEMA MAYA RCH DESPEGANDO ---');
+  console.log('--- SYSTEM STARTING ---');
   const app = await NestFactory.create(AppModule);
 
-  // CORS LIBRE PARA PRODUCCIÓN: Esto quita el error de la consola
   app.enableCors({
-    origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    origin: '*',
     credentials: true,
   });
 
@@ -18,11 +16,10 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.setGlobalPrefix('api');
 
-  // El puerto que Azure nos da por fuerza
+  // Azure requiere que escuchemos en 0.0.0.0 y en el puerto que ellos dan (PORT)
   const port = process.env.PORT || 8080;
 
-  // ESCUCHAR EN 0.0.0.0 ES LA CLAVE DEL ÉXITO
   await app.listen(port, '0.0.0.0');
-  console.log(`✅ Maya RCH en línea! Escuchando por el puerto: ${port}`);
+  console.log(`✅ SERVER RUNNING ON PORT: ${port}`);
 }
 bootstrap();
