@@ -83,15 +83,12 @@ export class AttendanceService {
     }
 
     const effectiveTolerance = await this.getEffectiveTolerance(turno);
-    const horaEntradaEsperada = this.getTimeFromString(turno.horaEntrada);
+    const [h, m, s] = turno.horaEntrada.split(':').map(Number);
+    const horaEntradaEsperada = new Date(now);
+    horaEntradaEsperada.setHours(h, m, s || 0, 0);
 
-    const horaEntradaMin = new Date(now);
-    horaEntradaMin.setHours(
-      horaEntradaEsperada.getHours(),
-      horaEntradaEsperada.getMinutes() - 30,
-      0,
-      0,
-    );
+    const horaEntradaMin = new Date(horaEntradaEsperada);
+    horaEntradaMin.setHours(horaEntradaMin.getHours() - 1); // Permitir exactamente 1 hora antes
 
     const horaEntradaMax = new Date(horaEntradaEsperada);
     horaEntradaMax.setMinutes(horaEntradaMax.getMinutes() + effectiveTolerance);
@@ -104,7 +101,7 @@ export class AttendanceService {
 
     if (now > horaEntradaMax) {
       throw new BadRequestException(
-        `Ya no puedes marcar entrada. La hora máxima fue las ${this.formatTimeToString(horaEntradaMax)}`,
+        `Ya no puedes marcar entrada. El tiempo límite era hasta las ${this.formatTimeToString(horaEntradaMax)}`,
       );
     }
 

@@ -336,7 +336,7 @@ export class Dashboard implements OnInit, OnDestroy {
     const expected = new Date(now);
     expected.setHours(h, m, 0, 0);
 
-    const minTime = new Date(expected); minTime.setMinutes(minTime.getMinutes() - 30);
+    const minTime = new Date(expected); minTime.setHours(minTime.getHours() - 1);
     const maxTime = new Date(expected); maxTime.setMinutes(maxTime.getMinutes() + this.toleranciaMinutos);
 
     if (now < minTime) this.checkInDisabledReason = `Disponible desde las ${this.formatShiftTime(this.getFormattedTime(minTime))}`;
