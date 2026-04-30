@@ -21,13 +21,22 @@ jobs:
         run: |
           cd backend
           npm install
-          # Usamos npx para asegurar que use el nest local
           npx nest build
+
+      - name: Package for Azure
+        run: |
+          # Creamos una carpeta limpia. Azure no vera "backend" ni "dist".
+          mkdir -p release_package
+          cp -r backend/dist/* release_package/
+          cp backend/package.json release_package/
+          cp backend/package-lock.json release_package/
+          cd release_package
+          npm install --production
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'mayarch'
           slot-name: 'Production'
-          package: backend
+          package: release_package
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHProfile_38FAD546A00C49C69E883B2D5B3E0A95 }}
