@@ -6,8 +6,6 @@ import { Proyecto } from '../../entities/proyecto.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AprobacionTiempo } from '../../entities/aprobacion-tiempo.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class TimesheetsService {
@@ -66,41 +64,38 @@ export class TimesheetsService {
         fechaRegistro: r.fechaRegistro,
         comentario: aprobacion?.comentario || null,
         decision: aprobacion?.decision || null,
-        adjuntoUrl: r.adjuntoUrl,
       };
     });
   }
 
   async createEntry(createDto: any, empleadoId: number) {
-    const { archivo, nombreArchivo, ...datos } = createDto;
-
-    if (!datos.proyectoId) {
+    if (!createDto.proyectoId) {
       throw new BadRequestException('Debe seleccionar un proyecto');
     }
 
-    if (!datos.fecha) {
+    if (!createDto.fecha) {
       throw new BadRequestException('Debe ingresar una fecha');
     }
 
-    if (!datos.horas || datos.horas <= 0) {
+    if (!createDto.horas || createDto.horas <= 0) {
       throw new BadRequestException('Debe ingresar horas válidas (mayor a 0)');
     }
 
-    if (datos.horas > 8) {
+    if (createDto.horas > 8) {
       throw new BadRequestException('No puede registrar más de 8 horas en un día');
     }
 
-    if (!datos.actividadDescripcion && !datos.actividad) {
+    if (!createDto.actividadDescripcion && !createDto.actividad) {
       throw new BadRequestException('Debe describir la actividad realizada');
     }
 
-    if ((datos.actividadDescripcion || datos.actividad).length < 10) {
+    if ((createDto.actividadDescripcion || createDto.actividad).length < 10) {
       throw new BadRequestException(
         'La descripción de la actividad debe tener al menos 10 caracteres',
       );
     }
 
-    const fechaStr = datos.fecha;
+    const fechaStr = createDto.fecha;
 
     const [y, m, d] = fechaStr.split('-').map(Number);
     const fechaCheck = new Date(y, m - 1, d, 0, 0, 0, 0);
@@ -108,11 +103,11 @@ export class TimesheetsService {
     hoy.setHours(0, 0, 0, 0);
 
     if (fechaCheck > hoy) {
-      throw new BadRequestException('No puede registrar tiempos para fechas futures');
+      throw new BadRequestException('No puede registrar tiempos para fechas futuras');
     }
 
     const proyecto = await this.proyectoRepository.findOne({
-      where: { proyectoId: datos.proyectoId, activo: true },
+      where: { proyectoId: createDto.proyectoId, activo: true },
     });
 
     if (!proyecto) {
@@ -122,7 +117,7 @@ export class TimesheetsService {
     const existsQuery = await this.tiempoRepository
       .createQueryBuilder('rt')
       .where('rt.empleado_id = :empleadoId', { empleadoId })
-      .andWhere('rt.proyecto_id = :proyectoId', { proyectoId: datos.proyectoId })
+      .andWhere('rt.proyecto_id = :proyectoId', { proyectoId: createDto.proyectoId })
       .andWhere('CAST(rt.fecha AS DATE) = :fecha', { fecha: fechaStr })
       .getOne();
 
@@ -132,30 +127,13 @@ export class TimesheetsService {
       );
     }
 
-    let adjuntoUrl = null;
-    if (archivo && nombreArchivo) {
-        try {
-            const uploadsDir = path.join(process.cwd(), 'uploads', 'timesheets');
-            if (!fs.existsSync(uploadsDir)) {
-                fs.mkdirSync(uploadsDir, { recursive: true });
-            }
-            const fileName = `${Date.now()}_${nombreArchivo.replace(/\s+/g, '_')}`;
-            const filePath = path.join(uploadsDir, fileName);
-            fs.writeFileSync(filePath, Buffer.from(archivo, 'base64'));
-            adjuntoUrl = fileName;
-        } catch (error) {
-            console.error('Error guardando adjunto timesheet:', error);
-        }
-    }
-
     const registro = this.tiempoRepository.create({
       empleadoId,
-      proyectoId: datos.proyectoId,
+      proyectoId: createDto.proyectoId,
       fecha: fechaStr,
-      horas: datos.horas,
-      actividadDescripcion: datos.actividadDescripcion || datos.actividad || '',
+      horas: createDto.horas,
+      actividadDescripcion: createDto.actividadDescripcion || createDto.actividad || '',
       estado: RegistroTiempo.ESTADO_PENDIENTE,
-      adjuntoUrl,
     });
 
     const saved = await this.tiempoRepository.save(registro);
@@ -211,7 +189,6 @@ export class TimesheetsService {
       horasValidadas: r.horasValidadas,
       actividadDescripcion: r.actividadDescripcion,
       estado: r.estado,
-      adjuntoUrl: r.adjuntoUrl,
     }));
   }
 
@@ -225,7 +202,6 @@ export class TimesheetsService {
         throw new NotFoundException('Registro no encontrado');
       }
 
-      // Usar .update para evitar conflictos con columnas varchar(10) como 'fecha'
       await this.tiempoRepository.update(id, {
         estado: 'aprobado',
         horasValidadas: registro.horas
@@ -295,7 +271,7 @@ export class TimesheetsService {
     }
   }
 
-  async getProjectSummary(fechaInicio: string, fechaFin: string) {
+  async getProjectSummary(proyectoId: number, fechaInicio: string, fechaFin: string) {
     const registros = await this.tiempoRepository
       .createQueryBuilder('rt')
       .leftJoinAndSelect('rt.proyecto', 'proyecto')
@@ -339,12 +315,5 @@ export class TimesheetsService {
       totalHoras: s.totalHoras,
       empleados: Object.values(s.empleados),
     }));
-  }
-
-  async getAttachment(fileName: string, res: any) {
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'timesheets');
-    const filePath = path.join(uploadsDir, fileName);
-    if (!fs.existsSync(filePath)) throw new NotFoundException('Archivo no encontrado');
-    res.sendFile(filePath);
   }
 }

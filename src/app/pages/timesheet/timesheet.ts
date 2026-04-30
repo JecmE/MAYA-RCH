@@ -19,7 +19,6 @@ interface TimesheetRow {
   status: string;
   comments: string;
   decision?: string;
-  adjuntoUrl?: string;
 }
 
 @Component({
@@ -45,9 +44,6 @@ export class Timesheet implements OnInit, OnDestroy {
   errorMessage = '';
   successModal = false;
   isSubmitting = false;
-
-  selectedFileName: string | null = null;
-  selectedFile: File | null = null;
 
   historyData: TimesheetRow[] = [];
   proyectos: Proyecto[] = [];
@@ -107,7 +103,6 @@ export class Timesheet implements OnInit, OnDestroy {
     });
   }
 
-  // Mapeo de datos para la tabla (Fix TypeScript compilation)
   private mapToRow(e: RegistroTiempo, index: number): TimesheetRow {
     return {
       id: e.tiempoId ?? index + 1,
@@ -121,7 +116,6 @@ export class Timesheet implements OnInit, OnDestroy {
       status: this.capitalize(e.estado),
       comments: e.comentario || '',
       decision: e.decision || '',
-      adjuntoUrl: e.adjuntoUrl,
     };
   }
 
@@ -191,56 +185,10 @@ export class Timesheet implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.selectedFile) {
-      this.fileToBase64(this.selectedFile).then(base64 => {
-        this.guardarEntrada(base64);
-      });
-    } else {
-      this.guardarEntrada();
-    }
+    this.guardarEntrada();
   }
 
-  private fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.selectedFile = input.files[0];
-      this.selectedFileName = input.files[0].name;
-      this.cdr.detectChanges();
-    }
-  }
-
-  clearFile(): void {
-    this.selectedFile = null;
-    this.selectedFileName = null;
-    this.cdr.detectChanges();
-  }
-
-  downloadAttachment(filename: string): void {
-    this.timesheetsService.downloadAttachment(filename).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `adjunto_timesheet_${filename}`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
-    });
-  }
-
-  private guardarEntrada(base64?: string): void {
+  private guardarEntrada(): void {
     this.isSubmitting = true;
     const proyectoId = this.proyectos.find(p => p.codigo === this.proyecto)?.proyectoId;
 
@@ -251,19 +199,12 @@ export class Timesheet implements OnInit, OnDestroy {
       return;
     }
 
-    const payload: any = {
+    this.timesheetsService.createEntry({
       proyectoId,
       fecha: this.fecha,
       horas: this.horasNum,
       actividadDescripcion: this.actividad,
-    };
-
-    if (base64) {
-      payload.archivo = base64;
-      payload.nombreArchivo = this.selectedFileName;
-    }
-
-    this.timesheetsService.createEntry(payload).subscribe({
+    }).subscribe({
       next: () => {
         this.successModal = true;
         this.limpiar();

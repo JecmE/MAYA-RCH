@@ -16,7 +16,6 @@ export interface RegistroTiempo {
   proyectoNombre?: string;
   comentario?: string;
   decision?: string;
-  adjuntoUrl?: string;
 }
 
 export interface TeamTimesheetEntry {
@@ -29,7 +28,6 @@ export interface TeamTimesheetEntry {
   horas: number;
   actividadDescripcion: string;
   estado: string;
-  adjuntoUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -63,12 +61,6 @@ export class TimesheetsService {
   getProjectSummary(proyectoId: number, fechaInicio: string, fechaFin: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/report/project-summary`, {
       params: { proyectoId, fechaInicio, fechaFin },
-    });
-  }
-
-  downloadAttachment(fileName: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/attachment/${fileName}`, {
-      responseType: 'blob'
     });
   }
 }
