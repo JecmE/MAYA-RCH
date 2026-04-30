@@ -16,6 +16,7 @@ export interface RegistroTiempo {
   proyectoNombre?: string;
   comentario?: string;
   decision?: string;
+  adjuntoUrl?: string;
 }
 
 export interface TeamTimesheetEntry {
@@ -28,6 +29,7 @@ export interface TeamTimesheetEntry {
   horas: number;
   actividadDescripcion: string;
   estado: string;
+  adjuntoUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })

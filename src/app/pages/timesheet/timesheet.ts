@@ -107,6 +107,7 @@ export class Timesheet implements OnInit, OnDestroy {
     });
   }
 
+  // Mapeo de datos para la tabla (Fix TypeScript compilation)
   private mapToRow(e: RegistroTiempo, index: number): TimesheetRow {
     return {
       id: e.tiempoId ?? index + 1,
@@ -115,7 +116,7 @@ export class Timesheet implements OnInit, OnDestroy {
       projectCode: e.proyectoCodigo || '',
       date: e.fecha ? this.formatDateForDisplay(e.fecha) : '',
       activity: e.actividadDescripcion || '',
-      hours: e.hours ? `${e.hours} h` : '0 h',
+      hours: e.horas ? `${e.horas} h` : '0 h',
       hoursNum: e.horas || 0,
       status: this.capitalize(e.estado),
       comments: e.comentario || '',

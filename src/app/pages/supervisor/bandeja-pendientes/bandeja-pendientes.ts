@@ -99,6 +99,7 @@ export class BandejaPendientes implements OnInit {
     });
   }
 
+  // Carga de registros de tiempo del equipo (Fix TypeScript compilation)
   private loadPendingTimesheets(): void {
     this.timesheetsService.getTeamEntries(0).subscribe({
       next: (data: TeamTimesheetEntry[]) => {
