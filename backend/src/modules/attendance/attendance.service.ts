@@ -38,11 +38,12 @@ export class AttendanceService {
     private kpiService: KpiService,
   ) {}
 
-  // LÓGICA DE TIEMPO SIN FALLAS PARA AZURE
+  // MÉTODO INFALIBLE PARA GUATEMALA
   private getGuatemalaNow(): Date {
     const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc - (3600000 * 6)); // Siempre UTC-6
+    // Obtenemos el tiempo absoluto (UTC) y le restamos 6 horas fijas
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utcTime - (3600000 * 6));
   }
 
   private async getGlobalTolerance(): Promise<number> {
@@ -57,7 +58,8 @@ export class AttendanceService {
 
   async registerEntry(empleadoId: number, usuarioId: number) {
     const now = this.getGuatemalaNow();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Para 'today' usamos UTC para evitar que Azure salte de día
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const existing = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (existing && existing.horaEntradaReal) throw new BadRequestException('Ya se registró la entrada hoy');
@@ -69,16 +71,27 @@ export class AttendanceService {
     const [h, m] = turno.horaEntrada.split(':').map(Number);
     const tolerance = await this.getEffectiveTolerance(turno);
 
-    // COMPARACIÓN MATEMÁTICA PURA
-    const currentMins = now.getHours() * 60 + now.getMinutes();
+    // LÓGICA DE MINUTOS TOTALES (Ignora Timezones del servidor)
+    const currentMins = now.getUTCHours() * 60 + now.getUTCMinutes();
     const expectedMins = h * 60 + m;
-    const minMins = expectedMins - 65;
+    const minMins = expectedMins - 65; // 1 hora antes
     const maxMins = expectedMins + tolerance;
 
-    if (currentMins < minMins) throw new BadRequestException(`Muy temprano. Disponible desde las ${this.formatManual(h-1, m)}`);
-    if (currentMins > maxMins) throw new BadRequestException(`Tiempo de marcaje expirado. El límite era a las ${this.formatManual(h, m + tolerance)}`);
+    if (currentMins < minMins || currentMins > maxMins) {
+        const errorMsg = currentMins < minMins
+            ? `Muy temprano. Disponible desde: ${this.formatManual(h-1, m)}`
+            : `Tiempo expirado. El límite era: ${this.formatManual(h, m + tolerance)}`;
 
-    const asistencia = existing || this.asistenciaRepository.create({ empleadoId, fecha: today, estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA });
+        console.error(`[ATTENDANCE ERROR] Empleado: ${empleadoId}, Ahora: ${currentMins}m, Rango: ${minMins}m-${maxMins}m`);
+        throw new BadRequestException(errorMsg);
+    }
+
+    const asistencia = existing || this.asistenciaRepository.create({
+      empleadoId,
+      fecha: today,
+      estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA,
+    });
+
     asistencia.horaEntradaReal = now;
     asistencia.minutosTardia = Math.max(0, currentMins - expectedMins);
     asistencia.empleadoTurnoId = empTurno.empleadoTurnoId;
@@ -90,7 +103,7 @@ export class AttendanceService {
 
   async registerExit(empleadoId: number, usuarioId: number) {
     const now = this.getGuatemalaNow();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (!asis) throw new BadRequestException('No has marcado entrada hoy');
@@ -107,7 +120,7 @@ export class AttendanceService {
 
   async getTodayStatus(empleadoId: number) {
     const now = this.getGuatemalaNow();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     const empTurno = await this.getShiftForDate(empleadoId, today);
@@ -149,7 +162,9 @@ export class AttendanceService {
 
     if (dto.campo === 'horaEntradaReal' || dto.campo === 'horaSalidaReal') {
       const [h, m] = dto.valorNuevo.split(':').map(Number);
-      const time = new Date(asis.fecha); time.setHours(h, m, 0, 0);
+      const time = new Date(asis.fecha);
+      // Ajuste para ajustes manuales
+      time.setUTCHours(h + 6, m, 0, 0);
       (asis as any)[dto.campo] = time;
     }
     const saved = await this.asistenciaRepository.save(asis);
@@ -161,7 +176,7 @@ export class AttendanceService {
     const ids = equipo.map(e => e.empleadoId);
     if (ids.length === 0) return [];
     const date = fecha ? new Date(fecha) : this.getGuatemalaNow();
-    date.setHours(0,0,0,0);
+    date.setUTCHours(0,0,0,0);
     const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
     return equipo.map(emp => ({
       ...emp,
@@ -189,8 +204,8 @@ export class AttendanceService {
   }
 
   private formatManual(h: number, m: number): string {
-    const hh = h % 24;
-    const mm = m % 60;
+    const hh = (h + 24) % 24;
+    const mm = (m + 60) % 60;
     const p = hh >= 12 ? 'p. m.' : 'a. m.';
     const h12 = hh % 12 || 12;
     return `${h12}:${String(mm).padStart(2, '0')} ${p}`;
