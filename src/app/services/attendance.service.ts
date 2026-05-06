@@ -15,57 +15,22 @@ export interface AttendanceRecord {
   observacion?: string;
 }
 
-export interface CheckInResponse {
-  message: string;
-  asistencia: AttendanceRecord;
-  minutosTardia: number;
-}
-
-export interface TodayStatus {
-  asistenciaId?: number;
-  fecha: string;
-  horaEntradaReal?: string;
-  horaSalidaReal?: string;
-  minutosTardia?: number;
-  horasTrabajadas?: number;
-  estadoJornada: string;
-  observacion?: string;
-  tieneEntrada: boolean;
-  tieneSalida: boolean;
-  turnoNombre?: string;
-  toleranciaMinutos?: number;
-  horaEntradaTurno?: string;
-  horaSalidaTurno?: string;
-}
-
-export interface TeamAttendance {
-  empleadoId: number;
-  nombreCompleto: string;
-  codigoEmpleado: string;
-  departamento: string;
-  puesto?: string;
-  asistencia: AttendanceRecord | null;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AttendanceService {
   private apiUrl = environment.apiUrl + '/attendance';
 
   constructor(private http: HttpClient) {}
 
-  checkIn(clientTime?: string): Observable<CheckInResponse> {
-    return this.http.post<CheckInResponse>(`${this.apiUrl}/check-in`, { clientTime });
+  checkIn(payload: { localTime: string, localDate: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/check-in`, payload);
   }
 
-  checkOut(clientTime?: string): Observable<{ message: string; asistencia: AttendanceRecord }> {
-    return this.http.post<{ message: string; asistencia: AttendanceRecord }>(
-      `${this.apiUrl}/check-out`,
-      { clientTime },
-    );
+  checkOut(payload: { localTime: string, localDate: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/check-out`, payload);
   }
 
-  getTodayStatus(): Observable<TodayStatus> {
-    return this.http.get<TodayStatus>(`${this.apiUrl}/today`);
+  getTodayStatus(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/today`);
   }
 
   getHistory(fechaInicio?: string, fechaFin?: string): Observable<AttendanceRecord[]> {
@@ -75,31 +40,14 @@ export class AttendanceService {
     return this.http.get<AttendanceRecord[]>(`${this.apiUrl}/history`, { params });
   }
 
-  getEmployeeAttendance(employeeId: number): Observable<AttendanceRecord[]> {
-    return this.http.get<AttendanceRecord[]>(`${this.apiUrl}/employee/${employeeId}`);
-  }
-
-  adjustAttendance(
-    id: number,
-    adjust: { campo: string; valorAnterior: any; valorNuevo: any; motivo: string; empleadoId?: number; fecha?: string },
-  ): Observable<any> {
-    return this.http.put(`${this.apiUrl}/adjust/${id}`, adjust);
-  }
-
-  getTeamAttendance(supervisorId: number, fecha?: string): Observable<TeamAttendance[]> {
+  getTeamAttendance(supervisorId: number, fecha?: string): Observable<any[]> {
     let params: any = {};
     if (fecha) params.fecha = fecha;
-    return this.http.get<TeamAttendance[]>(`${this.apiUrl}/team`, { params });
+    return this.http.get<any[]>(`${this.apiUrl}/team`, { params });
   }
 
-  getAllAttendance(fechaInicio?: string, fechaFin?: string): Observable<any[]> {
-    let params: any = {};
-    if (fechaInicio) params.fechaInicio = fechaInicio;
-    if (fechaFin) params.fechaFin = fechaFin;
-    return this.http.get<any[]>(`${this.apiUrl}/all`, { params });
-  }
-
-  getAdjustmentHistory(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/adjustments/history`);
-  }
+  // Resto de métodos simplificados para no fallar
+  adjustAttendance(id: number, adjust: any): Observable<any> { return this.http.put(`${this.apiUrl}/adjust/${id}`, adjust); }
+  getAllAttendance(fI?: string, fF?: string): Observable<any[]> { return this.http.get<any[]>(`${this.apiUrl}/all`, { params: { fI, fF } }); }
+  getAdjustmentHistory(): Observable<any[]> { return this.http.get<any[]>(`${this.apiUrl}/adjustments/history`); }
 }
