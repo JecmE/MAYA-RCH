@@ -38,9 +38,11 @@ export class AttendanceService {
     private kpiService: KpiService,
   ) {}
 
+  // LÓGICA DE TIEMPO SIN FALLAS PARA AZURE
   private getGuatemalaNow(): Date {
     const now = new Date();
-    return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) - (6 * 3600000));
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc - (3600000 * 6)); // Siempre UTC-6
   }
 
   private async getGlobalTolerance(): Promise<number> {
@@ -49,263 +51,153 @@ export class AttendanceService {
   }
 
   private async getEffectiveTolerance(turno: Turno): Promise<number> {
-    if (!turno || turno.toleranciaMinutos === 0) {
-      return await this.getGlobalTolerance();
-    }
+    if (!turno || turno.toleranciaMinutos === 0) return await this.getGlobalTolerance();
     return turno.toleranciaMinutos;
   }
 
   async registerEntry(empleadoId: number, usuarioId: number) {
     const now = this.getGuatemalaNow();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const existing = await this.asistenciaRepository.findOne({
-      where: { empleadoId, fecha: today as any },
-    });
+    const existing = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
+    if (existing && existing.horaEntradaReal) throw new BadRequestException('Ya se registró la entrada hoy');
 
-    if (existing && existing.horaEntradaReal) {
-      throw new BadRequestException('Ya se registró la entrada hoy');
-    }
+    const empTurno = await this.getShiftForDate(empleadoId, today);
+    if (!empTurno) throw new BadRequestException('No tienes turno asignado hoy');
 
-    const empleadoTurno = await this.getShiftForDate(empleadoId, today);
-    if (!empleadoTurno) {
-      throw new BadRequestException('No tiene turno asignado para hoy');
-    }
-
-    const turno = empleadoTurno.turno;
+    const turno = empTurno.turno;
     const [h, m] = turno.horaEntrada.split(':').map(Number);
-    const effectiveTolerance = await this.getEffectiveTolerance(turno);
+    const tolerance = await this.getEffectiveTolerance(turno);
 
-    // CALCULO MATEMÁTICO DE MINUTOS (Evita errores de zona horaria de Azure)
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const expectedMinutes = h * 60 + m;
+    // COMPARACIÓN MATEMÁTICA PURA
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const expectedMins = h * 60 + m;
+    const minMins = expectedMins - 65;
+    const maxMins = expectedMins + tolerance;
 
-    const minAllowed = expectedMinutes - 65; // 1 hora y 5 min antes
-    const maxAllowed = expectedMinutes + effectiveTolerance + 1;
+    if (currentMins < minMins) throw new BadRequestException(`Muy temprano. Disponible desde las ${this.formatManual(h-1, m)}`);
+    if (currentMins > maxMins) throw new BadRequestException(`Tiempo de marcaje expirado. El límite era a las ${this.formatManual(h, m + tolerance)}`);
 
-    if (currentMinutes < minAllowed) {
-        throw new BadRequestException(`Muy temprano. Disponible desde las ${this.formatTimeToString(new Date(now.setHours(0, minAllowed, 0)))}`);
-    }
-
-    if (currentMinutes > maxAllowed) {
-        throw new BadRequestException(`Tiempo de marcaje expirado. El límite era a las ${this.formatTimeToString(new Date(now.setHours(0, maxAllowed, 0)))}`);
-    }
-
-    let minutosTardia = 0;
-    if (currentMinutes > expectedMinutes) {
-      minutosTardia = currentMinutes - expectedMinutes;
-    }
-
-    const asistencia = existing || this.asistenciaRepository.create({
-      empleadoId,
-      fecha: today,
-      estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA,
-    });
-
+    const asistencia = existing || this.asistenciaRepository.create({ empleadoId, fecha: today, estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA });
     asistencia.horaEntradaReal = now;
-    asistencia.minutosTardia = minutosTardia;
-    asistencia.empleadoTurnoId = empleadoTurno.empleadoTurnoId;
+    asistencia.minutosTardia = Math.max(0, currentMins - expectedMins);
+    asistencia.empleadoTurnoId = empTurno.empleadoTurnoId;
 
     const saved = await this.asistenciaRepository.save(asistencia);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
-
-    return { message: 'Entrada registrada', asistencia: saved, minutosTardia };
+    return { message: 'Entrada registrada', asistencia: saved };
   }
 
   async registerExit(empleadoId: number, usuarioId: number) {
     const now = this.getGuatemalaNow();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const asistencia = await this.asistenciaRepository.findOne({
-      where: { empleadoId, fecha: today as any },
-    });
+    const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
+    if (!asis) throw new BadRequestException('No has marcado entrada hoy');
+    if (asis.horaSalidaReal) throw new BadRequestException('Ya marcaste salida');
 
-    if (!asistencia) throw new BadRequestException('No se ha registrado entrada hoy');
-    if (asistencia.horaSalidaReal) throw new BadRequestException('Ya se registró la salida hoy');
+    asis.horaSalidaReal = now;
+    asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
+    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, now);
 
-    const empleadoTurno = await this.getShiftForDate(empleadoId, today);
-    if (!empleadoTurno) throw new BadRequestException('No tiene turno asignado');
-
-    asistencia.horaSalidaReal = now;
-    asistencia.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-    asistencia.horasTrabajadas = this.calculateHours(asistencia.horaEntradaReal, now);
-
-    await this.asistenciaRepository.save(asistencia);
+    await this.asistenciaRepository.save(asis);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
-
-    return { message: 'Salida registrada', asistencia };
+    return { message: 'Salida registrada', asistencia: asis };
   }
 
   async getTodayStatus(empleadoId: number) {
     const now = this.getGuatemalaNow();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const asistencia = await this.asistenciaRepository.findOne({
-      where: { empleadoId, fecha: today as any },
-    });
+    const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
+    const empTurno = await this.getShiftForDate(empleadoId, today);
 
-    const empleadoTurno = await this.getShiftForDate(empleadoId, today);
-    const turnoNombre = empleadoTurno?.turno?.nombre || 'Sin turno';
-    let toleranciaMinutos = empleadoTurno?.turno?.toleranciaMinutos || 0;
-    if (empleadoTurno?.turno && toleranciaMinutos === 0) {
-      toleranciaMinutos = await this.getGlobalTolerance();
-    }
-
-    const horaEntradaTurno = empleadoTurno?.turno?.horaEntrada || null;
-    const horaSalidaTurno = empleadoTurno?.turno?.horaSalida || null;
-
-    if (!asistencia) {
-      return {
-        estadoJornada: 'sin_registro',
-        fecha: today,
-        tieneEntrada: false,
-        tieneSalida: false,
-        turnoNombre,
-        toleranciaMinutos,
-        horaEntradaTurno,
-        horaSalidaTurno
-      };
-    }
+    let tol = empTurno?.turno?.toleranciaMinutos || 0;
+    if (empTurno?.turno && tol === 0) tol = await this.getGlobalTolerance();
 
     return {
-      asistenciaId: asistencia.asistenciaId,
-      fecha: asistencia.fecha,
-      horaEntradaReal: asistencia.horaEntradaReal,
-      horaSalidaReal: asistencia.horaSalidaReal,
-      minutosTardia: asistencia.minutosTardia,
-      horasTrabajadas: asistencia.horasTrabajadas,
-      estadoJornada: asistencia.estadoJornada,
-      tieneEntrada: !!asistencia.horaEntradaReal,
-      tieneSalida: !!asistencia.horaSalidaReal,
-      turnoNombre,
-      toleranciaMinutos,
-      horaEntradaTurno,
-      horaSalidaTurno,
+      asistenciaId: asis?.asistenciaId,
+      tieneEntrada: !!asis?.horaEntradaReal,
+      tieneSalida: !!asis?.horaSalidaReal,
+      turnoNombre: empTurno?.turno?.nombre || 'Sin turno',
+      toleranciaMinutos: tol,
+      horaEntradaTurno: empTurno?.turno?.horaEntrada,
+      horaSalidaTurno: empTurno?.turno?.horaSalida,
+      horaEntradaReal: asis?.horaEntradaReal,
+      horaSalidaReal: asis?.horaSalidaReal,
+      estadoJornada: asis?.estadoJornada || 'sin_registro'
     };
   }
 
-  private async getShiftForDate(empleadoId: number, date: Date): Promise<EmpleadoTurno | null> {
-    const d = new Date(date);
-    d.setHours(0,0,0,0);
+  private async getShiftForDate(id: number, date: Date) {
     return await this.empleadoTurnoRepository.findOne({
-      where: { empleadoId, activo: true, fechaInicio: LessThanOrEqual(d) },
+      where: { empleadoId: id, activo: true, fechaInicio: LessThanOrEqual(date) },
       relations: ['turno'],
       order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
     });
   }
 
-  async getHistory(empleadoId: number, fechaInicio?: string, fechaFin?: string) {
-    const where: any = { empleadoId };
-    if (fechaInicio && fechaFin) {
-      where.fecha = Between(new Date(fechaInicio), new Date(fechaFin));
-    } else if (fechaInicio) {
-      where.fecha = MoreThanOrEqual(new Date(fechaInicio));
-    } else if (fechaFin) {
-      where.fecha = LessThanOrEqual(new Date(fechaFin));
-    }
-
+  async getHistory(id: number, start?: string, end?: string) {
+    const where: any = { empleadoId: id };
+    if (start && end) where.fecha = Between(new Date(start), new Date(end));
     return await this.asistenciaRepository.find({ where, order: { fecha: 'DESC' } });
   }
 
-  async adjustAttendance(asistenciaId: number, adjustDto: any, usuarioId: number) {
-    const asistencia = asistenciaId === 0 ?
-      this.asistenciaRepository.create({ empleadoId: adjustDto.empleadoId, fecha: new Date(adjustDto.fecha) }) :
-      await this.asistenciaRepository.findOne({ where: { asistenciaId } });
+  async adjustAttendance(id: number, dto: any, user: number) {
+    let asis = id === 0 ? this.asistenciaRepository.create({ empleadoId: dto.empleadoId, fecha: new Date(dto.fecha) }) : await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
+    if (!asis) throw new NotFoundException('No encontrado');
 
-    if (!asistencia) throw new NotFoundException('No encontrado');
-
-    const { campo, valorNuevo, motivo } = adjustDto;
-    const valorAnterior = (asistencia as any)[campo] || 'Sin registro';
-
-    if (campo === 'horaEntradaReal' || campo === 'horaSalidaReal') {
-      const [hours, minutes] = valorNuevo.split(':').map(Number);
-      const newTime = new Date(asistencia.fecha);
-      newTime.setHours(hours, minutes, 0, 0);
-      (asistencia as any)[campo] = newTime;
+    if (dto.campo === 'horaEntradaReal' || dto.campo === 'horaSalidaReal') {
+      const [h, m] = dto.valorNuevo.split(':').map(Number);
+      const time = new Date(asis.fecha); time.setHours(h, m, 0, 0);
+      (asis as any)[dto.campo] = time;
     }
-
-    const saved = await this.asistenciaRepository.save(asistencia);
-
-    await this.ajusteRepository.save({
-      asistenciaId: saved.asistenciaId,
-      usuarioId,
-      campoModificado: campo,
-      valorAnterior: valorAnterior instanceof Date ? this.formatTimeToString(valorAnterior) : valorAnterior.toString(),
-      valorNuevo: valorNuevo.toString(),
-      motivo,
-      fechaHora: new Date(),
-    });
-
-    return { message: 'Ajuste registrado', asistencia: saved };
+    const saved = await this.asistenciaRepository.save(asis);
+    return { message: 'Ajustado', asistencia: saved };
   }
 
-  async getTeamAttendance(supervisorId: number, fecha?: string) {
-    const equipo = await this.empleadoRepository.find({ where: { supervisorId, activo: true } });
-    if (equipo.length === 0) return [];
-
-    const fechaBusqueda = fecha ? new Date(fecha) : this.getGuatemalaNow();
-    fechaBusqueda.setHours(0, 0, 0, 0);
-
-    const empleadoIds = equipo.map((e) => e.empleadoId);
-    const registros = await this.asistenciaRepository.find({
-      where: { empleadoId: In(empleadoIds), fecha: fechaBusqueda as any },
-    });
-
-    return equipo.map((emp) => ({
+  async getTeamAttendance(supId: number, fecha?: string) {
+    const equipo = await this.empleadoRepository.find({ where: { supervisorId: supId, activo: true } });
+    const ids = equipo.map(e => e.empleadoId);
+    if (ids.length === 0) return [];
+    const date = fecha ? new Date(fecha) : this.getGuatemalaNow();
+    date.setHours(0,0,0,0);
+    const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
+    return equipo.map(emp => ({
       ...emp,
       nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
-      asistencia: registros.find((r) => r.empleadoId === emp.empleadoId) || null,
+      asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null
     }));
   }
 
-  async getAllAttendance(fechaInicio?: string, fechaFin?: string) {
-    const asistencias = await this.asistenciaRepository.find({
-      where: { fecha: Between(new Date(fechaInicio), new Date(fechaFin)) as any },
+  async getAllAttendance(start?: string, end?: string) {
+    if (!start) return [];
+    const asis = await this.asistenciaRepository.find({
+      where: { fecha: Between(new Date(start), new Date(end || start)) as any },
       relations: ['empleado']
     });
-    return asistencias.map(a => ({
-        ...a,
-        nombreCompleto: a.empleado ? this.sanitizeString(`${a.empleado.nombres} ${a.empleado.apellidos}`) : 'N/A'
-    }));
+    return asis.map(a => ({ ...a, nombreCompleto: this.sanitizeString(`${a.empleado?.nombres} ${a.empleado?.apellidos}`) }));
   }
 
   async getAdjustmentHistory() {
-    return this.ajusteRepository.find({
-      relations: ['asistencia', 'asistencia.empleado', 'usuario'],
-      order: { fechaHora: 'DESC' },
-      take: 200
-    });
+    return this.ajusteRepository.find({ relations: ['asistencia', 'asistencia.empleado', 'usuario'], order: { fechaHora: 'DESC' }, take: 200 });
   }
 
-  private sanitizeString(str: string | null | undefined): string {
-    if (!str) return '';
-    return str
-      .replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez')
-      .replace(/Fern\?ndez/g, 'Fernández').replace(/Garc\?a/g, 'García')
-      .replace(/L\?pez/g, 'López').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó')
-      .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+  private sanitizeString(s: string | null): string {
+    if (!s) return '';
+    return s.replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez').replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
   }
 
-  private formatTimeToString(date: Date): string {
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const period = hours >= 12 ? 'p. m.' : 'a. m.';
-    const hour12 = hours % 12 || 12;
-    return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
+  private formatManual(h: number, m: number): string {
+    const hh = h % 24;
+    const mm = m % 60;
+    const p = hh >= 12 ? 'p. m.' : 'a. m.';
+    const h12 = hh % 12 || 12;
+    return `${h12}:${String(mm).padStart(2, '0')} ${p}`;
   }
 
-  private getTimeFromString(timeStr: string): Date {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  }
-
-  private calculateHours(start: any, end: any): number {
-    const diff = new Date(end).getTime() - new Date(start).getTime();
-    return Math.round((diff / 3600000) * 100) / 100;
+  private calculateHours(s: any, e: any): number {
+    const d = new Date(e).getTime() - new Date(s).getTime();
+    return Math.round((d / 3600000) * 100) / 100;
   }
 }
