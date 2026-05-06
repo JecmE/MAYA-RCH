@@ -53,14 +53,14 @@ export class AttendanceService {
 
   constructor(private http: HttpClient) {}
 
-  checkIn(): Observable<CheckInResponse> {
-    return this.http.post<CheckInResponse>(`${this.apiUrl}/check-in`, {});
+  checkIn(clientTime?: string): Observable<CheckInResponse> {
+    return this.http.post<CheckInResponse>(`${this.apiUrl}/check-in`, { clientTime });
   }
 
-  checkOut(): Observable<{ message: string; asistencia: AttendanceRecord }> {
+  checkOut(clientTime?: string): Observable<{ message: string; asistencia: AttendanceRecord }> {
     return this.http.post<{ message: string; asistencia: AttendanceRecord }>(
       `${this.apiUrl}/check-out`,
-      {},
+      { clientTime },
     );
   }
 

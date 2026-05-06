@@ -407,7 +407,8 @@ export class Dashboard implements OnInit, OnDestroy {
   marcarEntrada(): void {
     if (this.isCheckingIn) return;
     this.isCheckingIn = true; this.marcaError = ''; this.marcaSuccess = '';
-    this.attendanceService.checkIn().subscribe({
+    const localTime = new Date().toISOString();
+    this.attendanceService.checkIn(localTime).subscribe({
       next: () => { this.marcaEstado = 'Entrada'; this.marcaSuccess = 'Entrada registrada'; this.loadTodayStatus(); this.isCheckingIn = false; this.cdr.detectChanges(); },
       error: (err) => { this.marcaError = err.error?.message || 'Error'; this.isCheckingIn = false; this.cdr.detectChanges(); },
     });
@@ -416,7 +417,8 @@ export class Dashboard implements OnInit, OnDestroy {
   marcarSalida(): void {
     if (this.isCheckingOut) return;
     this.isCheckingOut = true; this.marcaError = ''; this.marcaSuccess = '';
-    this.attendanceService.checkOut().subscribe({
+    const localTime = new Date().toISOString();
+    this.attendanceService.checkOut(localTime).subscribe({
       next: () => { this.marcaEstado = 'Completa'; this.marcaSuccess = 'Salida registrada'; this.loadTodayStatus(); this.isCheckingOut = false; this.cdr.detectChanges(); },
       error: (err) => { this.marcaError = err.error?.message || 'Error'; this.isCheckingOut = false; this.cdr.detectChanges(); },
     });

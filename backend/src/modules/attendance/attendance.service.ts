@@ -38,23 +38,11 @@ export class AttendanceService {
     private kpiService: KpiService,
   ) {}
 
-  // MÉTODO INFALIBLE PARA OBTENER HORA Y FECHA REAL DE GUATEMALA EN AZURE
-  private getGuatemalaInfo() {
+  // MÉTODO INFALIBLE PARA OBTENER HORA Y FECHA REAL DE GUATEMALA
+  private getGuatemalaNow(): Date {
     const now = new Date();
-    // Forzamos el formato de Guatemala para extraer los números exactos
-    const options: any = { timeZone: 'America/Guatemala', hour12: false };
-    const dateStr = now.toLocaleDateString('en-US', options); // "M/D/YYYY"
-    const timeStr = now.toLocaleTimeString('en-US', options); // "HH:MM:SS"
-
-    const [month, day, year] = dateStr.split('/').map(Number);
-    const [hour, minute] = timeStr.split(':').map(Number);
-
-    return {
-      now: new Date(year, month - 1, day, hour, minute),
-      today: new Date(year, month - 1, day, 0, 0, 0, 0),
-      hour,
-      minute
-    };
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc - (3600000 * 6));
   }
 
   private async getGlobalTolerance(): Promise<number> {
@@ -67,33 +55,30 @@ export class AttendanceService {
     return turno.toleranciaMinutos;
   }
 
-  async registerEntry(empleadoId: number, usuarioId: number) {
-    const info = this.getGuatemalaInfo();
-    const today = info.today;
+  async registerEntry(empleadoId: number, usuarioId: number, clientTime?: string) {
+    // USAMOS LA HORA QUE MANDA EL FRONTEND PARA EVITAR DESFASES CON AZURE
+    const now = clientTime ? new Date(clientTime) : this.getGuatemalaNow();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const existing = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (existing && existing.horaEntradaReal) throw new BadRequestException('Ya se registró la entrada hoy');
 
     const empTurno = await this.getShiftForDate(empleadoId, today);
-    if (!empTurno) throw new BadRequestException('No tienes turno asignado para hoy');
+    if (!empTurno) throw new BadRequestException('No tienes turno asignado hoy');
 
     const turno = empTurno.turno;
     const [hT, mT] = turno.horaEntrada.split(':').map(Number);
     const tolerance = await this.getEffectiveTolerance(turno);
 
-    // COMPARACIÓN EN MINUTOS TOTALES DEL DÍA (El método más seguro del mundo)
-    const minsActual = info.hour * 60 + info.minute;
-    const minsTurno = hT * 60 + mT;
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const expectedMins = hT * 60 + mT;
 
-    const minsMin = minsTurno - 60; // 1 hora antes
-    const minsMax = minsTurno + tolerance;
+    const minsMin = expectedMins - 65; // 1 hora antes
+    const minsMax = expectedMins + tolerance;
 
-    if (minsActual < minsMin) {
-        throw new BadRequestException(`Muy temprano. Disponible desde: ${this.formatManual(hT - 1, mT)}`);
-    }
-
-    if (minsActual > minsMax) {
-        console.error(`ERROR MARCAJE: Actual=${minsActual}m, Max=${minsMax}m`);
+    if (currentMins < minsMin) throw new BadRequestException(`Muy temprano. Disponible desde: ${this.formatManual(hT - 1, mT)}`);
+    if (currentMins > maxMins) {
+        console.error(`ERROR MARCAJE: Empleado=${empleadoId}, Actual=${currentMins}m, Max=${maxMins}m`);
         throw new BadRequestException(`Tiempo expirado. El límite era a las ${this.formatManual(hT, mT + tolerance)}`);
     }
 
@@ -103,8 +88,8 @@ export class AttendanceService {
       estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA,
     });
 
-    asistencia.horaEntradaReal = info.now;
-    asistencia.minutosTardia = Math.max(0, minsActual - minsTurno);
+    asistencia.horaEntradaReal = now;
+    asistencia.minutosTardia = Math.max(0, currentMins - expectedMins);
     asistencia.empleadoTurnoId = empTurno.empleadoTurnoId;
 
     const saved = await this.asistenciaRepository.save(asistencia);
@@ -112,17 +97,17 @@ export class AttendanceService {
     return { message: 'Entrada registrada', asistencia: saved };
   }
 
-  async registerExit(empleadoId: number, usuarioId: number) {
-    const info = this.getGuatemalaInfo();
-    const today = info.today;
+  async registerExit(empleadoId: number, usuarioId: number, clientTime?: string) {
+    const now = clientTime ? new Date(clientTime) : this.getGuatemalaNow();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (!asis) throw new BadRequestException('No has marcado entrada hoy');
     if (asis.horaSalidaReal) throw new BadRequestException('Ya marcaste salida');
 
-    asis.horaSalidaReal = info.now;
+    asis.horaSalidaReal = now;
     asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, info.now);
+    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, now);
 
     await this.asistenciaRepository.save(asis);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
@@ -130,8 +115,8 @@ export class AttendanceService {
   }
 
   async getTodayStatus(empleadoId: number) {
-    const info = this.getGuatemalaInfo();
-    const today = info.today;
+    const now = this.getGuatemalaNow();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     const empTurno = await this.getShiftForDate(empleadoId, today);
@@ -184,8 +169,8 @@ export class AttendanceService {
     const equipo = await this.empleadoRepository.find({ where: { supervisorId: supId, activo: true } });
     const ids = equipo.map(e => e.empleadoId);
     if (ids.length === 0) return [];
-    const info = this.getGuatemalaInfo();
-    const date = fecha ? new Date(fecha) : info.today;
+    const now = this.getGuatemalaNow();
+    const date = fecha ? new Date(fecha) : new Date(now.getFullYear(), now.getMonth(), now.getDate());
     date.setHours(0,0,0,0);
     const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
     return equipo.map(emp => ({
