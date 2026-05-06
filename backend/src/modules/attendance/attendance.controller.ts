@@ -21,13 +21,13 @@ export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('check-in')
-  async checkIn(@Req() req: any, @Body('clientTime') clientTime?: string) {
-    return this.attendanceService.registerEntry(req.user.empleadoId, req.user.usuarioId, clientTime);
+  async checkIn(@Req() req: any, @Body() payload: any) {
+    return this.attendanceService.registerEntry(req.user.empleadoId, req.user.usuarioId, payload);
   }
 
   @Post('check-out')
-  async checkOut(@Req() req: any, @Body('clientTime') clientTime?: string) {
-    return this.attendanceService.registerExit(req.user.empleadoId, req.user.usuarioId, clientTime);
+  async checkOut(@Req() req: any, @Body() payload: any) {
+    return this.attendanceService.registerExit(req.user.empleadoId, req.user.usuarioId, payload);
   }
 
   @Get('today')
