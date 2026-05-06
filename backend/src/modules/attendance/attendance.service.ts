@@ -77,8 +77,8 @@ export class AttendanceService {
     const minsMax = expectedMins + tolerance;
 
     if (currentMins < minsMin) throw new BadRequestException(`Muy temprano. Disponible desde: ${this.formatManual(hT - 1, mT)}`);
-    if (currentMins > maxMins) {
-        console.error(`ERROR MARCAJE: Empleado=${empleadoId}, Actual=${currentMins}m, Max=${maxMins}m`);
+    if (currentMins > minsMax) {
+        console.error(`ERROR MARCAJE: Empleado=${empleadoId}, Actual=${currentMins}m, Max=${minsMax}m`);
         throw new BadRequestException(`Tiempo expirado. El límite era a las ${this.formatManual(hT, mT + tolerance)}`);
     }
 
