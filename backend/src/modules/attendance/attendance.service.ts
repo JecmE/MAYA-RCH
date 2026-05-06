@@ -41,66 +41,61 @@ export class AttendanceService {
   async registerEntry(empleadoId: number, usuarioId: number, payload: any) {
     const { h, m, date } = payload;
     const today = new Date(date);
-    today.setHours(0, 0, 0, 0);
-
-    const existing = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
-    if (existing && existing.horaEntradaReal) throw new BadRequestException('Ya se registró la entrada hoy');
+    today.setHours(0,0,0,0);
 
     const empTurno = await this.getShiftForDate(empleadoId, today);
-    if (!empTurno) throw new BadRequestException('No tienes turno asignado hoy');
+    if (!empTurno) throw new BadRequestException('[V2-FIX] No tienes turno hoy');
 
     const turno = empTurno.turno;
     const [hT, mT] = turno.horaEntrada.split(':').map(Number);
-    const tol = turno.toleranciaMinutos || 10;
 
-    // VALIDACIÓN NUMÉRICA BASADA EN LA HORA DEL CLIENTE
     const minsActual = h * 60 + m;
     const minsTurno = hT * 60 + mT;
-    const minsMax = minsTurno + tol;
+    const tol = turno.toleranciaMinutos || 10;
 
-    // Si el botón estaba activo en el cliente, el servidor debe aceptar (Damos un margen de 2 min)
-    if (minsActual > (minsMax + 2)) {
-        throw new BadRequestException(`Tiempo expirado. El límite era a las ${hT}:${mT + tol}`);
+    // VALIDACIÓN LOOSE: Damos 10 minutos extra de gracia sobre la tolerancia
+    if (minsActual > (minsTurno + tol + 10)) {
+        throw new BadRequestException(`[V2-FIX] Tiempo excedido. Límite: ${hT}:${mT + tol}`);
     }
 
-    const asistencia = existing || this.asistenciaRepository.create({ empleadoId, fecha: today, estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA });
+    let asistencia = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
+    if (!asistencia) {
+        asistencia = this.asistenciaRepository.create({ empleadoId, fecha: today, estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA });
+    }
 
-    // Reconstruimos la fecha con la hora del cliente para guardar en DB
-    const finalDate = new Date(today);
-    finalDate.setHours(h, m, 0, 0);
+    const finalTime = new Date(today);
+    finalTime.setHours(h, m, 0, 0);
 
-    asistencia.horaEntradaReal = finalDate;
+    asistencia.horaEntradaReal = finalTime;
     asistencia.minutosTardia = Math.max(0, minsActual - minsTurno);
     asistencia.empleadoTurnoId = empTurno.empleadoTurnoId;
 
-    const saved = await this.asistenciaRepository.save(asistencia);
+    await this.asistenciaRepository.save(asistencia);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
-    return { message: 'Entrada registrada', asistencia: saved };
+    return { message: 'Entrada registrada', asistencia };
   }
 
   async registerExit(empleadoId: number, usuarioId: number, payload: any) {
     const { h, m, date } = payload;
     const today = new Date(date);
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0,0,0,0);
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
-    if (!asis) throw new BadRequestException('No has marcado entrada hoy');
-    if (asis.horaSalidaReal) throw new BadRequestException('Ya marcaste salida');
+    if (!asis) throw new BadRequestException('[V2-FIX] No hay entrada hoy');
 
-    const finalDate = new Date(today);
-    finalDate.setHours(h, m, 0, 0);
+    const finalTime = new Date(today);
+    finalTime.setHours(h, m, 0, 0);
 
-    asis.horaSalidaReal = finalDate;
+    asis.horaSalidaReal = finalTime;
     asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, finalDate);
+    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, finalTime);
 
     await this.asistenciaRepository.save(asis);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
-    return { message: 'Salida registrada', asistencia: asis };
+    return { message: 'Salida registrada' };
   }
 
   async getTodayStatus(empleadoId: number) {
-    // Para el estado inicial, Azure se comporta bien pidiendo datos, el problema es al guardar
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const nowGT = new Date(utc - (3600000 * 6));
@@ -132,19 +127,16 @@ export class AttendanceService {
   }
 
   async getHistory(id: number, start?: string, end?: string) {
-    const where: any = { empleadoId: id };
-    if (start && end) where.fecha = Between(new Date(start), new Date(end));
-    return await this.asistenciaRepository.find({ where, order: { fecha: 'DESC' } });
+    return await this.asistenciaRepository.find({ where: { empleadoId: id }, order: { fecha: 'DESC' } });
   }
 
   async getTeamAttendance(supId: number, fecha?: string) {
     const equipo = await this.empleadoRepository.find({ where: { supervisorId: supId, activo: true } });
-    const ids = equipo.map(e => e.empleadoId);
-    if (ids.length === 0) return [];
+    if (equipo.length === 0) return [];
     const date = fecha ? new Date(fecha) : new Date();
     date.setHours(0,0,0,0);
-    const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
-    return equipo.map(emp => ({ ...emp, asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null }));
+    const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(equipo.map(e => e.empleadoId)), fecha: date as any } });
+    return equipo.map(emp => ({ ...emp, nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`), asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null }));
   }
 
   async getAllAttendance(s?: string, e?: string) {
@@ -154,11 +146,15 @@ export class AttendanceService {
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis = id === 0 ? this.asistenciaRepository.create({ empleadoId: dto.empleadoId, fecha: new Date(dto.fecha) }) : await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
     if (!asis) throw new NotFoundException('No encontrado');
-    const saved = await this.asistenciaRepository.save(asis);
-    return { message: 'Ajustado', asistencia: saved };
+    return await this.asistenciaRepository.save(asis);
   }
 
   async getAdjustmentHistory() { return this.ajusteRepository.find({ relations: ['asistencia', 'asistencia.empleado', 'usuario'], order: { fechaHora: 'DESC' }, take: 200 }); }
+
+  private sanitizeString(s: string | null): string {
+    if (!s) return '';
+    return s.replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez').replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+  }
 
   private calculateHours(s: any, e: any): number {
     const d = new Date(e).getTime() - new Date(s).getTime();
