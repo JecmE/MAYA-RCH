@@ -39,9 +39,9 @@ export class AttendanceService {
   ) {}
 
   async registerEntry(empleadoId: number, usuarioId: number, payload: any) {
-    const { localTime, localDate } = payload;
-    const [hActual, mActual] = localTime.split(':').map(Number);
-    const today = new Date(localDate);
+    const { h, m, date } = payload;
+    const today = new Date(date);
+    today.setHours(0, 0, 0, 0);
 
     const existing = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (existing && existing.horaEntradaReal) throw new BadRequestException('Ya se registró la entrada hoy');
@@ -50,23 +50,24 @@ export class AttendanceService {
     if (!empTurno) throw new BadRequestException('No tienes turno asignado hoy');
 
     const turno = empTurno.turno;
-    const [hTurno, mTurno] = turno.horaEntrada.split(':').map(Number);
+    const [hT, mT] = turno.horaEntrada.split(':').map(Number);
     const tol = turno.toleranciaMinutos || 10;
 
-    // VALIDACIÓN NUMÉRICA PURA (CLIENTE VS TURNO)
-    const minsActual = hActual * 60 + mActual;
-    const minsTurno = hTurno * 60 + mTurno;
+    // VALIDACIÓN NUMÉRICA BASADA EN LA HORA DEL CLIENTE
+    const minsActual = h * 60 + m;
+    const minsTurno = hT * 60 + mT;
     const minsMax = minsTurno + tol;
 
-    if (minsActual > minsMax) {
-        throw new BadRequestException(`Tiempo expirado. Tu límite era las ${this.formatManual(hTurno, mTurno + tol)}`);
+    // Si el botón estaba activo en el cliente, el servidor debe aceptar (Damos un margen de 2 min)
+    if (minsActual > (minsMax + 2)) {
+        throw new BadRequestException(`Tiempo expirado. El límite era a las ${hT}:${mT + tol}`);
     }
 
     const asistencia = existing || this.asistenciaRepository.create({ empleadoId, fecha: today, estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA });
 
-    // Guardamos la hora del cliente reconstruida para la DB
+    // Reconstruimos la fecha con la hora del cliente para guardar en DB
     const finalDate = new Date(today);
-    finalDate.setHours(hActual, mActual, 0, 0);
+    finalDate.setHours(h, m, 0, 0);
 
     asistencia.horaEntradaReal = finalDate;
     asistencia.minutosTardia = Math.max(0, minsActual - minsTurno);
@@ -78,16 +79,16 @@ export class AttendanceService {
   }
 
   async registerExit(empleadoId: number, usuarioId: number, payload: any) {
-    const { localTime, localDate } = payload;
-    const [hActual, mActual] = localTime.split(':').map(Number);
-    const today = new Date(localDate);
+    const { h, m, date } = payload;
+    const today = new Date(date);
+    today.setHours(0, 0, 0, 0);
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (!asis) throw new BadRequestException('No has marcado entrada hoy');
     if (asis.horaSalidaReal) throw new BadRequestException('Ya marcaste salida');
 
     const finalDate = new Date(today);
-    finalDate.setHours(hActual, mActual, 0, 0);
+    finalDate.setHours(h, m, 0, 0);
 
     asis.horaSalidaReal = finalDate;
     asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
@@ -99,7 +100,7 @@ export class AttendanceService {
   }
 
   async getTodayStatus(empleadoId: number) {
-    // Para el estado inicial seguimos usando el helper de GT
+    // Para el estado inicial, Azure se comporta bien pidiendo datos, el problema es al guardar
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const nowGT = new Date(utc - (3600000 * 6));
@@ -158,14 +159,6 @@ export class AttendanceService {
   }
 
   async getAdjustmentHistory() { return this.ajusteRepository.find({ relations: ['asistencia', 'asistencia.empleado', 'usuario'], order: { fechaHora: 'DESC' }, take: 200 }); }
-
-  private formatManual(h: number, m: number): string {
-    const hh = (h + 24) % 24;
-    const mm = (m + 60) % 60;
-    const p = hh >= 12 ? 'p. m.' : 'a. m.';
-    const h12 = hh % 12 || 12;
-    return `${h12}:${String(mm).padStart(2, '0')} ${p}`;
-  }
 
   private calculateHours(s: any, e: any): number {
     const d = new Date(e).getTime() - new Date(s).getTime();

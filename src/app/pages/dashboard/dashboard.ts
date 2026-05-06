@@ -408,11 +408,11 @@ export class Dashboard implements OnInit, OnDestroy {
     if (this.isCheckingIn) return;
     this.isCheckingIn = true; this.marcaError = ''; this.marcaSuccess = '';
 
-    // Capturamos lo que el usuario ve exactamente
     const now = new Date();
     const payload = {
-      localTime: `${now.getHours()}:${now.getMinutes()}`,
-      localDate: now.toISOString().split('T')[0]
+      h: now.getHours(),
+      m: now.getMinutes(),
+      date: now.toISOString().split('T')[0]
     };
 
     this.attendanceService.checkIn(payload).subscribe({
@@ -427,8 +427,9 @@ export class Dashboard implements OnInit, OnDestroy {
 
     const now = new Date();
     const payload = {
-      localTime: `${now.getHours()}:${now.getMinutes()}`,
-      localDate: now.toISOString().split('T')[0]
+      h: now.getHours(),
+      m: now.getMinutes(),
+      date: now.toISOString().split('T')[0]
     };
 
     this.attendanceService.checkOut(payload).subscribe({
