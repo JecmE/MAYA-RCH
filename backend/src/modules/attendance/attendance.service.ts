@@ -108,7 +108,7 @@ export class AttendanceService {
     let minutosTardia = 0;
     if (now > horaEntradaEsperada) {
       const diff = now.getTime() - horaEntradaEsperada.getTime();
-      minutosTardia = Math.floor(diff / 60000) - effectiveTolerance;
+      minutosTardia = Math.floor(diff / 60000); // Quitamos la resta de tolerancia para ser exactos en el log
       if (minutosTardia < 0) minutosTardia = 0;
     }
 
