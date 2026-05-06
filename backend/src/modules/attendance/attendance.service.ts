@@ -15,6 +15,8 @@ import { AjusteAsistencia } from '../../entities/ajuste-asistencia.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { ParametroSistema } from '../../entities/parametro-sistema.entity';
 import { KpiService } from '../kpi/kpi.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class AttendanceService {
@@ -38,8 +40,10 @@ export class AttendanceService {
     private kpiService: KpiService,
   ) {}
 
+  // HELPER: Obtiene la fecha/hora actual en Guatemala (UTC-6)
   private getGuatemalaNow(): Date {
     const now = new Date();
+    // Ajustamos el offset manualmente a UTC-6 para asegurar consistencia en Azure
     return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) - (6 * 3600000));
   }
 
@@ -79,12 +83,18 @@ export class AttendanceService {
     expected.setHours(h, m, 0, 0);
 
     const effectiveTolerance = await this.getEffectiveTolerance(turno);
-    const minTime = new Date(expected); minTime.setMinutes(minTime.getMinutes() - 65);
-    const maxTime = new Date(expected); maxTime.setMinutes(maxTime.getMinutes() + effectiveTolerance + 1);
+
+    // Rango: 1 hora antes y hasta el fin de la tolerancia
+    const minTime = new Date(expected);
+    minTime.setHours(minTime.getHours() - 1);
+
+    const maxTime = new Date(expected);
+    maxTime.setMinutes(maxTime.getMinutes() + effectiveTolerance);
 
     if (now < minTime) {
       throw new BadRequestException(`Aún no puedes marcar. Disponible desde las ${this.formatTimeToString(minTime)}`);
     }
+
     if (now > maxTime) {
       throw new BadRequestException(`Tiempo de marcaje expirado. El límite era a las ${this.formatTimeToString(maxTime)}`);
     }
@@ -121,6 +131,9 @@ export class AttendanceService {
 
     if (!asistencia) throw new BadRequestException('No se ha registrado entrada hoy');
     if (asistencia.horaSalidaReal) throw new BadRequestException('Ya se registró la salida hoy');
+
+    const empleadoTurno = await this.getShiftForDate(empleadoId, today);
+    if (!empleadoTurno) throw new BadRequestException('No tiene turno asignado');
 
     asistencia.horaSalidaReal = now;
     asistencia.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
@@ -191,62 +204,203 @@ export class AttendanceService {
     });
   }
 
-  async getHistory(empleadoId: number, start?: string, end?: string) {
+  async getHistory(empleadoId: number, fechaInicio?: string, fechaFin?: string) {
     const where: any = { empleadoId };
-    if (start && end) where.fecha = Between(new Date(start), new Date(end));
-    return await this.asistenciaRepository.find({ where, order: { fecha: 'DESC' } });
+    if (fechaInicio && fechaFin) {
+      where.fecha = Between(new Date(fechaInicio), new Date(fechaFin));
+    } else if (fechaInicio) {
+      where.fecha = MoreThanOrEqual(new Date(fechaInicio));
+    } else if (fechaFin) {
+      where.fecha = LessThanOrEqual(new Date(fechaFin));
+    }
+
+    return await this.asistenciaRepository.find({
+      where,
+      order: { fecha: 'DESC' },
+    });
   }
 
-  async adjustAttendance(id: number, dto: any, usuarioId: number) {
-    const asistencia = id === 0 ?
-      this.asistenciaRepository.create({ empleadoId: dto.empleadoId, fecha: new Date(dto.fecha) }) :
-      await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
+  async adjustAttendance(asistenciaId: number, adjustDto: any, usuarioId: number) {
+    let asistencia;
 
-    if (!asistencia) throw new NotFoundException('No encontrado');
+    const parsePura = (s: string) => {
+      const [y, m, d] = s.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
 
-    if (dto.campo === 'horaEntradaReal' || dto.campo === 'horaSalidaReal') {
-      const [h, m] = dto.valorNuevo.split(':').map(Number);
+    const fechaReferencia = parsePura(adjustDto.fecha);
+
+    if (asistenciaId === 0) {
+      asistencia = await this.asistenciaRepository.findOne({
+        where: { empleadoId: adjustDto.empleadoId, fecha: fechaReferencia as any },
+      });
+
+      if (!asistencia) {
+        asistencia = this.asistenciaRepository.create({
+          empleadoId: adjustDto.empleadoId,
+          fecha: fechaReferencia,
+          estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA,
+          observacion: 'Registro creado por ajuste manual'
+        });
+      }
+    } else {
+      asistencia = await this.asistenciaRepository.findOne({ where: { asistenciaId } });
+    }
+
+    if (!asistencia) {
+      throw new NotFoundException('No se pudo localizar el registro de asistencia');
+    }
+
+    const { campo, valorNuevo, motivo } = adjustDto;
+    const valorAnterior = (asistencia as any)[campo] || 'Sin registro';
+
+    if (campo === 'horaEntradaReal' || campo === 'horaSalidaReal') {
+      const [hours, minutes] = valorNuevo.split(':').map(Number);
       const newTime = new Date(asistencia.fecha);
-      newTime.setHours(h, m, 0, 0);
-      (asistencia as any)[dto.campo] = newTime;
+      newTime.setHours(hours, minutes, 0, 0);
+      (asistencia as any)[campo] = newTime;
+
+      if (campo === 'horaEntradaReal') {
+        const shift = await this.getShiftForDate(asistencia.empleadoId, asistencia.fecha);
+        if (shift && shift.turno) {
+          const expectedIn = this.getTimeFromString(shift.turno.horaEntrada);
+          const actualIn = new Date(asistencia.horaEntradaReal);
+          if (actualIn > expectedIn) {
+            const diffMin = Math.floor((actualIn.getTime() - expectedIn.getTime()) / 60000);
+            const effectiveTolerance = await this.getEffectiveTolerance(shift.turno);
+            asistencia.minutosTardia = Math.max(0, diffMin - effectiveTolerance);
+          } else {
+            asistencia.minutosTardia = 0;
+          }
+        }
+      }
+    }
+
+    if (asistencia.horaEntradaReal && asistencia.horaSalidaReal) {
+      asistencia.horasTrabajadas = this.calculateHours(asistencia.horaEntradaReal, asistencia.horaSalidaReal);
+      asistencia.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
     }
 
     const saved = await this.asistenciaRepository.save(asistencia);
-    return { message: 'Ajustado', asistencia: saved };
+
+    await this.ajusteRepository.save({
+      asistenciaId: saved.asistenciaId,
+      usuarioId,
+      campoModificado: campo,
+      valorAnterior: valorAnterior instanceof Date ? this.formatTimeToString(valorAnterior) : valorAnterior.toString(),
+      valorNuevo: valorNuevo.toString(),
+      motivo,
+      fechaHora: new Date(),
+    });
+
+    return { message: 'Ajuste registrado correctamente', asistencia: saved };
   }
 
   async getTeamAttendance(supervisorId: number, fecha?: string) {
-    const equipo = await this.empleadoRepository.find({ where: { supervisorId, activo: true } });
-    const ids = equipo.map(e => e.empleadoId);
-    if (ids.length === 0) return [];
-    const date = fecha ? new Date(fecha) : this.getGuatemalaNow();
-    date.setHours(0,0,0,0);
-    const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
-    return equipo.map(emp => ({
-      ...emp,
-      nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
-      asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null
-    }));
+    const equipo = await this.empleadoRepository.find({
+      where: { supervisorId, activo: true },
+    });
+
+    if (equipo.length === 0) return [];
+
+    const fechaBusqueda = fecha ? new Date(fecha) : this.getGuatemalaNow();
+    fechaBusqueda.setHours(0, 0, 0, 0);
+
+    const empleadoIds = equipo.map((e) => e.empleadoId);
+    const registros = await this.asistenciaRepository.find({
+      where: { empleadoId: In(empleadoIds), fecha: fechaBusqueda as any },
+    });
+
+    return equipo.map((emp) => {
+      const registro = registros.find((r) => r.empleadoId === emp.empleadoId);
+      return {
+        empleadoId: emp.empleadoId,
+        nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+        codigoEmpleado: emp.codigoEmpleado,
+        departamento: this.sanitizeString(emp.departamento) || 'Sin asignar',
+        puesto: this.sanitizeString(emp.puesto) || 'Empleado',
+        asistencia: registro || null,
+      };
+    });
   }
 
-  async getAllAttendance(start: string, end: string) {
-      return await this.asistenciaRepository.find({
-          where: { fecha: Between(new Date(start), new Date(end)) as any },
-          relations: ['empleado']
-      });
+  async getAllAttendance(fechaInicio?: string, fechaFin?: string) {
+    const startISO = fechaInicio;
+    const endISO = fechaFin || fechaInicio;
+
+    if (!startISO) return [];
+
+    const parseLocalSafe = (s: string) => {
+      const [y, m, d] = s.split('-').map(Number);
+      return new Date(y, m - 1, d, 12, 0, 0);
+    };
+
+    const startDate = parseLocalSafe(startISO);
+    const endDate = parseLocalSafe(endISO);
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysCount = Math.round(timeDiff / (1000 * 3600 * 24)) + 1;
+    const rangeISODates: string[] = [];
+
+    for(let i=0; i < Math.min(daysCount, 31); i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      rangeISODates.push(d.toISOString().split('T')[0]);
+    }
+
+    const empleados = await this.empleadoRepository.find({
+      where: { activo: true },
+      relations: ['empleadoTurnos', 'empleadoTurnos.turno']
+    });
+
+    const asistencias = await this.asistenciaRepository.find({
+      where: { fecha: Between(new Date(startISO), new Date(endISO)) as any }
+    });
+
+    const results = [];
+    for (const isoDate of rangeISODates) {
+      for (const emp of empleados) {
+        const asistencia = asistencias.find(a => {
+          const dbDateISO = new Date(a.fecha).toISOString().split('T')[0];
+          return a.empleadoId === emp.empleadoId && dbDateISO === isoDate;
+        });
+
+        const turnosEnFecha = emp.empleadoTurnos?.filter(et => {
+          const tStart = new Date(et.fechaInicio).toISOString().split('T')[0];
+          const tEnd = et.fechaFin ? new Date(et.fechaFin).toISOString().split('T')[0] : null;
+          return isoDate >= tStart && (!tEnd || isoDate <= tEnd);
+        }) || [];
+
+        const turnoAsignado = turnosEnFecha.sort((a, b) => b.empleadoTurnoId - a.empleadoTurnoId)[0];
+
+        results.push({
+          empleadoId: emp.empleadoId,
+          nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+          codigoEmpleado: emp.codigoEmpleado,
+          departamento: this.sanitizeString(emp.departamento),
+          fecha: isoDate,
+          turno: turnoAsignado?.turno?.nombre || 'Sin turno',
+          asistencia: asistencia || null
+        });
+      }
+    }
+    return results;
   }
 
   async getAdjustmentHistory() {
-    return this.ajusteRepository.find({ relations: ['asistencia', 'asistencia.empleado', 'usuario'], order: { fechaHora: 'DESC' } });
+    return this.ajusteRepository.find({
+      relations: ['asistencia', 'asistencia.empleado', 'usuario'],
+      order: { fechaHora: 'DESC' },
+      take: 200
+    });
   }
 
   private sanitizeString(str: string | null | undefined): string {
     if (!str) return '';
     return str
       .replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez')
-      .replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López')
-      .replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
-      .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+      .replace(/Fern\?ndez/g, 'Fernández').replace(/Garc\?a/g, 'García')
+      .replace(/L\?pez/g, 'López').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó')
+      .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
   }
 
   private formatTimeToString(date: Date): string {
@@ -257,8 +411,18 @@ export class AttendanceService {
     return `${hour12}:${String(minutes).padStart(2, '0')} ${period}`;
   }
 
+  private getTimeFromString(timeStr: string): Date {
+    const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, seconds || 0, 0);
+    return date;
+  }
+
   private calculateHours(start: any, end: any): number {
-    const diff = new Date(end).getTime() - new Date(start).getTime();
+    const dStart = new Date(start);
+    const dEnd = new Date(end);
+    let diff = dEnd.getTime() - dStart.getTime();
+    if (diff < 0) diff += 24 * 60 * 60 * 1000;
     return Math.round((diff / 3600000) * 100) / 100;
   }
 }
