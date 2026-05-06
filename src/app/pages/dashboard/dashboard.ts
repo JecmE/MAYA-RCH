@@ -416,8 +416,18 @@ export class Dashboard implements OnInit, OnDestroy {
     };
 
     this.attendanceService.checkIn(payload).subscribe({
-      next: () => { this.marcaEstado = 'Entrada'; this.marcaSuccess = 'Entrada registrada'; this.loadTodayStatus(); this.isCheckingIn = false; this.cdr.detectChanges(); },
-      error: (err) => { this.marcaError = err.error?.message || 'Error'; this.isCheckingIn = false; this.cdr.detectChanges(); },
+      next: () => {
+        this.marcaEstado = 'Entrada';
+        this.marcaSuccess = 'Entrada registrada con éxito';
+        this.loadTodayStatus();
+        this.isCheckingIn = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.marcaError = err.error?.message || 'Error al marcar entrada';
+        this.isCheckingIn = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 
@@ -433,8 +443,18 @@ export class Dashboard implements OnInit, OnDestroy {
     };
 
     this.attendanceService.checkOut(payload).subscribe({
-      next: () => { this.marcaEstado = 'Completa'; this.marcaSuccess = 'Salida registrada'; this.loadTodayStatus(); this.isCheckingOut = false; this.cdr.detectChanges(); },
-      error: (err) => { this.marcaError = err.error?.message || 'Error'; this.isCheckingOut = false; this.cdr.detectChanges(); },
+      next: () => {
+        this.marcaEstado = 'Completa';
+        this.marcaSuccess = 'Salida registrada con éxito';
+        this.loadTodayStatus();
+        this.isCheckingOut = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.marcaError = err.error?.message || 'Error al marcar salida';
+        this.isCheckingOut = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 
