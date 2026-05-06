@@ -38,12 +38,23 @@ export class AttendanceService {
     private kpiService: KpiService,
   ) {}
 
-  // MÉTODO INFALIBLE PARA GUATEMALA
-  private getGuatemalaNow(): Date {
+  // MÉTODO INFALIBLE PARA OBTENER HORA Y FECHA REAL DE GUATEMALA EN AZURE
+  private getGuatemalaInfo() {
     const now = new Date();
-    // Obtenemos el tiempo absoluto (UTC) y le restamos 6 horas fijas
-    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utcTime - (3600000 * 6));
+    // Forzamos el formato de Guatemala para extraer los números exactos
+    const options: any = { timeZone: 'America/Guatemala', hour12: false };
+    const dateStr = now.toLocaleDateString('en-US', options); // "M/D/YYYY"
+    const timeStr = now.toLocaleTimeString('en-US', options); // "HH:MM:SS"
+
+    const [month, day, year] = dateStr.split('/').map(Number);
+    const [hour, minute] = timeStr.split(':').map(Number);
+
+    return {
+      now: new Date(year, month - 1, day, hour, minute),
+      today: new Date(year, month - 1, day, 0, 0, 0, 0),
+      hour,
+      minute
+    };
   }
 
   private async getGlobalTolerance(): Promise<number> {
@@ -57,33 +68,33 @@ export class AttendanceService {
   }
 
   async registerEntry(empleadoId: number, usuarioId: number) {
-    const now = this.getGuatemalaNow();
-    // Para 'today' usamos UTC para evitar que Azure salte de día
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const info = this.getGuatemalaInfo();
+    const today = info.today;
 
     const existing = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (existing && existing.horaEntradaReal) throw new BadRequestException('Ya se registró la entrada hoy');
 
     const empTurno = await this.getShiftForDate(empleadoId, today);
-    if (!empTurno) throw new BadRequestException('No tienes turno asignado hoy');
+    if (!empTurno) throw new BadRequestException('No tienes turno asignado para hoy');
 
     const turno = empTurno.turno;
-    const [h, m] = turno.horaEntrada.split(':').map(Number);
+    const [hT, mT] = turno.horaEntrada.split(':').map(Number);
     const tolerance = await this.getEffectiveTolerance(turno);
 
-    // LÓGICA DE MINUTOS TOTALES (Ignora Timezones del servidor)
-    const currentMins = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const expectedMins = h * 60 + m;
-    const minMins = expectedMins - 65; // 1 hora antes
-    const maxMins = expectedMins + tolerance;
+    // COMPARACIÓN EN MINUTOS TOTALES DEL DÍA (El método más seguro del mundo)
+    const minsActual = info.hour * 60 + info.minute;
+    const minsTurno = hT * 60 + mT;
 
-    if (currentMins < minMins || currentMins > maxMins) {
-        const errorMsg = currentMins < minMins
-            ? `Muy temprano. Disponible desde: ${this.formatManual(h-1, m)}`
-            : `Tiempo expirado. El límite era: ${this.formatManual(h, m + tolerance)}`;
+    const minsMin = minsTurno - 60; // 1 hora antes
+    const minsMax = minsTurno + tolerance;
 
-        console.error(`[ATTENDANCE ERROR] Empleado: ${empleadoId}, Ahora: ${currentMins}m, Rango: ${minMins}m-${maxMins}m`);
-        throw new BadRequestException(errorMsg);
+    if (minsActual < minsMin) {
+        throw new BadRequestException(`Muy temprano. Disponible desde: ${this.formatManual(hT - 1, mT)}`);
+    }
+
+    if (minsActual > minsMax) {
+        console.error(`ERROR MARCAJE: Actual=${minsActual}m, Max=${minsMax}m`);
+        throw new BadRequestException(`Tiempo expirado. El límite era a las ${this.formatManual(hT, mT + tolerance)}`);
     }
 
     const asistencia = existing || this.asistenciaRepository.create({
@@ -92,8 +103,8 @@ export class AttendanceService {
       estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA,
     });
 
-    asistencia.horaEntradaReal = now;
-    asistencia.minutosTardia = Math.max(0, currentMins - expectedMins);
+    asistencia.horaEntradaReal = info.now;
+    asistencia.minutosTardia = Math.max(0, minsActual - minsTurno);
     asistencia.empleadoTurnoId = empTurno.empleadoTurnoId;
 
     const saved = await this.asistenciaRepository.save(asistencia);
@@ -102,16 +113,16 @@ export class AttendanceService {
   }
 
   async registerExit(empleadoId: number, usuarioId: number) {
-    const now = this.getGuatemalaNow();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const info = this.getGuatemalaInfo();
+    const today = info.today;
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (!asis) throw new BadRequestException('No has marcado entrada hoy');
     if (asis.horaSalidaReal) throw new BadRequestException('Ya marcaste salida');
 
-    asis.horaSalidaReal = now;
+    asis.horaSalidaReal = info.now;
     asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, now);
+    asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, info.now);
 
     await this.asistenciaRepository.save(asis);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
@@ -119,8 +130,8 @@ export class AttendanceService {
   }
 
   async getTodayStatus(empleadoId: number) {
-    const now = this.getGuatemalaNow();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const info = this.getGuatemalaInfo();
+    const today = info.today;
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     const empTurno = await this.getShiftForDate(empleadoId, today);
@@ -162,9 +173,7 @@ export class AttendanceService {
 
     if (dto.campo === 'horaEntradaReal' || dto.campo === 'horaSalidaReal') {
       const [h, m] = dto.valorNuevo.split(':').map(Number);
-      const time = new Date(asis.fecha);
-      // Ajuste para ajustes manuales
-      time.setUTCHours(h + 6, m, 0, 0);
+      const time = new Date(asis.fecha); time.setHours(h, m, 0, 0);
       (asis as any)[dto.campo] = time;
     }
     const saved = await this.asistenciaRepository.save(asis);
@@ -175,8 +184,9 @@ export class AttendanceService {
     const equipo = await this.empleadoRepository.find({ where: { supervisorId: supId, activo: true } });
     const ids = equipo.map(e => e.empleadoId);
     if (ids.length === 0) return [];
-    const date = fecha ? new Date(fecha) : this.getGuatemalaNow();
-    date.setUTCHours(0,0,0,0);
+    const info = this.getGuatemalaInfo();
+    const date = fecha ? new Date(fecha) : info.today;
+    date.setHours(0,0,0,0);
     const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
     return equipo.map(emp => ({
       ...emp,
