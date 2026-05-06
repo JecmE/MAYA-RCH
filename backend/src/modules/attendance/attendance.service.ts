@@ -57,8 +57,6 @@ export class AttendanceService {
 
   async registerEntry(empleadoId: number, usuarioId: number) {
     const now = this.getGuatemalaNow();
-    console.log(`[DEBUG] Hora actual GT: ${now.toISOString()}`);
-
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
 
@@ -76,30 +74,18 @@ export class AttendanceService {
     }
 
     const turno = empleadoTurno.turno;
-    console.log(`[DEBUG] Turno detectado: ${turno.nombre} (${turno.horaEntrada})`);
-
     const [h, m] = turno.horaEntrada.split(':').map(Number);
     const expected = new Date(now);
     expected.setHours(h, m, 0, 0);
 
     const effectiveTolerance = await this.getEffectiveTolerance(turno);
-
-    // Rango de seguridad: 65 minutos antes (para evitar problemas de sincronización)
-    const minTime = new Date(expected);
-    minTime.setMinutes(minTime.getMinutes() - 65);
-
-    const maxTime = new Date(expected);
-    maxTime.setMinutes(maxTime.getMinutes() + effectiveTolerance + 1);
-
-    console.log(`[DEBUG] Rango permitido: ${minTime.toISOString()} - ${maxTime.toISOString()}`);
+    const minTime = new Date(expected); minTime.setMinutes(minTime.getMinutes() - 65);
+    const maxTime = new Date(expected); maxTime.setMinutes(maxTime.getMinutes() + effectiveTolerance + 1);
 
     if (now < minTime) {
       throw new BadRequestException(`Aún no puedes marcar. Disponible desde las ${this.formatTimeToString(minTime)}`);
     }
     if (now > maxTime) {
-      // Si el turno es nocturno y estamos en la madrugada, podría ser otra validación,
-      // pero por ahora relajamos para que te deje presentar.
-      console.warn(`[WARN] Intento fuera de horario. Now: ${now.toISOString()}, Max: ${maxTime.toISOString()}`);
       throw new BadRequestException(`Tiempo de marcaje expirado. El límite era a las ${this.formatTimeToString(maxTime)}`);
     }
 
@@ -124,14 +110,26 @@ export class AttendanceService {
     return { message: 'Entrada registrada', asistencia: saved, minutosTardia };
   }
 
-  private async getShiftForDate(empleadoId: number, date: Date): Promise<EmpleadoTurno | null> {
-    const d = new Date(date);
-    d.setHours(0,0,0,0);
-    return await this.empleadoTurnoRepository.findOne({
-      where: { empleadoId, activo: true, fechaInicio: LessThanOrEqual(d) },
-      relations: ['turno'],
-      order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
+  async registerExit(empleadoId: number, usuarioId: number) {
+    const now = this.getGuatemalaNow();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const asistencia = await this.asistenciaRepository.findOne({
+      where: { empleadoId, fecha: today as any },
     });
+
+    if (!asistencia) throw new BadRequestException('No se ha registrado entrada hoy');
+    if (asistencia.horaSalidaReal) throw new BadRequestException('Ya se registró la salida hoy');
+
+    asistencia.horaSalidaReal = now;
+    asistencia.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
+    asistencia.horasTrabajadas = this.calculateHours(asistencia.horaEntradaReal, now);
+
+    await this.asistenciaRepository.save(asistencia);
+    await this.kpiService.refreshEmployeeKpi(empleadoId);
+
+    return { message: 'Salida registrada', asistencia };
   }
 
   async getTodayStatus(empleadoId: number) {
@@ -183,6 +181,16 @@ export class AttendanceService {
     };
   }
 
+  private async getShiftForDate(empleadoId: number, date: Date): Promise<EmpleadoTurno | null> {
+    const d = new Date(date);
+    d.setHours(0,0,0,0);
+    return await this.empleadoTurnoRepository.findOne({
+      where: { empleadoId, activo: true, fechaInicio: LessThanOrEqual(d) },
+      relations: ['turno'],
+      order: { fechaInicio: 'DESC', empleadoTurnoId: 'DESC' }
+    });
+  }
+
   async getHistory(empleadoId: number, start?: string, end?: string) {
     const where: any = { empleadoId };
     if (start && end) where.fecha = Between(new Date(start), new Date(end));
@@ -214,7 +222,11 @@ export class AttendanceService {
     const date = fecha ? new Date(fecha) : this.getGuatemalaNow();
     date.setHours(0,0,0,0);
     const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(ids), fecha: date as any } });
-    return equipo.map(emp => ({ ...emp, asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null }));
+    return equipo.map(emp => ({
+      ...emp,
+      nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+      asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null
+    }));
   }
 
   async getAllAttendance(start: string, end: string) {
@@ -226,6 +238,15 @@ export class AttendanceService {
 
   async getAdjustmentHistory() {
     return this.ajusteRepository.find({ relations: ['asistencia', 'asistencia.empleado', 'usuario'], order: { fechaHora: 'DESC' } });
+  }
+
+  private sanitizeString(str: string | null | undefined): string {
+    if (!str) return '';
+    return str
+      .replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez')
+      .replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López')
+      .replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
+      .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
   }
 
   private formatTimeToString(date: Date): string {
