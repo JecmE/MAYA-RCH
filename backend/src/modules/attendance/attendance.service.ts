@@ -140,15 +140,27 @@ export class AttendanceService {
   async getTeamAttendance(supId: number, fecha?: string) {
     const equipo = await this.empleadoRepository.find({ where: { supervisorId: supId, activo: true } });
     if (equipo.length === 0) return [];
-    const date = fecha ? new Date(fecha) : new Date();
+
+    let date: Date;
+    if (fecha) {
+      const [y, m, d] = fecha.split('-').map(Number);
+      date = new Date(y, m - 1, d);
+    } else {
+      date = new Date();
+    }
     date.setHours(0,0,0,0);
     const regs = await this.asistenciaRepository.find({ where: { empleadoId: In(equipo.map(e => e.empleadoId)), fecha: date as any } });
     return equipo.map(emp => ({ ...emp, nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`), asistencia: regs.find(r => r.empleadoId === emp.empleadoId) || null }));
   }
 
   async getAllAttendance(s?: string, e?: string) {
-    const startDate = s ? new Date(s) : new Date();
-    const endDate = e ? new Date(e) : new Date(startDate);
+    const parseLocal = (str: string) => {
+      const [y, m, d] = str.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
+
+    const startDate = s ? parseLocal(s) : new Date();
+    const endDate = e ? parseLocal(e) : new Date(startDate);
 
     startDate.setHours(0,0,0,0);
     endDate.setHours(23,59,59,999);
@@ -162,24 +174,23 @@ export class AttendanceService {
     const results = [];
     const iterDate = new Date(startDate);
 
-    const toISODate = (d: any) => {
-      try {
-        const date = new Date(d);
-        return date.toISOString().split('T')[0];
-      } catch {
-        return '';
-      }
+    const toYMD = (d: any) => {
+      const date = new Date(d);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
     let count = 0;
     while (iterDate <= endDate && count < 31) {
       const currentDay = new Date(iterDate);
-      const currentDayStr = toISODate(currentDay);
+      const currentDayStr = toYMD(currentDay);
 
       for (const emp of empleados) {
         const asis = regs.find(r =>
           r.empleadoId === emp.empleadoId &&
-          toISODate(r.fecha) === currentDayStr
+          toYMD(r.fecha) === currentDayStr
         );
 
         const empTurno = await this.getShiftForDate(emp.empleadoId, currentDay);
@@ -202,7 +213,8 @@ export class AttendanceService {
 
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
-    const fechaAjuste = new Date(dto.fecha);
+    const [y, m, d] = dto.fecha.split('-').map(Number);
+    const fechaAjuste = new Date(y, m - 1, d);
     fechaAjuste.setHours(0, 0, 0, 0);
 
     // Intentamos buscar por fecha y empleado por si ya existe el registro (id 0 en el front)
