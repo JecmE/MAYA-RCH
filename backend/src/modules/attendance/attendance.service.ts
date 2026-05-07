@@ -42,7 +42,7 @@ export class AttendanceService {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const nowGT = new Date(utc - (3600000 * 6));
-    
+
     // Convert to Guatemala time components
     const h = nowGT.getHours();
     const m = nowGT.getMinutes();
@@ -82,7 +82,7 @@ export class AttendanceService {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const nowGT = new Date(utc - (3600000 * 6));
-    
+
     const h = nowGT.getHours();
     const m = nowGT.getMinutes();
     const today = new Date(nowGT.getFullYear(), nowGT.getMonth(), nowGT.getDate());
@@ -147,15 +147,92 @@ export class AttendanceService {
   }
 
   async getAllAttendance(s?: string, e?: string) {
-    return await this.asistenciaRepository.find({ where: { fecha: Between(new Date(s), new Date(e || s)) as any }, relations: ['empleado'] });
+    const startDate = s ? new Date(s) : new Date();
+    const endDate = e ? new Date(e) : new Date(startDate);
+
+    startDate.setHours(0,0,0,0);
+    endDate.setHours(23,59,59,999);
+
+    const empleados = await this.empleadoRepository.find({ where: { activo: true } });
+    const regs = await this.asistenciaRepository.find({
+      where: { fecha: Between(startDate, endDate) as any },
+      relations: ['empleado']
+    });
+
+    const results = [];
+    let iterDate = new Date(startDate);
+    iterDate.setHours(0,0,0,0);
+
+    let count = 0;
+    while (iterDate <= endDate && count < 31) {
+      const currentDay = new Date(iterDate);
+
+      for (const emp of empleados) {
+        const asis = regs.find(r =>
+          r.empleadoId === emp.empleadoId &&
+          new Date(r.fecha).toISOString().split('T')[0] === currentDay.toISOString().split('T')[0]
+        );
+
+        const empTurno = await this.getShiftForDate(emp.empleadoId, currentDay);
+
+        results.push({
+          empleadoId: emp.empleadoId,
+          nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
+          codigoEmpleado: emp.codigoEmpleado,
+          departamento: emp.departamento,
+          fecha: currentDay,
+          turno: empTurno?.turno?.nombre || 'Sin turno',
+          asistencia: asis || null
+        });
+      }
+      iterDate.setDate(iterDate.getDate() + 1);
+      count++;
+    }
+    return results;
   }
 
   async adjustAttendance(id: number, dto: any, user: number) {
-    let asis = id === 0 ? this.asistenciaRepository.create({ empleadoId: dto.empleadoId, fecha: new Date(dto.fecha) }) : await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
-    if (!asis) throw new NotFoundException('No encontrado');
+    let asis: RegistroAsistencia;
+    if (id === 0) {
+      // Si el registro no existe (Ausente), lo creamos
+      asis = this.asistenciaRepository.create({
+        empleadoId: dto.empleadoId,
+        fecha: new Date(dto.fecha),
+        estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
+      });
+    } else {
+      asis = await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
+    }
 
-    // Aplicar los cambios del DTO al registro
-    Object.assign(asis, dto);
+    if (!asis) throw new NotFoundException('Registro de asistencia no encontrado');
+
+    const campo = dto.campo; // 'horaEntradaReal' o 'horaSalidaReal'
+    const valor = dto.valorNuevo; // Esperado 'HH:MM'
+
+    // Parsear HH:MM y aplicarlo a la fecha del registro
+    const [h, m] = valor.split(':').map(Number);
+    const finalDate = new Date(asis.fecha);
+    // Nos aseguramos de trabajar con la fecha correcta sin desfases
+    finalDate.setHours(h, m, 0, 0);
+
+    // Guardar el ajuste para auditoría
+    await this.ajusteRepository.save({
+      asistenciaId: asis.asistenciaId,
+      usuarioId: user,
+      campoModificado: campo === 'horaEntradaReal' ? 'Hora Entrada' : 'Hora Salida',
+      valorAnterior: dto.valorAnterior || 'Sin registro',
+      valorNuevo: valor,
+      motivo: dto.motivo,
+      fechaHora: new Date()
+    });
+
+    // Actualizar el registro de asistencia
+    asis[campo] = finalDate;
+
+    if (campo === 'horaSalidaReal' && asis.horaEntradaReal) {
+      asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, finalDate);
+      asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
+    }
 
     return await this.asistenciaRepository.save(asis);
   }
