@@ -160,17 +160,26 @@ export class AttendanceService {
     });
 
     const results = [];
-    let iterDate = new Date(startDate);
-    iterDate.setHours(0,0,0,0);
+    const iterDate = new Date(startDate);
+
+    const toISODate = (d: any) => {
+      try {
+        const date = new Date(d);
+        return date.toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    };
 
     let count = 0;
     while (iterDate <= endDate && count < 31) {
       const currentDay = new Date(iterDate);
+      const currentDayStr = toISODate(currentDay);
 
       for (const emp of empleados) {
         const asis = regs.find(r =>
           r.empleadoId === emp.empleadoId &&
-          new Date(r.fecha).toISOString().split('T')[0] === currentDay.toISOString().split('T')[0]
+          toISODate(r.fecha) === currentDayStr
         );
 
         const empTurno = await this.getShiftForDate(emp.empleadoId, currentDay);
@@ -180,7 +189,7 @@ export class AttendanceService {
           nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
           codigoEmpleado: emp.codigoEmpleado,
           departamento: emp.departamento,
-          fecha: currentDay,
+          fecha: currentDayStr,
           turno: empTurno?.turno?.nombre || 'Sin turno',
           asistencia: asis || null
         });
@@ -193,17 +202,26 @@ export class AttendanceService {
 
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
+    const fechaAjuste = new Date(dto.fecha);
+    fechaAjuste.setHours(0, 0, 0, 0);
 
+    // Intentamos buscar por fecha y empleado por si ya existe el registro (id 0 en el front)
     if (id === 0) {
-      const fechaBase = new Date(dto.fecha);
-      fechaBase.setHours(0, 0, 0, 0);
-
-      asis = this.asistenciaRepository.create({
-        empleadoId: dto.empleadoId,
-        fecha: fechaBase,
-        estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
+      asis = await this.asistenciaRepository.findOne({
+        where: {
+          empleadoId: dto.empleadoId,
+          fecha: fechaAjuste as any
+        }
       });
-      asis = await this.asistenciaRepository.save(asis);
+
+      if (!asis) {
+        asis = this.asistenciaRepository.create({
+          empleadoId: dto.empleadoId,
+          fecha: fechaAjuste,
+          estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
+        });
+        asis = await this.asistenciaRepository.save(asis);
+      }
     } else {
       asis = await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
     }
@@ -212,7 +230,6 @@ export class AttendanceService {
 
     const campo = dto.campo;
     const valor = dto.valorNuevo;
-
     const [h, m] = valor.split(':').map(Number);
     const finalDate = new Date(asis.fecha);
     finalDate.setHours(h, m, 0, 0);
