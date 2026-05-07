@@ -191,33 +191,55 @@ export class PayrollService {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    const startOfCurrentMonth = new Date(currentYear, currentMonth, 1);
-    
-    // Format YYYY-MM-DD for comparison
-    const currentDateStr = startOfCurrentMonth.toISOString().split('T')[0];
+    const currentYearMonth = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}`;
 
-    // 1. Close past periods
-    const allPeriods = await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } });
+    let allPeriods = await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } });
+
+    const seenYearMonths = new Set<string>();
+    const periodsToDelete = [];
+    
+    // 1. Close past periods and detect duplicates
     for (const p of allPeriods) {
-      if (p.estado === PeriodoPlanilla.ESTADO_ABIERTO) {
-        const pDate = new Date(p.fechaInicio);
-        // If the period's year/month is strictly before the current year/month
-        if (pDate.getFullYear() < currentYear || (pDate.getFullYear() === currentYear && pDate.getMonth() < currentMonth)) {
-          p.estado = PeriodoPlanilla.ESTADO_CERRADO;
-          await this.periodoRepository.save(p);
+      let pYearMonth = '';
+      if (p.fechaInicio instanceof Date) {
+        pYearMonth = `${p.fechaInicio.getUTCFullYear()}-${(p.fechaInicio.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+      } else {
+        pYearMonth = String(p.fechaInicio).substring(0, 7);
+      }
+
+      if (pYearMonth === currentYearMonth) {
+        if (seenYearMonths.has(pYearMonth)) {
+          // It's a duplicate current month period (due to previous bug), delete it
+          periodsToDelete.push(p);
+          continue;
+        } else {
+          seenYearMonths.add(pYearMonth);
+          // If it was erroneously closed by the previous bug, re-open it
+          if (p.estado === PeriodoPlanilla.ESTADO_CERRADO) {
+            p.estado = PeriodoPlanilla.ESTADO_ABIERTO;
+            await this.periodoRepository.save(p);
+          }
         }
+      }
+      
+      if (p.estado === PeriodoPlanilla.ESTADO_ABIERTO && pYearMonth < currentYearMonth) {
+        p.estado = PeriodoPlanilla.ESTADO_CERRADO;
+        await this.periodoRepository.save(p);
       }
     }
 
+    if (periodsToDelete.length > 0) {
+      await this.periodoRepository.remove(periodsToDelete);
+      allPeriods = allPeriods.filter(p => !periodsToDelete.includes(p));
+    }
+
     // 2. Check if current month's period exists
-    const currentPeriodExists = allPeriods.some(p => {
-      const pDate = new Date(p.fechaInicio);
-      return pDate.getFullYear() === currentYear && pDate.getMonth() === currentMonth;
-    });
+    const currentPeriodExists = seenYearMonths.has(currentYearMonth);
 
     if (!currentPeriodExists) {
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-      const endOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0);
+      const endOfCurrentMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0));
+      const startOfCurrentMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
       
       const newPeriod = this.periodoRepository.create({
         nombre: `${meses[currentMonth]} ${currentYear}`,
