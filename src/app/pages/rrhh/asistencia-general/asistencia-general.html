@@ -108,6 +108,17 @@
             </tbody>
           </table>
         </div>
+
+        @if (totalPaginas > 1) {
+          <div class="pagination-container">
+            <span class="page-info">Mostrando {{ dataFiltrada.length }} de {{ totalItemsFiltrados }} registros</span>
+            <div class="pagination-controls">
+              <button type="button" class="page-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">Anterior</button>
+              <span class="page-info">Página {{ paginaActual }} de {{ totalPaginas }}</span>
+              <button type="button" class="page-btn" [disabled]="paginaActual === totalPaginas" (click)="cambiarPagina(paginaActual + 1)">Siguiente</button>
+            </div>
+          </div>
+        }
       </div>
     } @else {
       <!-- Historial de Ajustes -->
@@ -142,6 +153,17 @@
             </tbody>
           </table>
         </div>
+
+        @if (totalPaginas > 1) {
+          <div class="pagination-container">
+            <span class="page-info">Mostrando {{ dataFiltrada.length }} de {{ totalItemsFiltrados }} registros</span>
+            <div class="pagination-controls">
+              <button type="button" class="page-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">Anterior</button>
+              <span class="page-info">Página {{ paginaActual }} de {{ totalPaginas }}</span>
+              <button type="button" class="page-btn" [disabled]="paginaActual === totalPaginas" (click)="cambiarPagina(paginaActual + 1)">Siguiente</button>
+            </div>
+          </div>
+        }
       </div>
     }
 

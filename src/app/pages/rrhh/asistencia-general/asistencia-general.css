@@ -65,3 +65,11 @@
 .empty-msg { text-align: center; padding: 3rem; color: #94a3b8; font-style: italic; }
 .back-button { border: none; background: transparent; color: #94a3b8; font-size: 1.5rem; cursor: pointer; }
 .font-mono { font-family: monospace; }
+
+/* Paginación */
+.pagination-container { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; background: #fcfdfe; }
+.pagination-controls { display: flex; gap: 0.75rem; align-items: center; }
+.page-info { font-size: 0.85rem; color: #64748b; font-weight: 600; }
+.page-btn { padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; background: white; color: #475569; font-weight: 700; cursor: pointer; font-size: 0.8rem; transition: 0.2s; }
+.page-btn:hover:not(:disabled) { background: #f8fafc; border-color: #004f71; color: #004f71; }
+.page-btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -54,6 +54,10 @@ export class AsistenciaGeneral implements OnInit {
   historialAjustes: any[] = [];
   stats = { presentes: 0, tardias: 0, ausentes: 0 };
 
+  // Paginación
+  paginaActual = 1;
+  itemsPorPagina = 15;
+
   modalAjuste = false;
   isSaving = false;
   ajusteForm: AjusteForm = this.limpiarAjusteForm();
@@ -84,6 +88,7 @@ export class AsistenciaGeneral implements OnInit {
   }
 
   loadAttendance(): void {
+    this.paginaActual = 1; // Reset a página 1 al buscar
     this.attendanceService.getAllAttendance(this.fechaInicio, this.fechaFin).subscribe({
       next: (data) => {
         this.registros = data.map(item => this.mapToItem(item));
@@ -131,6 +136,11 @@ export class AsistenciaGeneral implements OnInit {
   }
 
   private formatDateDisplay(dateInput: any): string {
+    // Si ya viene como string YYYY-MM-DD del backend nuevo
+    if (typeof dateInput === 'string' && dateInput.includes('-')) {
+      const [y, m, d] = dateInput.split('-');
+      return `${d}/${m}/${y}`;
+    }
     const d = new Date(dateInput);
     const userTimezoneOffset = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() + userTimezoneOffset).toLocaleDateString('es-GT');
@@ -149,7 +159,7 @@ export class AsistenciaGeneral implements OnInit {
     this.stats.ausentes = this.registros.filter(r => r.estado === 'Ausente').length;
   }
 
-  get dataFiltrada(): AsistenciaGlobalItem[] {
+  get totalItemsFiltrados(): number {
     return this.registros.filter(r => {
       const matchBusqueda = !this.filtroBusqueda ||
                             r.empleado.toLowerCase().includes(this.filtroBusqueda.toLowerCase()) ||
@@ -157,7 +167,32 @@ export class AsistenciaGeneral implements OnInit {
       const matchDep = this.filtroDepartamento === 'Todos' || r.departamento === this.filtroDepartamento;
       const matchEstado = this.filtroEstado === 'Todos' || r.estado === this.filtroEstado;
       return matchBusqueda && matchDep && matchEstado;
+    }).length;
+  }
+
+  get totalPaginas(): number {
+    return Math.ceil(this.totalItemsFiltrados / this.itemsPorPagina);
+  }
+
+  get dataFiltrada(): AsistenciaGlobalItem[] {
+    const filtrados = this.registros.filter(r => {
+      const matchBusqueda = !this.filtroBusqueda ||
+                            r.empleado.toLowerCase().includes(this.filtroBusqueda.toLowerCase()) ||
+                            r.codigo.toLowerCase().includes(this.filtroBusqueda.toLowerCase());
+      const matchDep = this.filtroDepartamento === 'Todos' || r.departamento === this.filtroDepartamento;
+      const matchEstado = this.filtroEstado === 'Todos' || r.estado === this.filtroEstado;
+      return matchBusqueda && matchDep && matchEstado;
     });
+
+    const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
+    return filtrados.slice(inicio, inicio + this.itemsPorPagina);
+  }
+
+  cambiarPagina(p: number): void {
+    if (p >= 1 && p <= this.totalPaginas) {
+      this.paginaActual = p;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   get departamentos(): string[] {
