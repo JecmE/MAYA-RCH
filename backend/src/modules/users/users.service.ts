@@ -249,10 +249,10 @@ export class UsersService {
             const uid = empleado.usuario.usuarioId;
             await manager.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM RESET_PASSWORD_TOKEN WHERE usuario_id = @0`, [uid]);
-            await manager.query(`DELETE FROM AJUSTE_ASISTENCIA WHERE usuario_id = @0`, [uid]);
-            await manager.query(`DELETE FROM DECISION_PERMISO WHERE usuario_id = @0`, [uid]);
-            await manager.query(`DELETE FROM APROBACION_TIEMPO WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM AVISO WHERE usuario_id = @0`, [uid]);
+            await manager.query(`UPDATE AJUSTE_ASISTENCIA SET usuario_id = @1 WHERE usuario_id = @0`, [uid, usuarioId]);
+            await manager.query(`UPDATE DECISION_PERMISO SET usuario_id = @1 WHERE usuario_id = @0`, [uid, usuarioId]);
+            await manager.query(`UPDATE APROBACION_TIEMPO SET usuario_id = @1 WHERE usuario_id = @0`, [uid, usuarioId]);
             await manager.query(`UPDATE PARAMETRO_SISTEMA SET usuario_id_actualiza = @1 WHERE usuario_id_actualiza = @0`, [uid, usuarioId]);
             await manager.query(`UPDATE MOVIMIENTO_PLANILLA SET usuario_id_regista = @1 WHERE usuario_id_regista = @0`, [uid, usuarioId]);
             await manager.query(`UPDATE AUDIT_LOG SET usuario_id = NULL WHERE usuario_id = @0`, [uid]);
@@ -260,6 +260,10 @@ export class UsersService {
         }
 
         // 2. Limpiar tablas operativas de RRHH (Hijos y Nietos)
+        await manager.query(`UPDATE EMPLEADO SET supervisor_id = NULL WHERE supervisor_id = @0`, [id]);
+        
+        await manager.query(`DELETE FROM MOVIMIENTO_PLANILLA WHERE planilla_emp_id IN (SELECT planilla_emp_id FROM PLANILLA_EMPLEADO WHERE empleado_id = @0)`, [id]);
+        await manager.query(`DELETE FROM PLANILLA_EMPLEADO WHERE empleado_id = @0`, [id]);
 
         // Limpiar Ajustes de Asistencia (Nietos)
         await manager.query(`DELETE FROM AJUSTE_ASISTENCIA WHERE asistencia_id IN (SELECT asistencia_id FROM REGISTRO_ASISTENCIA WHERE empleado_id = @0)`, [id]);
