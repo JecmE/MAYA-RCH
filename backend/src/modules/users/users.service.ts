@@ -249,6 +249,9 @@ export class UsersService {
             const uid = empleado.usuario.usuarioId;
             await manager.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM RESET_PASSWORD_TOKEN WHERE usuario_id = @0`, [uid]);
+            await manager.query(`DELETE FROM AJUSTE_ASISTENCIA WHERE usuario_id = @0`, [uid]);
+            await manager.query(`DELETE FROM DECISION_PERMISO WHERE usuario_id = @0`, [uid]);
+            await manager.query(`DELETE FROM APROBACION_TIEMPO WHERE usuario_id = @0`, [uid]);
             await manager.query(`UPDATE AUDIT_LOG SET usuario_id = NULL WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM USUARIO WHERE usuario_id = @0`, [uid]);
         }
