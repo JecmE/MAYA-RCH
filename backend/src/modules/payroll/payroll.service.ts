@@ -73,9 +73,14 @@ export class PayrollService {
     const empleados = await this.empleadoRepository.find({ where: { activo: true } });
     const resultados = [];
 
-    const dateFin = new Date(periodo.fechaFin);
-    const year = dateFin.getFullYear();
-    const month = dateFin.getMonth() + 1;
+    let dateFin;
+    if (periodo.fechaFin instanceof Date) {
+      dateFin = periodo.fechaFin;
+    } else {
+      dateFin = new Date(periodo.fechaFin);
+    }
+    const year = dateFin.getUTCFullYear();
+    const month = dateFin.getUTCMonth() + 1;
 
     for (const emp of empleados) {
       const asistencias = await this.asistenciaRepository.find({
@@ -134,9 +139,14 @@ export class PayrollService {
 
     const config = await this.getPayrollParameters();
     const emp = await this.empleadoRepository.findOne({ where: { empleadoId } });
-    const dateFin = new Date(periodo.fechaFin);
-    const year = dateFin.getFullYear();
-    const month = dateFin.getMonth() + 1;
+    let dateFin;
+    if (periodo.fechaFin instanceof Date) {
+      dateFin = periodo.fechaFin;
+    } else {
+      dateFin = new Date(periodo.fechaFin);
+    }
+    const year = dateFin.getUTCFullYear();
+    const month = dateFin.getUTCMonth() + 1;
 
     const asistencias = await this.asistenciaRepository.find({
       where: { empleadoId, fecha: Between(periodo.fechaInicio, periodo.fechaFin) as any }
