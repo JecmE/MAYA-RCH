@@ -34,7 +34,8 @@ import { MailModule } from './modules/mail/mail.module';
           trustServerCertificate: false,
           connectionTimeout: 30000,
         },
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        // CAMBIO CRÍTICO: Solo cargar archivos JS en producción
+        entities: [__dirname + '/**/*.entity.js'],
         synchronize: false,
       }),
       inject: [ConfigService],

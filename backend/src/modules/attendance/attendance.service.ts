@@ -44,18 +44,16 @@ export class AttendanceService {
     today.setHours(0,0,0,0);
 
     const empTurno = await this.getShiftForDate(empleadoId, today);
-    if (!empTurno) throw new BadRequestException('[V2-FIX] No tienes turno hoy');
+    if (!empTurno) throw new BadRequestException('No tienes turno hoy');
 
     const turno = empTurno.turno;
     const [hT, mT] = turno.horaEntrada.split(':').map(Number);
-
     const minsActual = h * 60 + m;
     const minsTurno = hT * 60 + mT;
     const tol = turno.toleranciaMinutos || 10;
 
-    // VALIDACIÓN LOOSE: Damos 10 minutos extra de gracia sobre la tolerancia
-    if (minsActual > (minsTurno + tol + 10)) {
-        throw new BadRequestException(`[V2-FIX] Tiempo excedido. Límite: ${hT}:${mT + tol}`);
+    if (minsActual > (minsTurno + tol + 5)) {
+        throw new BadRequestException(`Tiempo excedido. Límite: ${hT}:${mT + tol}`);
     }
 
     let asistencia = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
@@ -72,7 +70,7 @@ export class AttendanceService {
 
     await this.asistenciaRepository.save(asistencia);
     await this.kpiService.refreshEmployeeKpi(empleadoId);
-    return { message: 'Entrada registrada', asistencia };
+    return { message: 'Entrada registrada' };
   }
 
   async registerExit(empleadoId: number, usuarioId: number, payload: any) {
@@ -81,7 +79,7 @@ export class AttendanceService {
     today.setHours(0,0,0,0);
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
-    if (!asis) throw new BadRequestException('[V2-FIX] No hay entrada hoy');
+    if (!asis) throw new BadRequestException('No hay entrada hoy');
 
     const finalTime = new Date(today);
     finalTime.setHours(h, m, 0, 0);
