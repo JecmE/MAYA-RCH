@@ -76,7 +76,7 @@ export class UsersController {
   }
 
   @Delete(':id/permanent')
-  @Roles('Administrador')
+  @Roles('RRHH', 'Administrador')
   deletePermanent(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.usersService.deleteEmpleadoPermanent(id, req.user.usuarioId);
   }
