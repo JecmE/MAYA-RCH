@@ -39,9 +39,14 @@ export class AttendanceService {
   ) {}
 
   async registerEntry(empleadoId: number, usuarioId: number, payload: any) {
-    const { h, m, date } = payload;
-    const today = new Date(date);
-    today.setHours(0,0,0,0);
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const nowGT = new Date(utc - (3600000 * 6));
+    
+    // Convert to Guatemala time components
+    const h = nowGT.getHours();
+    const m = nowGT.getMinutes();
+    const today = new Date(nowGT.getFullYear(), nowGT.getMonth(), nowGT.getDate());
 
     const empTurno = await this.getShiftForDate(empleadoId, today);
     if (!empTurno) throw new BadRequestException('No tienes turno hoy');
@@ -53,7 +58,7 @@ export class AttendanceService {
     const tol = turno.toleranciaMinutos || 10;
 
     if (minsActual > (minsTurno + tol + 5)) {
-        throw new BadRequestException(`Tiempo excedido. Límite: ${hT}:${mT + tol}`);
+        throw new BadRequestException(`Tiempo excedido. Límite: ${hT}:${(mT + tol).toString().padStart(2, '0')}`);
     }
 
     let asistencia = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
@@ -74,9 +79,13 @@ export class AttendanceService {
   }
 
   async registerExit(empleadoId: number, usuarioId: number, payload: any) {
-    const { h, m, date } = payload;
-    const today = new Date(date);
-    today.setHours(0,0,0,0);
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const nowGT = new Date(utc - (3600000 * 6));
+    
+    const h = nowGT.getHours();
+    const m = nowGT.getMinutes();
+    const today = new Date(nowGT.getFullYear(), nowGT.getMonth(), nowGT.getDate());
 
     const asis = await this.asistenciaRepository.findOne({ where: { empleadoId, fecha: today as any } });
     if (!asis) throw new BadRequestException('No hay entrada hoy');
