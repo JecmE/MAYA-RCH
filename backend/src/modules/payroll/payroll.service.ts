@@ -187,7 +187,50 @@ export class PayrollService {
     return await this.periodoRepository.find({ order: { fechaInicio: 'DESC' }, take: 12 });
   }
 
-  async getPeriods() { return await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } }); }
+  async getPeriods() {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const startOfCurrentMonth = new Date(currentYear, currentMonth, 1);
+    
+    // Format YYYY-MM-DD for comparison
+    const currentDateStr = startOfCurrentMonth.toISOString().split('T')[0];
+
+    // 1. Close past periods
+    const allPeriods = await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } });
+    for (const p of allPeriods) {
+      if (p.estado === PeriodoPlanilla.ESTADO_ABIERTO) {
+        const pDate = new Date(p.fechaInicio);
+        // If the period's year/month is strictly before the current year/month
+        if (pDate.getFullYear() < currentYear || (pDate.getFullYear() === currentYear && pDate.getMonth() < currentMonth)) {
+          p.estado = PeriodoPlanilla.ESTADO_CERRADO;
+          await this.periodoRepository.save(p);
+        }
+      }
+    }
+
+    // 2. Check if current month's period exists
+    const currentPeriodExists = allPeriods.some(p => {
+      const pDate = new Date(p.fechaInicio);
+      return pDate.getFullYear() === currentYear && pDate.getMonth() === currentMonth;
+    });
+
+    if (!currentPeriodExists) {
+      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const endOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0);
+      
+      const newPeriod = this.periodoRepository.create({
+        nombre: `${meses[currentMonth]} ${currentYear}`,
+        fechaInicio: startOfCurrentMonth,
+        fechaFin: endOfCurrentMonth,
+        tipo: PeriodoPlanilla.TIPO_MENSUAL,
+        estado: PeriodoPlanilla.ESTADO_ABIERTO
+      });
+      await this.periodoRepository.save(newPeriod);
+    }
+
+    return await this.periodoRepository.find({ order: { fechaInicio: 'DESC' } });
+  }
   async getConcepts() { return await this.conceptoRepository.find({ where: { activo: true } }); }
   async seedTestData() { return { message: 'OK' }; }
 }
