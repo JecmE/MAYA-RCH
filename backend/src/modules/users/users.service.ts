@@ -252,6 +252,9 @@ export class UsersService {
             await manager.query(`DELETE FROM AJUSTE_ASISTENCIA WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM DECISION_PERMISO WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM APROBACION_TIEMPO WHERE usuario_id = @0`, [uid]);
+            await manager.query(`DELETE FROM AVISO WHERE usuario_id = @0`, [uid]);
+            await manager.query(`UPDATE PARAMETRO_SISTEMA SET usuario_id_actualiza = @1 WHERE usuario_id_actualiza = @0`, [uid, usuarioId]);
+            await manager.query(`UPDATE MOVIMIENTO_PLANILLA SET usuario_id_regista = @1 WHERE usuario_id_regista = @0`, [uid, usuarioId]);
             await manager.query(`UPDATE AUDIT_LOG SET usuario_id = NULL WHERE usuario_id = @0`, [uid]);
             await manager.query(`DELETE FROM USUARIO WHERE usuario_id = @0`, [uid]);
         }
