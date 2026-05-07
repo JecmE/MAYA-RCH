@@ -193,31 +193,41 @@ export class AttendanceService {
 
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
+
     if (id === 0) {
-      // Si el registro no existe (Ausente), lo creamos
+      const fechaBase = new Date(dto.fecha);
+      fechaBase.setHours(0, 0, 0, 0);
+
       asis = this.asistenciaRepository.create({
         empleadoId: dto.empleadoId,
-        fecha: new Date(dto.fecha),
+        fecha: fechaBase,
         estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
       });
+      asis = await this.asistenciaRepository.save(asis);
     } else {
       asis = await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
     }
 
     if (!asis) throw new NotFoundException('Registro de asistencia no encontrado');
 
-    const campo = dto.campo; // 'horaEntradaReal' o 'horaSalidaReal'
-    const valor = dto.valorNuevo; // Esperado 'HH:MM'
+    const campo = dto.campo;
+    const valor = dto.valorNuevo;
 
-    // Parsear HH:MM y aplicarlo a la fecha del registro
     const [h, m] = valor.split(':').map(Number);
     const finalDate = new Date(asis.fecha);
-    // Nos aseguramos de trabajar con la fecha correcta sin desfases
     finalDate.setHours(h, m, 0, 0);
 
-    // Guardar el ajuste para auditoría
+    asis[campo] = finalDate;
+
+    if (campo === 'horaSalidaReal' && asis.horaEntradaReal) {
+      asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, finalDate);
+      asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
+    }
+
+    const asisGuardada = await this.asistenciaRepository.save(asis);
+
     await this.ajusteRepository.save({
-      asistenciaId: asis.asistenciaId,
+      asistenciaId: asisGuardada.asistenciaId,
       usuarioId: user,
       campoModificado: campo === 'horaEntradaReal' ? 'Hora Entrada' : 'Hora Salida',
       valorAnterior: dto.valorAnterior || 'Sin registro',
@@ -226,15 +236,7 @@ export class AttendanceService {
       fechaHora: new Date()
     });
 
-    // Actualizar el registro de asistencia
-    asis[campo] = finalDate;
-
-    if (campo === 'horaSalidaReal' && asis.horaEntradaReal) {
-      asis.horasTrabajadas = this.calculateHours(asis.horaEntradaReal, finalDate);
-      asis.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-    }
-
-    return await this.asistenciaRepository.save(asis);
+    return asisGuardada;
   }
 
   async getAdjustmentHistory() { return this.ajusteRepository.find({ relations: ['asistencia', 'asistencia.empleado', 'usuario'], order: { fechaHora: 'DESC' }, take: 200 }); }
