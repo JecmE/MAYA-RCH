@@ -154,39 +154,46 @@ export class AttendanceService {
   }
 
   async getAllAttendance(s?: string, e?: string) {
-    const toYMD = (d: any) => {
-      const date = new Date(d);
-      if (isNaN(date.getTime())) return '';
-      const year = date.getUTCFullYear();
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const startDateStr = s || toYMD(new Date());
-    const endDateStr = e || startDateStr;
-
     const empleados = await this.empleadoRepository.find({ where: { activo: true } });
-    const regs = await this.asistenciaRepository.find({
-      where: {
-        fecha: Between(startDateStr, endDateStr) as any
-      },
-      relations: ['empleado']
-    });
+
+    // Fechas por defecto si no vienen filtros
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const startStr = s || todayStr;
+    const endStr = e || startStr;
+
+    // Usamos QueryBuilder para obtener la fecha formateada desde SQL Server
+    // Esto evita cualquier problema de zona horaria al comparar
+    const regs = await this.asistenciaRepository.createQueryBuilder('asis')
+      .select([
+        'asis.asistenciaId as asistenciaId',
+        'asis.empleadoId as empleadoId',
+        'asis.horaEntradaReal as horaEntradaReal',
+        'asis.horaSalidaReal as horaSalidaReal',
+        'asis.minutosTardia as minutosTardia',
+        'asis.horasTrabajadas as horasTrabajadas',
+        'asis.estadoJornada as estadoJornada',
+        'asis.observacion as observacion',
+        "FORMAT(asis.fecha, 'yyyy-MM-dd') as fecha_ymd"
+      ])
+      .where('asis.fecha BETWEEN :start AND :end', { start: startStr, end: endStr })
+      .getRawMany();
 
     const results = [];
-    const start = new Date(startDateStr + 'T00:00:00Z');
-    const end = new Date(endDateStr + 'T00:00:00Z');
+    const [sy, sm, sd] = startStr.split('-').map(Number);
+    const [ey, em, ed] = endStr.split('-').map(Number);
+    const startObj = new Date(Date.UTC(sy, sm - 1, sd));
+    const endObj = new Date(Date.UTC(ey, em - 1, ed));
 
-    let iter = new Date(start);
+    let iter = new Date(startObj);
     let count = 0;
-    while (iter <= end && count < 31) {
-      const currentDayStr = toYMD(iter);
+    while (iter <= endObj && count < 31) {
+      const curYMD = iter.toISOString().split('T')[0];
 
       for (const emp of empleados) {
-        const asis = regs.find(r =>
-          r.empleadoId === emp.empleadoId &&
-          toYMD(r.fecha) === currentDayStr
+        const rawAsis = regs.find(r =>
+          Number(r.empleadoId) === emp.empleadoId &&
+          r.fecha_ymd === curYMD
         );
 
         const empTurno = await this.getShiftForDate(emp.empleadoId, new Date(iter));
@@ -196,9 +203,17 @@ export class AttendanceService {
           nombreCompleto: this.sanitizeString(`${emp.nombres} ${emp.apellidos}`),
           codigoEmpleado: emp.codigoEmpleado,
           departamento: emp.departamento,
-          fecha: currentDayStr,
+          fecha: curYMD,
           turno: empTurno?.turno?.nombre || 'Sin turno',
-          asistencia: asis || null
+          asistencia: rawAsis ? {
+            asistenciaId: rawAsis.asistenciaId,
+            horaEntradaReal: rawAsis.horaEntradaReal,
+            horaSalidaReal: rawAsis.horaSalidaReal,
+            minutosTardia: rawAsis.minutosTardia,
+            horasTrabajadas: rawAsis.horasTrabajadas,
+            estadoJornada: rawAsis.estadoJornada,
+            observacion: rawAsis.observacion
+          } : null
         });
       }
       iter.setUTCDate(iter.getUTCDate() + 1);
@@ -209,21 +224,19 @@ export class AttendanceService {
 
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
-    const [year, month, day] = dto.fecha.split('-').map(Number);
-    const fechaAjusteUTC = new Date(Date.UTC(year, month - 1, day));
 
+    // Búsqueda de seguridad usando el formato de fecha de la DB para evitar duplicados
     if (id === 0) {
-      asis = await this.asistenciaRepository.findOne({
-        where: {
-          empleadoId: dto.empleadoId,
-          fecha: Between(dto.fecha, dto.fecha) as any
-        }
-      });
+      asis = await this.asistenciaRepository.createQueryBuilder('asis')
+        .where('asis.empleadoId = :empId', { empId: dto.empleadoId })
+        .andWhere("FORMAT(asis.fecha, 'yyyy-MM-dd') = :fecha", { fecha: dto.fecha })
+        .getOne();
 
       if (!asis) {
+        const [year, month, day] = dto.fecha.split('-').map(Number);
         asis = this.asistenciaRepository.create({
           empleadoId: dto.empleadoId,
-          fecha: fechaAjusteUTC,
+          fecha: new Date(Date.UTC(year, month - 1, day)),
           estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
         });
         asis = await this.asistenciaRepository.save(asis);
