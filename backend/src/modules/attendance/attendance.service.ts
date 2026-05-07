@@ -154,38 +154,34 @@ export class AttendanceService {
   }
 
   async getAllAttendance(s?: string, e?: string) {
-    const parseLocal = (str: string) => {
-      const [y, m, d] = str.split('-').map(Number);
-      return new Date(y, m - 1, d);
+    const toYMD = (d: any) => {
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return '';
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
-    const startDate = s ? parseLocal(s) : new Date();
-    const endDate = e ? parseLocal(e) : new Date(startDate);
-
-    startDate.setHours(0,0,0,0);
-    endDate.setHours(23,59,59,999);
+    const startDateStr = s || toYMD(new Date());
+    const endDateStr = e || startDateStr;
 
     const empleados = await this.empleadoRepository.find({ where: { activo: true } });
     const regs = await this.asistenciaRepository.find({
-      where: { fecha: Between(startDate, endDate) as any },
+      where: {
+        fecha: Between(startDateStr, endDateStr) as any
+      },
       relations: ['empleado']
     });
 
     const results = [];
-    const iterDate = new Date(startDate);
+    const start = new Date(startDateStr + 'T00:00:00Z');
+    const end = new Date(endDateStr + 'T00:00:00Z');
 
-    const toYMD = (d: any) => {
-      const date = new Date(d);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
+    let iter = new Date(start);
     let count = 0;
-    while (iterDate <= endDate && count < 31) {
-      const currentDay = new Date(iterDate);
-      const currentDayStr = toYMD(currentDay);
+    while (iter <= end && count < 31) {
+      const currentDayStr = toYMD(iter);
 
       for (const emp of empleados) {
         const asis = regs.find(r =>
@@ -193,7 +189,7 @@ export class AttendanceService {
           toYMD(r.fecha) === currentDayStr
         );
 
-        const empTurno = await this.getShiftForDate(emp.empleadoId, currentDay);
+        const empTurno = await this.getShiftForDate(emp.empleadoId, new Date(iter));
 
         results.push({
           empleadoId: emp.empleadoId,
@@ -205,7 +201,7 @@ export class AttendanceService {
           asistencia: asis || null
         });
       }
-      iterDate.setDate(iterDate.getDate() + 1);
+      iter.setUTCDate(iter.getUTCDate() + 1);
       count++;
     }
     return results;
@@ -214,22 +210,20 @@ export class AttendanceService {
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
     const [year, month, day] = dto.fecha.split('-').map(Number);
-    const fechaAjuste = new Date(year, month - 1, day);
-    fechaAjuste.setHours(0, 0, 0, 0);
+    const fechaAjusteUTC = new Date(Date.UTC(year, month - 1, day));
 
-    // Intentamos buscar por fecha y empleado por si ya existe el registro (id 0 en el front)
     if (id === 0) {
       asis = await this.asistenciaRepository.findOne({
         where: {
           empleadoId: dto.empleadoId,
-          fecha: fechaAjuste as any
+          fecha: Between(dto.fecha, dto.fecha) as any
         }
       });
 
       if (!asis) {
         asis = this.asistenciaRepository.create({
           empleadoId: dto.empleadoId,
-          fecha: fechaAjuste,
+          fecha: fechaAjusteUTC,
           estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
         });
         asis = await this.asistenciaRepository.save(asis);
@@ -243,8 +237,11 @@ export class AttendanceService {
     const campo = dto.campo;
     const valor = dto.valorNuevo;
     const [hour, minute] = valor.split(':').map(Number);
+
+    // Compensación de zona horaria (GT es UTC-6)
+    // Guardamos la hora sumando 6 horas para que al recuperarla el front (que resta 6) vea la hora original.
     const finalDate = new Date(asis.fecha);
-    finalDate.setHours(hour, minute, 0, 0);
+    finalDate.setUTCHours(hour + 6, minute, 0, 0);
 
     asis[campo] = finalDate;
 
@@ -272,7 +269,12 @@ export class AttendanceService {
 
   private sanitizeString(s: string | null): string {
     if (!s) return '';
-    return s.replace(/Rodr\?guez/g, 'Rodríguez').replace(/Mart\?nez/g, 'Martínez').replace(/Garc\?a/g, 'García').replace(/L\?pez/g, 'López').replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+    return s.replace(/Rodr\?guez/g, 'Rodríguez')
+            .replace(/Mart\?nez/g, 'Martínez')
+            .replace(/Mart\?n/g, 'Martín')
+            .replace(/Garc\?a/g, 'García')
+            .replace(/L\?pez/g, 'López')
+            .replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
   }
 
   private calculateHours(s: any, e: any): number {
