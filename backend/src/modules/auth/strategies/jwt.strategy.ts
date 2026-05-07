@@ -1,10 +1,16 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Usuario } from '../../../entities/usuario.entity';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(
+    @InjectRepository(Usuario)
+    private usuarioRepository: Repository<Usuario>,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -15,6 +21,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     if (!payload.usuarioId) {
       throw new UnauthorizedException('Token inválido');
+    }
+
+    // VERIFICACIÓN DE SESIÓN ACTIVA (session_version)
+    const user = await this.usuarioRepository.findOne({
+      where: { usuarioId: payload.usuarioId },
+    });
+
+    if (!user || user.estado !== 'activo' || user.sessionVersion !== payload.sessionVersion) {
+      throw new UnauthorizedException('La sesión ha expirado o la cuenta fue invalidada.');
     }
 
     return {

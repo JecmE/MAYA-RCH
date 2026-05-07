@@ -118,7 +118,7 @@ export class LeavesService {
   }
 
   downloadAttachment(rutaUrl: string): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}${rutaUrl}`, {
+    return this.http.get(`${this.apiUrl}/attachment/${rutaUrl}`, {
       responseType: 'blob',
     });
   }

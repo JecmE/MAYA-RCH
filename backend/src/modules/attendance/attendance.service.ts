@@ -144,6 +144,10 @@ export class AttendanceService {
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis = id === 0 ? this.asistenciaRepository.create({ empleadoId: dto.empleadoId, fecha: new Date(dto.fecha) }) : await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
     if (!asis) throw new NotFoundException('No encontrado');
+
+    // Aplicar los cambios del DTO al registro
+    Object.assign(asis, dto);
+
     return await this.asistenciaRepository.save(asis);
   }
 

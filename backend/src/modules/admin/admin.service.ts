@@ -102,10 +102,16 @@ export class AdminService implements OnModuleInit {
                 saldo = this.vacacionSaldoRepository.create({ empleadoId: emp.empleadoId, diasDisponibles: newVal, diasUsados: 0, fechaCorte: new Date() });
             } else {
                 saldo.diasDisponibles = newVal;
-                saldo.diasUsados = 0;
+                // No reseteamos diasUsados para mantener el historial de consumo
             }
             await this.vacacionSaldoRepository.save(saldo);
-            await this.vacacionMovimientoRepository.save({ empleadoId: emp.empleadoId, tipo: VacacionMovimiento.TIPO_AJUSTE, dias: newVal, fecha: new Date(), comentario: `POLÍTICA CORPORATIVA: Ajuste general a ${newVal} días disponibles.` });
+            await this.vacacionMovimientoRepository.save({
+                empleadoId: emp.empleadoId,
+                tipo: VacacionMovimiento.TIPO_AJUSTE,
+                dias: newVal,
+                fecha: new Date(),
+                comentario: `POLÍTICA CORPORATIVA: Nuevo saldo disponible ajustado a ${newVal} días.`
+            });
         }
     }
 
