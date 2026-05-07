@@ -213,8 +213,8 @@ export class AttendanceService {
 
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
-    const [y, m, d] = dto.fecha.split('-').map(Number);
-    const fechaAjuste = new Date(y, m - 1, d);
+    const [year, month, day] = dto.fecha.split('-').map(Number);
+    const fechaAjuste = new Date(year, month - 1, day);
     fechaAjuste.setHours(0, 0, 0, 0);
 
     // Intentamos buscar por fecha y empleado por si ya existe el registro (id 0 en el front)
@@ -242,9 +242,9 @@ export class AttendanceService {
 
     const campo = dto.campo;
     const valor = dto.valorNuevo;
-    const [h, m] = valor.split(':').map(Number);
+    const [hour, minute] = valor.split(':').map(Number);
     const finalDate = new Date(asis.fecha);
-    finalDate.setHours(h, m, 0, 0);
+    finalDate.setHours(hour, minute, 0, 0);
 
     asis[campo] = finalDate;
 
