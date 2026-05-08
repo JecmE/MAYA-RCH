@@ -110,47 +110,24 @@ export class AuditoriaFuncional implements OnInit {
   }
 
   private calculateStats(data: any[]): void {
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-    this.stats.hoy = data.filter(d => d.fecha_hora.startsWith(today)).length;
-    this.stats.aprobaciones = data.filter(d => {
-      const a = (d.accion || '').toUpperCase();
-      return a.includes('APPROVE') || a.includes('APROBAR');
-    }).length;
-    this.stats.ediciones = data.filter(d => {
-      const a = (d.accion || '').toUpperCase();
-      return a.includes('UPDATE') || a.includes('EDITAR') || a.includes('ACTUALIZACIÓN');
-    }).length;
+    const today = new Date().toISOString().split('T')[0];
+    this.stats.hoy = data.filter(d => (d.fecha_hora || '').startsWith(today)).length;
+    this.stats.aprobaciones = data.filter(d => (d.accion || '').includes('APPROVE') || (d.accion || '').includes('APROBAR')).length;
+    this.stats.ediciones = data.filter(d => (d.accion || '').includes('UPDATE') || (d.accion || '').includes('EDITAR')).length;
     this.stats.sistema = data.filter(d => !d.usuario || d.usuario === 'Sistema').length;
   }
 
   private formatDateTime(dateVal: any): string {
     if (!dateVal) return '';
-    let date = new Date(dateVal);
-    const now = new Date();
-
-    // Si la fecha del log parece estar en el "futuro" (más de 30 min adelante de ahora),
-    // es porque viene en UTC y el navegador no la convirtió. La corregimos restando 6h.
-    if (date.getTime() > (now.getTime() + 1800000)) {
-      date = new Date(date.getTime() - (6 * 3600000));
-    }
-
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = date.getFullYear();
-    const hh = date.getHours().toString().padStart(2, '0');
-    const mm = date.getMinutes().toString().padStart(2, '0');
-
-    return `${d}/${m}/${y} ${hh}:${mm}`;
+    const date = new Date(dateVal);
+    return date.toLocaleString('es-GT', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   }
 
   private getTodayISO(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return new Date().toISOString().split('T')[0];
   }
 
   get registrosPaginados(): AuditoriaItem[] {
