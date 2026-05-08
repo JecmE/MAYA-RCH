@@ -196,6 +196,14 @@ export class ReportsService {
       params.push(supervisorId);
     }
 
+    const brJoin = `
+      LEFT JOIN (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY empleado_id ORDER BY cumplimiento_pct DESC) as rank
+        FROM BONO_RESULTADO
+        WHERE mes = @0 AND anio = @1
+      ) br ON e.empleado_id = br.empleado_id AND br.rank = 1
+    `;
+
     const summaryQuery = `
       SELECT
         AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as avgCompliance,
@@ -203,7 +211,7 @@ export class ReportsService {
         SUM(ISNULL(br.faltas_count, 0)) as totalFaltas,
         COUNT(CASE WHEN br.cumplimiento_pct < 85 THEN 1 END) as employeesAtRisk
       FROM EMPLEADO e
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${brJoin}
       ${whereClause}
     `;
 
@@ -213,7 +221,7 @@ export class ReportsService {
         SUM(ISNULL(br.tardias_count, 0)) as totalTardies,
         SUM(ISNULL(br.faltas_count, 0)) as totalFaltas
       FROM EMPLEADO e
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${brJoin}
       ${whereClause}
     `;
 
@@ -222,7 +230,7 @@ export class ReportsService {
         ISNULL(e.departamento, 'Sin Área') as name,
         AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as kpi
       FROM EMPLEADO e
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${brJoin}
       WHERE e.activo = 1
       GROUP BY e.departamento
     `;
@@ -233,7 +241,7 @@ export class ReportsService {
         AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as kpi
       FROM EMPLEADO e
       LEFT JOIN EMPLEADO s ON e.supervisor_id = s.empleado_id
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${brJoin}
       WHERE e.activo = 1
       GROUP BY s.nombres, s.apellidos
     `;
@@ -248,7 +256,7 @@ export class ReportsService {
         END as classification,
         COUNT(e.empleado_id) as count
       FROM EMPLEADO e
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${brJoin}
       ${whereClause}
       GROUP BY
         CASE
@@ -275,7 +283,7 @@ export class ReportsService {
           ELSE 'Riesgo'
         END as clasificacion
       FROM EMPLEADO e
-      LEFT JOIN BONO_RESULTADO br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
+      ${brJoin}
       ${whereClause}
       ORDER BY br.cumplimiento_pct DESC
     `;
