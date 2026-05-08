@@ -333,7 +333,7 @@ export class ReportsService {
     let query = `
       SELECT
         al.audit_id,
-        FORMAT(DATEADD(hour, -6, al.fecha_hora), 'yyyy-MM-dd HH:mm:ss') as fecha_hora,
+        al.fecha_hora,
         u.username as usuario,
         al.modulo, al.accion, al.entidad, al.entidad_id, al.detalle
       FROM AUDIT_LOG al

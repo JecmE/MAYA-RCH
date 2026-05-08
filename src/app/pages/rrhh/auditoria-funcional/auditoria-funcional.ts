@@ -125,12 +125,16 @@ export class AuditoriaFuncional implements OnInit {
     this.stats.sistema = data.filter(d => !d.usuario || d.usuario === 'Sistema').length;
   }
 
-  private formatDateTime(dateStr: string): string {
-    if (!dateStr) return '';
-    // El backend ya nos envía yyyy-MM-dd HH:mm:ss
-    const [datePart, timePart] = dateStr.split(' ');
-    const [y, m, d] = datePart.split('-');
-    const [hh, mm] = timePart.split(':');
+  private formatDateTime(dateVal: any): string {
+    if (!dateVal) return '';
+    const date = new Date(dateVal);
+    // El navegador automáticamente ajustará la fecha UTC a la zona horaria del usuario (Guatemala)
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    const hh = date.getHours().toString().padStart(2, '0');
+    const mm = date.getMinutes().toString().padStart(2, '0');
+
     return `${d}/${m}/${y} ${hh}:${mm}`;
   }
 
