@@ -62,50 +62,7 @@ export class AdminService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    try {
-      await this.ensureCorrectTableStructures();
-      await this.recoverAdminUser();
-    } catch (e) {}
-  }
-
-  private async recoverAdminUser() {
-    try {
-      const adminExists = await this.usuarioRepository.findOne({ where: { username: 'testempleado' } });
-      if (!adminExists) {
-        // 1. Crear Empleado de recuperación
-        let emp = await this.empleadoRepository.findOne({ where: { email: 'recovery@mayarch.com' } });
-        if (!emp) {
-          emp = await this.empleadoRepository.save(this.empleadoRepository.create({
-            codigoEmpleado: 'ADMIN-RECOVER',
-            nombres: 'Admin',
-            apellidos: 'Recovery',
-            email: 'recovery@mayarch.com',
-            fechaIngreso: new Date(),
-            activo: true,
-            puesto: 'Administrador de Sistema'
-          }));
-        }
-
-        // 2. Crear Usuario
-        const passwordHash = await bcrypt.hash('Test1234', 10);
-        const user = await this.usuarioRepository.save(this.usuarioRepository.create({
-          username: 'testempleado',
-          passwordHash,
-          empleadoId: emp.empleadoId,
-          estado: 'activo'
-        }));
-
-        // 3. Asignar Rol Administrador
-        const adminRole = await this.rolRepository.findOne({ where: { nombre: 'Administrador' } });
-        if (adminRole) {
-          await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [user.usuarioId, adminRole.rolId]);
-        }
-
-        console.log('USUARIO ADMIN RECUPERADO EXITOSAMENTE');
-      }
-    } catch (err) {
-      console.error('Error en recuperación de admin:', err);
-    }
+    try { await this.ensureCorrectTableStructures(); } catch (e) {}
   }
 
   private async ensureCorrectTableStructures() {
@@ -347,7 +304,28 @@ export class AdminService implements OnModuleInit {
   async updateShift(id: number, dto: any, uid: number) { const existing = await this.turnoRepository.findOne({ where: { turnoId: id } }); Object.assign(existing, dto); return await this.turnoRepository.save(existing); }
   async deactivateShift(id: number, uid: number) { return await this.turnoRepository.update(id, { activo: false }); }
   async getAssignments() { const assignments = await this.empleadoTurnoRepository.find({ relations: ['empleado', 'turno'], where: { activo: true }, order: { fechaInicio: 'DESC' } }); return assignments.map(a => ({ id: a.empleadoTurnoId, empleadoNombre: `${a.empleado?.nombres} ${a.empleado?.apellidos}`, turnoNombre: a.turno?.nombre, fechaInicio: a.fechaInicio, activo: a.activo })); }
-  async assignShift(dto: any, uid: number) { const s: any = await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({ ...dto, activo: true })); return this.getAssignments(); }
+  async assignShift(dto: any, uid: number) {
+    const id = dto.empleadoTurnoId || dto.id;
+
+    // Limpieza de fechas para evitar error "Invalid date" en SQL Server
+    const fechaInicio = dto.fechaInicio === '' ? null : dto.fechaInicio;
+    const fechaFin = dto.fechaFin === '' ? null : dto.fechaFin;
+
+    if (id) {
+      await this.empleadoTurnoRepository.update(id, {
+        activo: dto.activo,
+        ...(fechaFin && { fechaFin })
+      });
+    } else {
+      await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({
+        ...dto,
+        fechaInicio,
+        fechaFin,
+        activo: dto.activo !== undefined ? dto.activo : true
+      }));
+    }
+    return this.getAssignments();
+  }
   async getBonusRules() { return await this.reglaBonoRepository.find({ order: { monto: 'DESC' } }); }
   async createBonusRule(dto: any, uid: number) { return await this.reglaBonoRepository.save(this.reglaBonoRepository.create(dto)); }
   async updateBonusRule(id: number, dto: any, uid: number) { const existing = await this.reglaBonoRepository.findOne({ where: { reglaBonoId: id } }); Object.assign(existing, dto); return await this.reglaBonoRepository.save(existing); }
