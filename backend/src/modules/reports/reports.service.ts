@@ -342,7 +342,9 @@ export class ReportsService {
     `;
     const params: any[] = [];
     if (fi && ff) {
-      query += ` AND al.fecha_hora >= @${params.length} AND al.fecha_hora <= @${params.length + 1}`;
+      // Ajuste de 6 horas en los límites del filtro para capturar el día completo de Guatemala en UTC
+      query += ` AND al.fecha_hora >= DATEADD(hour, 6, CAST(@${params.length} AS DATETIME))
+                 AND al.fecha_hora <= DATEADD(hour, 6, CAST(@${params.length + 1} AS DATETIME))`;
       params.push(fi + ' 00:00:00', ff + ' 23:59:59');
     }
     if (modulo && modulo !== 'Todos los módulos') {
