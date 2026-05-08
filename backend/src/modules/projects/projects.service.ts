@@ -132,6 +132,7 @@ export class ProjectsService implements OnModuleInit {
       entidad: 'EMPLEADO_PROYECTO',
       entidadId: proyectoId,
       detalle: `Empleado ID ${empleadoId} asignado al proyecto ID ${proyectoId}`,
+      fechaHora: new Date()
     });
 
     return this.findOne(proyectoId);
@@ -151,6 +152,7 @@ export class ProjectsService implements OnModuleInit {
       entidad: 'EMPLEADO_PROYECTO',
       entidadId: empProyId,
       detalle: `Empleado desvinculado de la asignación ID ${empProyId}`,
+      fechaHora: new Date()
     });
 
     return { message: 'Desvinculado' };
@@ -169,6 +171,7 @@ export class ProjectsService implements OnModuleInit {
       entidad: 'PROYECTO',
       entidadId: id,
       detalle: `Proyecto ID ${id} cerrado/desactivado`,
+      fechaHora: new Date()
     });
 
     return { message: 'Cerrado' };

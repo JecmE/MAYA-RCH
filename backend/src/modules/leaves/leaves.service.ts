@@ -52,6 +52,7 @@ export class LeavesService {
       usuarioId, modulo: 'CONFIGURACION', accion: 'CREATE',
       entidad: 'TIPO_PERMISO', entidadId: savedSingle.tipoPermisoId,
       detalle: `Tipo de permiso creado: ${savedSingle.nombre}`,
+      fechaHora: new Date()
     });
     return savedSingle;
   }
@@ -66,6 +67,7 @@ export class LeavesService {
       usuarioId, modulo: 'CONFIGURACION', accion: 'UPDATE',
       entidad: 'TIPO_PERMISO', entidadId: id,
       detalle: `Tipo de permiso actualizado: ${savedSingle.nombre}`,
+      fechaHora: new Date()
     });
     return savedSingle;
   }

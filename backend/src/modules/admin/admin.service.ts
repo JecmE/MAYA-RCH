@@ -75,10 +75,11 @@ export class AdminService implements OnModuleInit {
   }
 
   async logAction(dto: { modulo: string, accion: string, entidad: string, entidadId?: number, detalle: string }, uid: number) {
-    const now = new Date();
-    const guateOffset = -6 * 60 * 60 * 1000;
-    const guateTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + guateOffset);
-    return await this.auditRepository.save({ ...dto, usuarioId: uid, fechaHora: guateTime });
+    return await this.auditRepository.save({
+      ...dto,
+      usuarioId: uid,
+      fechaHora: new Date()
+    });
   }
 
   // --- PARAMETROS GLOBALES ---
@@ -289,7 +290,13 @@ export class AdminService implements OnModuleInit {
   // --- OTROS MÓDULOS ---
   async getRoles() { return await this.rolRepository.find({ order: { nombre: 'ASC' } }); }
   async getRolePermissions(rolId: number) { const rol = await this.rolRepository.findOne({ where: { rolId } }); if (!rol) throw new NotFoundException('Rol no encontrado'); const dbPerms = await this.rolPermisoRepository.find({ where: { rolId } }); const finalPerms: RolPermiso[] = []; for (const modName of this.DEFAULT_MODULES) { let p = dbPerms.find(x => x.modulo.toLowerCase() === modName.toLowerCase()); if (!p) { p = new RolPermiso(); p.rolId = rolId; p.modulo = modName; p = await this.rolPermisoRepository.save(p); } finalPerms.push(p); } return finalPerms.sort((a, b) => a.modulo.localeCompare(b.modulo)); }
-  async updateRolePermissions(rolId: number, perms: any[], uid: number) { for (const p of perms) { await this.rolPermisoRepository.update({ rolId, modulo: p.modulo }, { ver: p.ver, crear: p.crear, editar: p.editar, aprobar: p.aprobar, exportar: p.exportar, administrar: p.administrar }); } return this.getRolePermissions(rolId); }
+  async updateRolePermissions(rolId: number, perms: any[], uid: number) {
+    for (const p of perms) {
+      await this.rolPermisoRepository.update({ rolId, modulo: p.modulo }, { ver: p.ver, crear: p.crear, editar: p.editar, aprobar: p.aprobar, exportar: p.exportar, administrar: p.administrar });
+    }
+    await this.logAction({ modulo: 'ADMIN', accion: 'UPDATE_PERMISSIONS', entidad: 'ROL', entidadId: rolId, detalle: `Actualizó permisos para el rol ID ${rolId}` }, uid);
+    return this.getRolePermissions(rolId);
+  }
   async createRole(dto: any, uid: number) { return await this.rolRepository.save(this.rolRepository.create(dto)); }
   async deleteRole(id: number, uid: number) { await this.rolRepository.delete(id); return { message: 'OK' }; }
   async getShifts() { return await this.turnoRepository.find({ order: { nombre: 'ASC' } }); }

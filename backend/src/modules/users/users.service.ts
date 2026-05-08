@@ -157,6 +157,7 @@ export class UsersService {
       entidad: 'EMPLEADO',
       entidadId: saved.empleadoId,
       detalle: `Empleado creado: ${saved.nombres} ${saved.apellidos}`,
+      fechaHora: new Date()
     });
 
     return this.findEmpleadoById(saved.empleadoId);
@@ -192,6 +193,7 @@ export class UsersService {
       entidad: 'EMPLEADO',
       entidadId: id,
       detalle: `Empleado actualizado: ${empleado.nombres} ${empleado.apellidos}`,
+      fechaHora: new Date()
     });
 
     return this.findEmpleadoById(id);
@@ -225,6 +227,7 @@ export class UsersService {
       entidad: 'EMPLEADO',
       entidadId: id,
       detalle: `Empleado desactivado: ${empleado.nombres} ${empleado.apellidos}`,
+      fechaHora: new Date()
     });
 
     return { message: 'Empleado desactivado correctamente' };
@@ -261,7 +264,7 @@ export class UsersService {
 
         // 2. Limpiar tablas operativas de RRHH (Hijos y Nietos)
         await manager.query(`UPDATE EMPLEADO SET supervisor_id = NULL WHERE supervisor_id = @0`, [id]);
-        
+
         await manager.query(`DELETE FROM MOVIMIENTO_PLANILLA WHERE planilla_emp_id IN (SELECT planilla_emp_id FROM PLANILLA_EMPLEADO WHERE empleado_id = @0)`, [id]);
         await manager.query(`DELETE FROM PLANILLA_EMPLEADO WHERE empleado_id = @0`, [id]);
 
@@ -296,6 +299,7 @@ export class UsersService {
       entidad: 'EMPLEADO',
       entidadId: id,
       detalle: `ELIMINACIÓN FÍSICA TOTAL de empleado: ${nombre}`,
+      fechaHora: new Date()
     });
 
     return { message: 'Empleado eliminado permanentemente' };
@@ -349,6 +353,7 @@ export class UsersService {
       entidad: 'USUARIO',
       entidadId: saved.usuarioId,
       detalle: `Usuario creado para empleado: ${empleado.nombres} ${empleado.apellidos}`,
+      fechaHora: new Date()
     });
 
     return {
@@ -393,6 +398,7 @@ export class UsersService {
       entidad: 'USUARIO',
       entidadId: usuario.usuarioId,
       detalle: `Usuario actualizado`,
+      fechaHora: new Date()
     });
 
     return {
@@ -428,6 +434,7 @@ export class UsersService {
       entidad: 'USUARIO',
       entidadId: usuarioId,
       detalle: `Contraseña actualizada por el propio usuario`,
+      fechaHora: new Date()
     });
 
     return { message: 'Contraseña actualizada correctamente' };
