@@ -275,6 +275,13 @@ export class AttendanceService {
       fechaHora: new Date()
     });
 
+    // RECALCULAR KPIs DEL EMPLEADO INMEDIATAMENTE TRAS EL AJUSTE
+    try {
+      await this.kpiService.refreshEmployeeKpi(asisGuardada.empleadoId);
+    } catch (kpiError) {
+      console.error('Error recalculando KPI tras ajuste:', kpiError);
+    }
+
     return asisGuardada;
   }
 

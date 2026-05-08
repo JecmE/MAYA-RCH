@@ -197,18 +197,14 @@ export class ReportsService {
     }
 
     const brJoin = `
-      LEFT JOIN (
-        SELECT *, ROW_NUMBER() OVER (PARTITION BY empleado_id ORDER BY cumplimiento_pct DESC) as rank
-        FROM BONO_RESULTADO
-        WHERE mes = @0 AND anio = @1
-      ) br ON e.empleado_id = br.empleado_id AND br.rank = 1
+      LEFT JOIN KPI_MENSUAL br ON e.empleado_id = br.empleado_id AND br.mes = @0 AND br.anio = @1
     `;
 
     const summaryQuery = `
       SELECT
         AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as avgCompliance,
-        SUM(ISNULL(br.tardias_count, 0)) as totalTardies,
-        SUM(ISNULL(br.faltas_count, 0)) as totalFaltas,
+        SUM(ISNULL(br.tardias, 0)) as totalTardies,
+        SUM(ISNULL(br.faltas, 0)) as totalFaltas,
         COUNT(CASE WHEN br.cumplimiento_pct < 85 THEN 1 END) as employeesAtRisk
       FROM EMPLEADO e
       ${brJoin}
@@ -218,8 +214,8 @@ export class ReportsService {
     const prevSummaryQuery = `
       SELECT
         AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as avgCompliance,
-        SUM(ISNULL(br.tardias_count, 0)) as totalTardies,
-        SUM(ISNULL(br.faltas_count, 0)) as totalFaltas
+        SUM(ISNULL(br.tardias, 0)) as totalTardies,
+        SUM(ISNULL(br.faltas, 0)) as totalFaltas
       FROM EMPLEADO e
       ${brJoin}
       ${whereClause}
@@ -272,9 +268,9 @@ export class ReportsService {
         e.empleado_id as id,
         e.nombres + ' ' + e.apellidos as empleado,
         e.departamento as depto,
-        ISNULL(br.tardias_count, 0) as tardias,
-        ISNULL(br.faltas_count, 0) as faltas,
-        ISNULL(br.horas_count, 0) as horas,
+        ISNULL(br.tardias, 0) as tardias,
+        ISNULL(br.faltas, 0) as faltas,
+        ISNULL(br.horas_trabajadas, 0) as horas,
         ISNULL(br.cumplimiento_pct, 0) as cumplimiento,
         CASE
           WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
