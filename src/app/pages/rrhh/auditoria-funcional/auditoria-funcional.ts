@@ -41,7 +41,7 @@ export class AuditoriaFuncional implements OnInit {
     sistema: 0
   };
 
-  modulos = ['Todos los módulos', 'ADMIN', 'RRHH', 'SUPERVISOR', 'EMPLEADO', 'PAYROLL', 'AUTH'];
+  modulos = ['Todos los módulos'];
 
   private actionMap: { [key: string]: string } = {
     'LOGIN': 'Inicio de Sesión',
@@ -85,6 +85,13 @@ export class AuditoriaFuncional implements OnInit {
           entidad: log.entidadId ? `${log.entidad} #${log.entidadId}` : log.entidad,
           detalle: log.detalle
         }));
+
+        // Descubrimiento dinámico de módulos disponibles en los datos
+        if (this.filtroModulo === 'Todos los módulos') {
+          const modulosDetectados = Array.from(new Set(data.map(d => d.modulo))).filter(m => !!m).sort() as string[];
+          this.modulos = ['Todos los módulos', ...modulosDetectados];
+        }
+
         this.calculateStats(data);
         this.isLoading = false;
         this.cdr.detectChanges();
