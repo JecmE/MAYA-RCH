@@ -244,23 +244,12 @@ export class ReportsService {
 
     const distQuery = `
       SELECT
-        CASE
-          WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
-          WHEN br.cumplimiento_pct >= 85 THEN 'Bueno'
-          WHEN br.cumplimiento_pct >= 75 THEN 'Regular'
-          ELSE 'Riesgo'
-        END as classification,
+        ISNULL(br.clasificacion, 'Riesgo') as classification,
         COUNT(e.empleado_id) as count
       FROM EMPLEADO e
       ${brJoin}
       ${whereClause}
-      GROUP BY
-        CASE
-          WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
-          WHEN br.cumplimiento_pct >= 85 THEN 'Bueno'
-          WHEN br.cumplimiento_pct >= 75 THEN 'Regular'
-          ELSE 'Riesgo'
-        END
+      GROUP BY ISNULL(br.clasificacion, 'Riesgo')
     `;
 
     const detailQuery = `
@@ -272,12 +261,7 @@ export class ReportsService {
         ISNULL(br.faltas, 0) as faltas,
         ISNULL(br.horas_trabajadas, 0) as horas,
         ISNULL(br.cumplimiento_pct, 0) as cumplimiento,
-        CASE
-          WHEN br.cumplimiento_pct >= 95 THEN 'Excelente'
-          WHEN br.cumplimiento_pct >= 85 THEN 'Bueno'
-          WHEN br.cumplimiento_pct >= 75 THEN 'Regular'
-          ELSE 'Riesgo'
-        END as clasificacion
+        ISNULL(br.clasificacion, 'Riesgo') as clasificacion
       FROM EMPLEADO e
       ${brJoin}
       ${whereClause}
