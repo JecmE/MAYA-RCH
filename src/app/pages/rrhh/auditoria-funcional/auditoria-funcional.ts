@@ -127,8 +127,15 @@ export class AuditoriaFuncional implements OnInit {
 
   private formatDateTime(dateVal: any): string {
     if (!dateVal) return '';
-    const date = new Date(dateVal);
-    // El navegador automáticamente ajustará la fecha UTC a la zona horaria del usuario (Guatemala)
+    let date = new Date(dateVal);
+    const now = new Date();
+
+    // Si la fecha del log parece estar en el "futuro" (más de 30 min adelante de ahora),
+    // es porque viene en UTC y el navegador no la convirtió. La corregimos restando 6h.
+    if (date.getTime() > (now.getTime() + 1800000)) {
+      date = new Date(date.getTime() - (6 * 3600000));
+    }
+
     const d = date.getDate().toString().padStart(2, '0');
     const m = (date.getMonth() + 1).toString().padStart(2, '0');
     const y = date.getFullYear();
