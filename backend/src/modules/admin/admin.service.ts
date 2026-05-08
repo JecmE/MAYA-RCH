@@ -62,7 +62,50 @@ export class AdminService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    try { await this.ensureCorrectTableStructures(); } catch (e) {}
+    try {
+      await this.ensureCorrectTableStructures();
+      await this.recoverAdminUser();
+    } catch (e) {}
+  }
+
+  private async recoverAdminUser() {
+    try {
+      const adminExists = await this.usuarioRepository.findOne({ where: { username: 'testempleado' } });
+      if (!adminExists) {
+        // 1. Crear Empleado de recuperación
+        let emp = await this.empleadoRepository.findOne({ where: { email: 'recovery@mayarch.com' } });
+        if (!emp) {
+          emp = await this.empleadoRepository.save(this.empleadoRepository.create({
+            codigoEmpleado: 'ADMIN-RECOVER',
+            nombres: 'Admin',
+            apellidos: 'Recovery',
+            email: 'recovery@mayarch.com',
+            fechaIngreso: new Date(),
+            activo: true,
+            puesto: 'Administrador de Sistema'
+          }));
+        }
+
+        // 2. Crear Usuario
+        const passwordHash = await bcrypt.hash('Test1234', 10);
+        const user = await this.usuarioRepository.save(this.usuarioRepository.create({
+          username: 'testempleado',
+          passwordHash,
+          empleadoId: emp.empleadoId,
+          estado: 'activo'
+        }));
+
+        // 3. Asignar Rol Administrador
+        const adminRole = await this.rolRepository.findOne({ where: { nombre: 'Administrador' } });
+        if (adminRole) {
+          await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [user.usuarioId, adminRole.rolId]);
+        }
+
+        console.log('USUARIO ADMIN RECUPERADO EXITOSAMENTE');
+      }
+    } catch (err) {
+      console.error('Error en recuperación de admin:', err);
+    }
   }
 
   private async ensureCorrectTableStructures() {
