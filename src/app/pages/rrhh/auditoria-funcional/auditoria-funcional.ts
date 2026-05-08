@@ -103,24 +103,36 @@ export class AuditoriaFuncional implements OnInit {
   }
 
   private calculateStats(data: any[]): void {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     this.stats.hoy = data.filter(d => d.fecha_hora.startsWith(today)).length;
-    this.stats.aprobaciones = data.filter(d => d.accion.includes('APPROVE') || d.accion.includes('APROBAR')).length;
-    this.stats.ediciones = data.filter(d => d.accion.includes('UPDATE') || d.accion.includes('EDITAR')).length;
-    this.stats.sistema = data.filter(d => !d.usuario).length;
+    this.stats.aprobaciones = data.filter(d => {
+      const a = (d.accion || '').toUpperCase();
+      return a.includes('APPROVE') || a.includes('APROBAR');
+    }).length;
+    this.stats.ediciones = data.filter(d => {
+      const a = (d.accion || '').toUpperCase();
+      return a.includes('UPDATE') || a.includes('EDITAR') || a.includes('ACTUALIZACIÓN');
+    }).length;
+    this.stats.sistema = data.filter(d => !d.usuario || d.usuario === 'Sistema').length;
   }
 
   private formatDateTime(dateStr: string): string {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleString('es-GT', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
+    // El backend ya nos envía yyyy-MM-dd HH:mm:ss
+    const [datePart, timePart] = dateStr.split(' ');
+    const [y, m, d] = datePart.split('-');
+    const [hh, mm] = timePart.split(':');
+    return `${d}/${m}/${y} ${hh}:${mm}`;
   }
 
   private getTodayISO(): string {
-    return new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   get registrosPaginados(): AuditoriaItem[] {

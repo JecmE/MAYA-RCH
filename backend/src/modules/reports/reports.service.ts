@@ -332,19 +332,35 @@ export class ReportsService {
   async getFunctionalAudit(fi?: string, ff?: string, modulo?: string, accion?: string) {
     let query = `
       SELECT
-        al.audit_id, al.fecha_hora, u.username as usuario,
+        al.audit_id,
+        FORMAT(al.fecha_hora, 'yyyy-MM-dd HH:mm:ss') as fecha_hora,
+        u.username as usuario,
         al.modulo, al.accion, al.entidad, al.entidad_id, al.detalle
       FROM AUDIT_LOG al
       LEFT JOIN USUARIO u ON al.usuario_id = u.usuario_id
       WHERE 1=1
     `;
     const params: any[] = [];
-    if (fi && ff) { query += ` AND al.fecha_hora BETWEEN @${params.length} AND @${params.length + 1}`; params.push(fi + ' 00:00:00', ff + ' 23:59:59'); }
-    if (modulo && modulo !== 'Todos los módulos') { query += ` AND al.modulo = @${params.length}`; params.push(modulo); }
-    if (accion) { query += ` AND al.accion LIKE @${params.length}`; params.push(`%${accion}%`); }
+    if (fi && ff) {
+      query += ` AND al.fecha_hora >= @${params.length} AND al.fecha_hora <= @${params.length + 1}`;
+      params.push(fi + ' 00:00:00', ff + ' 23:59:59');
+    }
+    if (modulo && modulo !== 'Todos los módulos') {
+      query += ` AND al.modulo = @${params.length}`;
+      params.push(modulo);
+    }
+    if (accion) {
+      query += ` AND (al.accion LIKE @${params.length} OR al.detalle LIKE @${params.length})`;
+      params.push(`%${accion}%`);
+    }
 
     query += ` ORDER BY al.fecha_hora DESC`;
-    return await this.dataSource.query(query, params);
+    const results = await this.dataSource.query(query, params);
+    return results.map(r => ({
+      ...r,
+      detalle: this.sanitizeString(r.detalle),
+      entidad: this.sanitizeString(r.entidad)
+    }));
   }
 
   async getUniqueDepartments() {
