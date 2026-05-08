@@ -317,6 +317,11 @@ export class AdminService implements OnModuleInit {
         ...(fechaFin && { fechaFin })
       });
     } else {
+      // DESACTIVAR TURNOS ANTERIORES PARA QUE SOLO QUEDE EL NUEVO
+      if (dto.empleadoId) {
+        await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId, activo: true }, { activo: false });
+      }
+
       await this.empleadoTurnoRepository.save(this.empleadoTurnoRepository.create({
         ...dto,
         fechaInicio,
