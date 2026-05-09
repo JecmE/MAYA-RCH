@@ -7,13 +7,45 @@ export class MailService {
   private transporter: nodemailer.Transporter;
 
   constructor(private configService: ConfigService) {
+    this.initTransporter();
+  }
+
+  private initTransporter() {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: this.configService.get('MAIL_USER'),
+        user: this.configService.get('MAIL_USER') || 'maya.rch.notificaciones@gmail.com',
         pass: this.configService.get('MAIL_PASSWORD'),
       },
     });
+  }
+
+  async testConnection() {
+    try {
+      await this.transporter.verify();
+      return { success: true, message: 'Conexión SMTP establecida correctamente.' };
+    } catch (error) {
+      console.error('[MAIL] Fallo en test de conexión:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async sendTestEmail(to: string) {
+    const mailOptions = {
+      from: `"Maya RCH - Prueba" <${this.configService.get('MAIL_USER')}>`,
+      to,
+      subject: 'Prueba de Conexión de Correo - Maya RCH',
+      text: 'Este es un correo de prueba enviado desde el sistema Maya RCH para verificar la configuración SMTP.',
+      html: '<p>Este es un correo de prueba enviado desde el sistema <b>Maya RCH</b> para verificar la configuración SMTP.</p>',
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      return { success: true, message: `Correo de prueba enviado a ${to}` };
+    } catch (error) {
+      console.error('[MAIL] Fallo en envío de prueba:', error);
+      return { success: false, message: error.message };
+    }
   }
 
   async sendWelcomeEmail(to: string, nombre: string, usuario: string, clave: string) {

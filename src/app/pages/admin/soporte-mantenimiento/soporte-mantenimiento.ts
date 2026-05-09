@@ -69,8 +69,15 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
 
   correoPrueba = '';
   modoEdicionCorreo = false;
-  correoConfig = { estadoServicio: 'En espera', ultimaVerificacion: 'Pendiente', servidor: 'smtp.office365.com', puerto: '587', usuario: 'notificaciones@mayarch.com', correosEnviadosHoy: 0 };
-  correoConfigEditable = { servidor: '', puerto: '', usuario: '' };
+  correoConfig = {
+    estadoServicio: 'Conectado',
+    ultimaVerificacion: 'Recién',
+    servidor: 'smtp.gmail.com',
+    puerto: '587',
+    usuario: 'maya.rch.notificaciones@gmail.com',
+    correosEnviadosHoy: 0
+  };
+  correoConfigEditable = { servidor: 'smtp.gmail.com', puerto: '587', usuario: 'maya.rch.notificaciones@gmail.com' };
 
   monitoreoCards: MonitorCardItem[] = [
     { id: 1, icono: '🖥', tema: 'blue', badge: 'En tiempo real', titulo: 'Uso de CPU', valor: '0', sufijo: '%', progreso: 0, detalle: 'Cargando hardware...' },
@@ -206,10 +213,80 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
     this.modalIncidencias = true;
   }
 
-  probarConexionCorreo(): void { this.mostrarMensaje('Servicio SMTP en espera.', 'warning'); }
-  enviarCorreoPrueba(): void { this.mostrarMensaje('SMTP en espera.', 'warning'); }
-  editarConfiguracion(): void { this.modoEdicionCorreo = true; }
-  guardarConfiguracionCorreo(): void { this.modoEdicionCorreo = false; this.mostrarMensaje('Guardado.', 'success'); }
+  probarConexionCorreo(): void {
+    this.mostrarMensaje('Verificando conexión SMTP...', 'warning');
+    this.adminService.testMailConnection().subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.correoConfig.estadoServicio = 'Conectado';
+          this.correoConfig.ultimaVerificacion = 'Hoy, ' + new Date().toLocaleTimeString();
+          this.integraciones[1].estado = 'Conectado';
+          this.integraciones[1].estadoTipo = 'success';
+          this.mostrarMensaje(res.message, 'success');
+        } else {
+          this.correoConfig.estadoServicio = 'Fallo';
+          this.integraciones[1].estado = 'Error';
+          this.integraciones[1].estadoTipo = 'danger';
+          this.mostrarMensaje('Fallo en el servicio: ' + res.message, 'error');
+        }
+      },
+      error: () => this.mostrarMensaje('No se pudo contactar con el servicio de correo.', 'error')
+    });
+  }
+
+  enviarCorreoPrueba(): void {
+    if (!this.correoPrueba) {
+      this.mostrarMensaje('Ingrese un correo destinatario.', 'warning');
+      return;
+    }
+    this.mostrarMensaje('Enviando prueba...', 'warning');
+    this.adminService.sendMailTest(this.correoPrueba).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.mostrarMensaje('Correo enviado exitosamente.', 'success');
+        } else {
+          this.mostrarMensaje('Fallo al enviar: ' + res.message, 'error');
+        }
+      },
+      error: () => this.mostrarMensaje('Error técnico al enviar el correo.', 'error')
+    });
+  }
+
+  editarConfiguracion(): void {
+    this.modoEdicionCorreo = true;
+    this.correoConfigEditable = {
+      servidor: this.correoConfig.servidor,
+      puerto: this.correoConfig.puerto,
+      usuario: this.correoConfig.usuario
+    };
+  }
+
+  guardarConfiguracionCorreo(): void {
+    // Guardamos en parámetros de sistema para que persista
+    const payload = {
+      MAIL_SERVER: this.correoConfigEditable.servidor,
+      MAIL_PORT: this.correoConfigEditable.puerto,
+      MAIL_USER: this.correoConfigEditable.usuario,
+      categoryName: 'Configuración de Correo'
+    };
+
+    this.isSaving = true;
+    this.adminService.updateKpiParameters(payload).subscribe({
+      next: () => {
+        this.correoConfig.servidor = this.correoConfigEditable.servidor;
+        this.correoConfig.puerto = this.correoConfigEditable.puerto;
+        this.correoConfig.usuario = this.correoConfigEditable.usuario;
+        this.modoEdicionCorreo = false;
+        this.isSaving = false;
+        this.mostrarMensaje('Configuración de correo guardada.', 'success');
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isSaving = false;
+        this.mostrarMensaje('Error al guardar configuración.', 'error');
+      }
+    });
+  }
   cancelarEdicionCorreo(): void { this.modoEdicionCorreo = false; }
   actualizarMonitoreo(): void { this.refreshHealthData(); this.mostrarMensaje('Data actualizada.', 'success'); }
 

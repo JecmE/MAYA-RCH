@@ -216,4 +216,16 @@ export class AdminController {
   forceSync(@Req() req: any) {
     return this.adminService.forceSync(req.user.usuarioId);
   }
+
+  @Post('mail/test-connection')
+  @Roles('Administrador')
+  testMailConnection() {
+    return this.adminService.testMailConnection();
+  }
+
+  @Post('mail/send-test')
+  @Roles('Administrador')
+  sendMailTest(@Body() body: { to: string }, @Req() req: any) {
+    return this.adminService.sendMailTest(body.to, req.user.usuarioId);
+  }
 }

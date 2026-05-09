@@ -211,4 +211,12 @@ export class AdminService {
   forceSystemSync(): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/system-health/sync`, {});
   }
+
+  testMailConnection(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/mail/test-connection`, {});
+  }
+
+  sendMailTest(to: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/mail/send-test`, { to });
+  }
 }

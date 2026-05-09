@@ -130,6 +130,19 @@ export class AdminService implements OnModuleInit {
     return this.getKpiParameters();
   }
 
+  // --- CONFIGURACIÓN DE CORREO ---
+  async testMailConnection() {
+    return await this.mailService.testConnection();
+  }
+
+  async sendMailTest(to: string, uid: number) {
+    const res = await this.mailService.sendTestEmail(to);
+    if (res.success) {
+      await this.logAction({ modulo: 'ADMIN', accion: 'MAIL_TEST', entidad: 'SISTEMA', detalle: `Envío de correo de prueba a: ${to}` }, uid);
+    }
+    return res;
+  }
+
   // --- USUARIOS ---
   async getUsers() {
     const users = await this.usuarioRepository.find({
