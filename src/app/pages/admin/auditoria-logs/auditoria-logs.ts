@@ -25,6 +25,7 @@ interface AccesoLogItem {
   fecha: string;
   fechaISO: string;
   usuario: string;
+  modulo: string; // Añadido para consistencia en filtros
   accion: string;
   ip: string;
   dispositivo: string;
@@ -106,6 +107,7 @@ export class AuditoriaLogs implements OnInit {
                 fecha: this.formatDateTimeDisplay(log.fechaHora),
                 fechaISO: this.getISODate(log.fechaHora),
                 usuario: this.extractUsername(log),
+                modulo: 'AUTH',
                 accion: log.accion === 'LOGIN' ? 'Login Exitoso' : (log.accion.includes('FAIL') ? 'Intento Fallido' : 'Cierre de Sesión'),
                 ip: this.extractIP(log.detalle),
                 dispositivo: 'PC / Navegador'
