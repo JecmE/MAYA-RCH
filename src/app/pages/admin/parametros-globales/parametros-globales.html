@@ -296,39 +296,6 @@
     </main>
   </div>
 
-  <div class="history-card">
-    <div class="history-card__header">
-      <h3 class="history-card__title">Historial de Cambios</h3>
-      <p class="history-card__subtitle">Registro detallado de modificaciones en la configuración global.</p>
-    </div>
-    <div class="history-table-wrapper">
-      <table class="history-table">
-        <thead>
-          <tr>
-            <th>Fecha y Hora</th>
-            <th>Usuario Responsable</th>
-            <th>Categoría</th>
-            <th>Detalle del Cambio</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of historialData; track row.id) {
-            <tr>
-              <td class="table-cell--mono">{{ row.fecha }}</td>
-              <td class="table-cell--strong">{{ row.usuario }}</td>
-              <td>
-                <span class="history-badge" [ngClass]="getCategoriaBadgeClass(row.categoria)">
-                  {{ row.categoria }}
-                </span>
-              </td>
-              <td class="table-cell--muted">{{ row.cambio }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-
   <!-- MODAL FLOTANTE -->
   <div class="modal-overlay" *ngIf="showHistorial">
     <div class="history-modal">

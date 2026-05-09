@@ -120,19 +120,28 @@ export class ParametrosGlobales implements OnInit {
   }
 
   private loadHistory(): void {
+    // Cargamos los logs del módulo ADMIN que es donde se registran los cambios de parámetros
     this.adminService.getAuditLogs(undefined, undefined, undefined, 'ADMIN').subscribe({
       next: (logs: AuditLog[]) => {
         this.historialData = logs
-          .filter(l => l.accion === 'UPDATE_KPI_PARAMETERS' || l.entidad === 'PARAMETROS')
-          .slice(0, 15)
+          .filter(l =>
+            l.accion?.includes('PARAMETERS') ||
+            l.entidad === 'PARAMETROS' ||
+            l.modulo === 'ADMIN'
+          )
+          .slice(0, 50) // Aumentamos el límite para el historial completo
           .map(l => ({
             id: l.auditId,
             fecha: new Date(l.fechaHora).toLocaleString('es-GT'),
-            usuario: typeof l.usuario === 'object' ? (l.usuario as any).username : (l.usuario || 'testempleado'),
-            categoria: this.mapDetailToCategory(l.detalle),
-            cambio: l.detalle
+            usuario: l.usuario && typeof l.usuario === 'object' ? (l.usuario as any).username : (l.usuario || 'Sistema'),
+            categoria: this.mapDetailToCategory(l.detalle || ''),
+            cambio: l.detalle || 'Cambio en parámetros'
           }));
         this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error al cargar historial:', err);
+        this.historialData = [];
       }
     });
   }
