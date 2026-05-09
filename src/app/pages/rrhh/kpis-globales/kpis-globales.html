@@ -175,7 +175,7 @@
                   <td><span class="pct-value">{{ row.cumplimiento }}</span></td>
                   <td>
                     <span class="status-badge" [ngClass]="getClasificacionClass(row.clasificacion)">
-                      {{ row.clasificacion }}
+                      {{ formatClasificacion(row.clasificacion) }}
                     </span>
                   </td>
                 </tr>

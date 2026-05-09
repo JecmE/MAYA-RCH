@@ -244,12 +244,12 @@ export class ReportsService {
 
     const distQuery = `
       SELECT
-        ISNULL(br.clasificacion, 'Riesgo') as classification,
+        ISNULL(br.clasificacion, 'En riesgo') as classification,
         COUNT(e.empleado_id) as count
       FROM EMPLEADO e
       ${brJoin}
       ${whereClause}
-      GROUP BY ISNULL(br.clasificacion, 'Riesgo')
+      GROUP BY ISNULL(br.clasificacion, 'En riesgo')
     `;
 
     const detailQuery = `
@@ -261,7 +261,7 @@ export class ReportsService {
         ISNULL(br.faltas, 0) as faltas,
         ISNULL(br.horas_trabajadas, 0) as horas,
         ISNULL(br.cumplimiento_pct, 0) as cumplimiento,
-        ISNULL(br.clasificacion, 'Riesgo') as clasificacion
+        ISNULL(br.clasificacion, 'En riesgo') as clasificacion
       FROM EMPLEADO e
       ${brJoin}
       ${whereClause}

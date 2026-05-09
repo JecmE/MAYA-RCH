@@ -101,21 +101,21 @@ export class KpiService {
     const horasTrabajadas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
     const cumplimientoPct = horasEsperadas > 0 ? (horasTrabajadas / horasEsperadas) * 100 : 0;
 
-    let clasificacion = 'En Riesgo';
+    let clasificacion = 'En riesgo';
 
     // Regla de Oro: Faltas o tardías excesivas bajan a riesgo inmediatamente
     const faltas = Math.max(0, diasEsperados - diasTrabajados);
 
     if (faltas > thresholds.maxFaltas || tardias > thresholds.maxTardias) {
-        clasificacion = 'En Riesgo';
+        clasificacion = 'En riesgo';
     } else if (cumplimientoPct >= thresholds.excelente) {
         clasificacion = 'Excelente';
     } else if (cumplimientoPct >= thresholds.bueno) {
         clasificacion = 'Bueno';
     } else if (cumplimientoPct >= thresholds.regular) {
-        clasificacion = 'Regular';
+        clasificacion = 'En observacion';
     } else {
-        clasificacion = 'En Riesgo';
+        clasificacion = 'En riesgo';
     }
 
     let kpi = await this.kpiRepository.findOne({ where: { empleadoId, mes, anio } });

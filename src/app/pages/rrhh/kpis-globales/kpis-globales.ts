@@ -114,10 +114,18 @@ export class KpisGlobales implements OnInit {
   }
 
   getClasificacionClass(clasificacion: string): string {
-    if (clasificacion === 'Excelente') return 'status-badge--excellent';
-    if (clasificacion === 'Bueno') return 'status-badge--good';
-    if (clasificacion === 'Regular') return 'status-badge--warning';
+    const c = (clasificacion || '').toLowerCase();
+    if (c.includes('excelente')) return 'status-badge--excellent';
+    if (c.includes('bueno')) return 'status-badge--good';
+    if (c.includes('regular') || c.includes('observacion')) return 'status-badge--warning';
     return 'status-badge--risk';
+  }
+
+  // Mapeo para mostrar nombres bonitos
+  formatClasificacion(clasificacion: string): string {
+    if (clasificacion === 'En observacion') return 'Regular';
+    if (clasificacion === 'En riesgo') return 'En Riesgo';
+    return clasificacion;
   }
 
   getBarWidth(value: number): string {
