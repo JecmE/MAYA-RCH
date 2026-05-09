@@ -172,6 +172,8 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
 
             // 5. METRICAS INFERIORES
             this.uptime = this.formatUptime(data.server.uptimeSeconds);
+            this.correoConfig.correosEnviadosHoy = data.mailSentToday || 0;
+
             this.adminService.getAdminDashboardStats().subscribe(stats => {
                 this.usuariosConcurrentes = stats.sesionesActivas || 1;
                 this.solicitudesPorSegundo = stats.eventosAuditoria > 200 ? 5 : 1;

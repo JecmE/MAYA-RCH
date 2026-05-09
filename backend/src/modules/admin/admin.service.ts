@@ -454,6 +454,14 @@ export class AdminService implements OnModuleInit {
         order: { fechaHora: 'DESC' }
     });
 
+    // Contar correos enviados hoy
+    const mailSentToday = await this.auditRepository.count({
+        where: [
+            { accion: Like('%MAIL%'), fechaHora: MoreThan(startOfToday) },
+            { detalle: Like('%correo%'), fechaHora: MoreThan(startOfToday) }
+        ]
+    });
+
     return {
         db: {
             status: dbStatus,
@@ -462,6 +470,7 @@ export class AdminService implements OnModuleInit {
             sizeMB: dbSizeMB,
             maxSizeMB: 2048 // Supuesto para el plan básico de Azure
         },
+        mailSentToday,
         server: {
             uptimeSeconds: Math.round(process.uptime()),
             cpuPercent: Math.round((cpu.user + cpu.system) / 1000000) % 100,
