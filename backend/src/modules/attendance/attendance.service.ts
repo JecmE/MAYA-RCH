@@ -225,36 +225,35 @@ export class AttendanceService {
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
 
-    // Búsqueda de seguridad usando el formato de fecha de la DB para evitar duplicados
-    if (id === 0) {
-      asis = await this.asistenciaRepository.createQueryBuilder('asis')
-        .where('asis.empleadoId = :empId', { empId: dto.empleadoId })
-        .andWhere("FORMAT(asis.fecha, 'yyyy-MM-dd') = :fecha", { fecha: dto.fecha })
-        .getOne();
+    // 1. Intentar encontrar el registro usando comparacion de texto para evitar desfases de zona horaria
+    asis = await this.asistenciaRepository.createQueryBuilder('asis')
+      .where('asis.empleadoId = :empId', { empId: dto.empleadoId })
+      .andWhere("FORMAT(asis.fecha, 'yyyy-MM-dd') = :fecha", { fecha: dto.fecha })
+      .getOne();
 
-      if (!asis) {
-        const [year, month, day] = dto.fecha.split('-').map(Number);
-        asis = this.asistenciaRepository.create({
-          empleadoId: dto.empleadoId,
-          fecha: new Date(Date.UTC(year, month - 1, day)),
-          estadoJornada: RegistroAsistencia.ESTADO_INCOMPLETA
-        });
-        asis = await this.asistenciaRepository.save(asis);
-      }
-    } else {
-      asis = await this.asistenciaRepository.findOne({ where: { asistenciaId: id } });
+    // 2. Si no existe (estaba Ausente), lo creamos forzando la fecha como string
+    if (!asis) {
+      // Creamos el registro base
+      const query = `
+        INSERT INTO REGISTRO_ASISTENCIA (empleado_id, fecha, estado_jornada)
+        VALUES (@0, @1, @2);
+        SELECT SCOPE_IDENTITY() AS id;
+      `;
+      const insertRes = await this.dataSource.query(query, [dto.empleadoId, dto.fecha, RegistroAsistencia.ESTADO_INCOMPLETA]);
+      const newId = insertRes[0].id;
+      asis = await this.asistenciaRepository.findOne({ where: { asistenciaId: newId } });
     }
 
-    if (!asis) throw new NotFoundException('Registro de asistencia no encontrado');
+    if (!asis) throw new NotFoundException('No se pudo crear o encontrar el registro de asistencia');
 
-    const campo = dto.campo;
-    const valor = dto.valorNuevo;
+    const campo = dto.campo; // 'horaEntradaReal' o 'horaSalidaReal'
+    const valor = dto.valorNuevo; // 'HH:MM'
     const [hour, minute] = valor.split(':').map(Number);
 
-    // Compensación de zona horaria (GT es UTC-6)
-    // Guardamos la hora sumando 6 horas para que al recuperarla el front (que resta 6) vea la hora original.
-    const finalDate = new Date(asis.fecha);
-    finalDate.setUTCHours(hour + 6, minute, 0, 0);
+    // 3. Establecer la hora exacta con compensacion GT (UTC+6 para que el front vea la hora local)
+    // Usamos el string de la fecha para evitar que Date() se desfase
+    const [y, m, d] = dto.fecha.split('-').map(Number);
+    const finalDate = new Date(Date.UTC(y, m - 1, d, hour + 6, minute, 0));
 
     asis[campo] = finalDate;
 
@@ -265,6 +264,7 @@ export class AttendanceService {
 
     const asisGuardada = await this.asistenciaRepository.save(asis);
 
+    // 4. Registrar auditoria
     await this.ajusteRepository.save({
       asistenciaId: asisGuardada.asistenciaId,
       usuarioId: user,
@@ -275,12 +275,8 @@ export class AttendanceService {
       fechaHora: new Date()
     });
 
-    // RECALCULAR KPIs DEL EMPLEADO INMEDIATAMENTE TRAS EL AJUSTE
-    try {
-      await this.kpiService.refreshEmployeeKpi(asisGuardada.empleadoId);
-    } catch (kpiError) {
-      console.error('Error recalculando KPI tras ajuste:', kpiError);
-    }
+    // 5. Recalcular KPIs
+    try { await this.kpiService.refreshEmployeeKpi(asisGuardada.empleadoId); } catch (e) {}
 
     return asisGuardada;
   }
