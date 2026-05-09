@@ -97,6 +97,7 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
   mensajeNotificacion = '';
   tipoNotificacion: NotificationType = 'success';
   isSyncing = false;
+  isSaving = false; // Añadida variable faltante para compilación
 
   constructor(
     private router: Router,
