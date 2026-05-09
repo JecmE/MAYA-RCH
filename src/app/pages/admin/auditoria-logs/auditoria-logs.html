@@ -122,6 +122,7 @@
           <thead>
             <tr>
               <th>Fecha</th>
+              <th>Usuario</th>
               <th>Módulo</th>
               <th>Tipo Error</th>
               <th>Mensaje Técnico</th>
@@ -132,6 +133,7 @@
             @for (row of paginatedData; track row.id) {
               <tr>
                 <td class="mono-cell">{{ row.fecha }}</td>
+                <td class="fw-700">@{{ row.usuario }}</td>
                 <td class="fw-700">{{ row.modulo }}</td>
                 <td class="text-red">{{ row.error }}</td>
                 <td class="text-muted">{{ row.mensaje }}</td>

@@ -34,6 +34,7 @@ interface ErrorLogItem {
   id: number;
   fecha: string;
   fechaISO: string;
+  usuario: string; // Añadido campo usuario
   modulo: string;
   error: string;
   mensaje: string;
@@ -117,6 +118,7 @@ export class AuditoriaLogs implements OnInit {
                 id: log.auditId,
                 fecha: this.formatDateTimeDisplay(log.fechaHora),
                 fechaISO: this.getISODate(log.fechaHora),
+                usuario: this.extractUsername(log), // Ahora extraemos el usuario
                 modulo: log.modulo,
                 error: log.accion,
                 mensaje: log.detalle,
@@ -187,10 +189,11 @@ export class AuditoriaLogs implements OnInit {
 
   get filteredErrores(): ErrorLogItem[] {
     return this.erroresData.filter(row => {
-      const matchSearch = !this.searchTerm || row.mensaje.toLowerCase().includes(this.searchTerm.toLowerCase());
+      const matchSearch = !this.searchTerm || row.mensaje.toLowerCase().includes(this.searchTerm.toLowerCase()) || row.usuario.toLowerCase().includes(this.searchTerm.toLowerCase());
       const matchMod = !this.filtroModulo || row.modulo === this.filtroModulo;
+      const matchUser = !this.filtroUsuario || row.usuario === this.filtroUsuario;
       const matchDate = !this.filtroFechaInicio || row.fechaISO === this.filtroFechaInicio;
-      return matchSearch && matchMod && matchDate;
+      return matchSearch && matchMod && matchUser && matchDate;
     });
   }
 
@@ -229,8 +232,23 @@ export class AuditoriaLogs implements OnInit {
   cerrarDetalle(): void { this.showDetalle = false; this.eventoSeleccionado = null; }
 
   // --- SOPORTE UI ---
-  getModulosUnicos(): string[] { return [...new Set(this.auditoriaData.map(x => x.modulo))]; }
-  getUsuariosUnicos(): string[] { return [...new Set([...this.auditoriaData.map(x => x.usuario), ...this.accesosData.map(x => x.usuario)])]; }
+  getModulosUnicos(): string[] {
+    const all = [
+      ...this.auditoriaData.map(x => x.modulo),
+      ...this.accesosData.map(x => x.modulo),
+      ...this.erroresData.map(x => x.modulo)
+    ];
+    return [...new Set(all.filter(m => !!m))].sort();
+  }
+
+  getUsuariosUnicos(): string[] {
+    const all = [
+      ...this.auditoriaData.map(x => x.usuario),
+      ...this.accesosData.map(x => x.usuario),
+      ...this.erroresData.map(x => x.usuario)
+    ];
+    return [...new Set(all.filter(u => u && u !== 'Desconocido'))].sort();
+  }
   getAccionClass(accion: string): string {
     const a = (accion || '').toUpperCase();
     if (a.includes('DELETE') || a.includes('BLOQUE')) return 'badge badge--red';
