@@ -244,7 +244,6 @@
           </div>
         }
 
-        <!-- BLOQUE GENERALES (DISEÑO PREMIUM IGUAL A IMAGEN) -->
         @if (activeTab === 'generales') {
           <div class="content-block">
             <h3 class="content-title">Parámetros de Cálculo Generales</h3>
@@ -254,8 +253,6 @@
                 <label class="form-label">Moneda del sistema</label>
                 <select class="form-control" [(ngModel)]="monedaSistema">
                   <option>GTQ - Quetzal Guatemalteco</option>
-                  <option>USD - Dólar Americano</option>
-                  <option>EUR - Euro</option>
                 </select>
               </div>
 
@@ -263,8 +260,6 @@
                 <label class="form-label">Zona horaria</label>
                 <select class="form-control" [(ngModel)]="zonaHoraria">
                   <option>America/Guatemala (GMT-6)</option>
-                  <option>America/New_York (GMT-5)</option>
-                  <option>UTC (Coordinated Universal Time)</option>
                 </select>
               </div>
 
@@ -272,8 +267,6 @@
                 <label class="form-label">Formato de fecha</label>
                 <select class="form-control" [(ngModel)]="formatoFecha">
                   <option>DD/MM/YYYY</option>
-                  <option>MM/DD/YYYY</option>
-                  <option>YYYY-MM-DD</option>
                 </select>
               </div>
 
@@ -281,7 +274,6 @@
                 <label class="form-label">Idioma del sistema</label>
                 <select class="form-control" [(ngModel)]="idiomaSistema">
                   <option>Español</option>
-                  <option>English</option>
                 </select>
               </div>
 
@@ -289,8 +281,6 @@
                 <label class="form-label">Ciclo de planilla</label>
                 <select class="form-control" [(ngModel)]="cicloPlanilla">
                   <option>Mensual (del 1 al último día del mes)</option>
-                  <option>Quincenal (15 y 30 de cada mes)</option>
-                  <option>Semanal</option>
                 </select>
               </div>
 
