@@ -97,7 +97,8 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
   mensajeNotificacion = '';
   tipoNotificacion: NotificationType = 'success';
   isSyncing = false;
-  isSaving = false; // Añadida variable faltante para compilación
+  isSaving = false;
+  isSendingEmail = false;
 
   constructor(
     private router: Router,
@@ -107,7 +108,16 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.refreshHealthData();
+    this.loadPersistedMailStatus();
+    this.probarConexionCorreo(true); // Verificación automática al entrar
     this.updateSub = interval(15000).subscribe(() => this.refreshHealthData());
+  }
+
+  private loadPersistedMailStatus(): void {
+    const saved = localStorage.getItem('last_mail_check');
+    if (saved) {
+      this.correoConfig.ultimaVerificacion = saved;
+    }
   }
 
   ngOnDestroy(): void {
@@ -214,24 +224,34 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
     this.modalIncidencias = true;
   }
 
-  probarConexionCorreo(): void {
-    this.mostrarMensaje('Verificando conexión SMTP...', 'warning');
+  probarConexionCorreo(silencioso = false): void {
+    if (!silencioso) this.mostrarMensaje('Verificando conexión SMTP...', 'warning');
     this.adminService.testMailConnection().subscribe({
       next: (res) => {
         if (res.success) {
+          const timestamp = new Date().toLocaleString('es-GT', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+          });
+
           this.correoConfig.estadoServicio = 'Conectado';
-          this.correoConfig.ultimaVerificacion = 'Hoy, ' + new Date().toLocaleTimeString();
+          this.correoConfig.ultimaVerificacion = timestamp;
+          localStorage.setItem('last_mail_check', timestamp);
+
           this.integraciones[1].estado = 'Conectado';
           this.integraciones[1].estadoTipo = 'success';
-          this.mostrarMensaje(res.message, 'success');
+          if (!silencioso) this.mostrarMensaje(res.message, 'success');
         } else {
           this.correoConfig.estadoServicio = 'Fallo';
           this.integraciones[1].estado = 'Error';
           this.integraciones[1].estadoTipo = 'danger';
-          this.mostrarMensaje('Fallo en el servicio: ' + res.message, 'error');
+          if (!silencioso) this.mostrarMensaje('Fallo en el servicio: ' + res.message, 'error');
         }
+        this.cdr.detectChanges();
       },
-      error: () => this.mostrarMensaje('No se pudo contactar con el servicio de correo.', 'error')
+      error: () => {
+        if (!silencioso) this.mostrarMensaje('No se pudo contactar con el servicio de correo.', 'error');
+      }
     });
   }
 
@@ -240,16 +260,24 @@ export class SoporteMantenimiento implements OnInit, OnDestroy {
       this.mostrarMensaje('Ingrese un correo destinatario.', 'warning');
       return;
     }
+    this.isSendingEmail = true;
     this.mostrarMensaje('Enviando prueba...', 'warning');
+
     this.adminService.sendMailTest(this.correoPrueba).subscribe({
       next: (res) => {
+        this.isSendingEmail = false;
         if (res.success) {
           this.mostrarMensaje('Correo enviado exitosamente.', 'success');
         } else {
           this.mostrarMensaje('Fallo al enviar: ' + res.message, 'error');
         }
+        this.cdr.detectChanges();
       },
-      error: () => this.mostrarMensaje('Error técnico al enviar el correo.', 'error')
+      error: () => {
+        this.isSendingEmail = false;
+        this.mostrarMensaje('Error técnico al enviar el correo.', 'error');
+        this.cdr.detectChanges();
+      }
     });
   }
 

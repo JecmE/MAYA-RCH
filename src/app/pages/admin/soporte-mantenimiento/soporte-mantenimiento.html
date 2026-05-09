@@ -148,7 +148,13 @@
           <label class="field-label">Pruebas de Envío</label>
           <div class="mail-test-row">
             <input type="email" class="form-control" [(ngModel)]="correoPrueba" placeholder="correo@ejemplo.com" />
-            <button class="send-button" type="button" (click)="enviarCorreoPrueba()">📤 Enviar</button>
+            <button class="send-button" type="button" (click)="enviarCorreoPrueba()" [disabled]="isSendingEmail">
+              @if (isSendingEmail) {
+                <span class="spinner"></span> Enviando...
+              } @else {
+                <span>Enviar Prueba</span>
+              }
+            </button>
           </div>
         </div>
       </div>
