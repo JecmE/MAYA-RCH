@@ -63,12 +63,34 @@ export class Usuarios implements OnInit {
     this.loadInitialData();
   }
 
+  private sanitize(str: string | undefined | null): string {
+    if (!str) return '';
+
+    // 1. Limpieza de codificación
+    let res = str.replace(/Ã­/g, 'í').replace(/Ã³/g, 'ó').replace(/Ã¡/g, 'á')
+                 .replace(/Ã©/g, 'é').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ');
+
+    // 2. Corregir signos de interrogación por contexto
+    res = res.replace(/\?/g, (m, offset, original) => {
+      if (original.includes('Rodr')) return 'í';
+      if (original.includes('Mart')) return 'í';
+      if (original.includes('Garc')) return 'í';
+      if (original.includes('Fern')) return 'á';
+      return 'í';
+    });
+
+    return res;
+  }
+
   private loadInitialData(): void {
     this.isLoading = true;
     this.loadUsers();
     this.adminService.getRoles().subscribe(roles => this.rolesList = roles);
     this.usersService.getAll('true').subscribe(emps => {
-      this.empleadosList = emps;
+      this.empleadosList = emps.map(e => ({
+        ...e,
+        nombreCompleto: this.sanitize(e.nombreCompleto)
+      }));
       this.cdr.detectChanges();
     });
   }
@@ -79,7 +101,7 @@ export class Usuarios implements OnInit {
       next: (data) => {
         this.usuariosData = data.map(u => ({
           usuarioId: u.usuarioId,
-          nombre: u.nombreCompleto,
+          nombre: this.sanitize(u.nombreCompleto),
           usuario: u.username,
           correo: u.email,
           roles: u.roles,
@@ -87,7 +109,7 @@ export class Usuarios implements OnInit {
           empleado: u.empleadoCodigo || 'N/A',
           empleadoId: u.empleadoId,
           supervisorId: u.supervisorId,
-          supervisorNombre: u.supervisorNombre
+          supervisorNombre: this.sanitize(u.supervisorNombre)
         }));
         this.isLoading = false;
         this.cdr.detectChanges();
