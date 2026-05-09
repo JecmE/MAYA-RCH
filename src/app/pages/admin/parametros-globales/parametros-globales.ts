@@ -52,6 +52,7 @@ export class ParametrosGlobales implements OnInit {
   clasificacionBueno = 85;
   clasificacionRegular = 70;
   maxTardiasMensuales = 4;
+  maxFaltasMensuales = 0;
 
   // Planilla
   igssLaboral = 4.83;
@@ -99,6 +100,7 @@ export class ParametrosGlobales implements OnInit {
         if (params['kpi_bueno']) this.clasificacionBueno = Number(params['kpi_bueno']);
         if (params['kpi_regular']) this.clasificacionRegular = Number(params['kpi_regular']);
         if (params['max_tardias']) this.maxTardiasMensuales = Number(params['max_tardias']);
+        if (params['max_faltas']) this.maxFaltasMensuales = Number(params['max_faltas']);
 
         // Planilla
         if (params['igss_laboral']) this.igssLaboral = Number(params['igss_laboral']);
@@ -200,6 +202,7 @@ export class ParametrosGlobales implements OnInit {
         payload.kpi_bueno = this.clasificacionBueno.toString();
         payload.kpi_regular = this.clasificacionRegular.toString();
         payload.max_tardias = this.maxTardiasMensuales.toString();
+        payload.max_faltas = this.maxFaltasMensuales.toString();
     } else if (this.activeTab === 'planilla') {
         payload.igss_laboral = this.igssLaboral.toString();
         payload.igss_patronal = this.igssPatronal.toString();

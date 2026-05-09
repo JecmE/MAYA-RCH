@@ -59,14 +59,15 @@ export class KpiService {
 
   private async getKpiThresholds() {
     const params = await this.parametroRepository.find({
-      where: { clave: In(['kpi_excelente', 'kpi_bueno', 'kpi_regular', 'max_tardias']), activo: true }
+      where: { clave: In(['kpi_excelente', 'kpi_bueno', 'kpi_regular', 'max_tardias', 'max_faltas']), activo: true }
     });
     const map = new Map(params.map(p => [p.clave, p.valor]));
     return {
       excelente: Number(map.get('kpi_excelente') || 95),
       bueno: Number(map.get('kpi_bueno') || 80),
       regular: Number(map.get('kpi_regular') || 65),
-      maxTardias: Number(map.get('max_tardias') || 4)
+      maxTardias: Number(map.get('max_tardias') || 4),
+      maxFaltas: Number(map.get('max_faltas') || 0)
     };
   }
 
@@ -105,7 +106,7 @@ export class KpiService {
     // Regla de Oro: Faltas o tardías excesivas bajan a riesgo inmediatamente
     const faltas = Math.max(0, diasEsperados - diasTrabajados);
 
-    if (faltas > 0 || tardias > thresholds.maxTardias) {
+    if (faltas > thresholds.maxFaltas || tardias > thresholds.maxTardias) {
         clasificacion = 'En Riesgo';
     } else if (cumplimientoPct >= thresholds.excelente) {
         clasificacion = 'Excelente';

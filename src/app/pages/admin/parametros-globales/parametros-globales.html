@@ -179,10 +179,16 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">Máximo de tardías mensuales permitidas</label>
-                <div class="inline-field">
+                <label class="form-label">Límites mensuales de tolerancia</label>
+                <div class="inline-field" style="margin-bottom: 1rem;">
+                  <span class="inline-field__text" style="min-width: 120px;">Máximo tardías:</span>
                   <input type="number" class="form-control form-control--short" [(ngModel)]="maxTardiasMensuales" />
                   <span class="inline-field__text">tardías</span>
+                </div>
+                <div class="inline-field">
+                  <span class="inline-field__text" style="min-width: 120px;">Máximo faltas:</span>
+                  <input type="number" class="form-control form-control--short" [(ngModel)]="maxFaltasMensuales" />
+                  <span class="inline-field__text">faltas</span>
                 </div>
               </div>
             </div>
