@@ -94,15 +94,7 @@ export class KpiService {
     }
 
     const horasEsperadas = diasEsperados * horasPorDia;
-
-    // CORRECCIÓN: Búsqueda de asistencias usando formato de texto para evitar fallos de zona horaria
-    const startStr = fechaInicio.toISOString().split('T')[0];
-    const endStr = fechaCorte.toISOString().split('T')[0];
-
-    const asistencias = await this.asistenciaRepository.createQueryBuilder('ra')
-      .where('ra.empleadoId = :empId', { empId: empleadoId })
-      .andWhere("FORMAT(ra.fecha, 'yyyy-MM-dd') BETWEEN :start AND :end", { start: startStr, end: endStr })
-      .getMany();
+    const asistencias = await this.asistenciaRepository.find({ where: { empleadoId, fecha: Between(fechaInicio, fechaCorte) } });
 
     const diasTrabajados = asistencias.filter(a => a.horaEntradaReal !== null).length;
     const tardias = asistencias.reduce((sum, a) => sum + (a.minutosTardia > 0 ? 1 : 0), 0);
