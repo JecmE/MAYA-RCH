@@ -205,7 +205,7 @@ export class ReportsService {
         AVG(CAST(ISNULL(br.cumplimiento_pct, 0) AS DECIMAL(10,2))) as avgCompliance,
         SUM(ISNULL(br.tardias, 0)) as totalTardies,
         SUM(ISNULL(br.faltas, 0)) as totalFaltas,
-        COUNT(CASE WHEN br.cumplimiento_pct < 85 THEN 1 END) as employeesAtRisk
+        COUNT(CASE WHEN br.clasificacion = 'En riesgo' THEN 1 END) as employeesAtRisk
       FROM EMPLEADO e
       ${brJoin}
       ${whereClause}

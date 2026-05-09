@@ -177,8 +177,8 @@ export class KpiService {
       clasificaciones: {
           Excelente: kpis.filter(k => k.clasificacion === 'Excelente').length,
           Bueno: kpis.filter(k => k.clasificacion === 'Bueno').length,
-          Regular: kpis.filter(k => k.clasificacion === 'Regular').length,
-          'En Riesgo': kpis.filter(k => k.clasificacion === 'En Riesgo').length
+          Regular: kpis.filter(k => k.clasificacion === 'En observacion').length,
+          'En Riesgo': kpis.filter(k => k.clasificacion === 'En riesgo').length
       },
     };
   }
