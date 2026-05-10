@@ -9,6 +9,7 @@ import {
   Like,
   MoreThan,
   Not,
+  In,
 } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
@@ -411,9 +412,68 @@ export class AdminService implements OnModuleInit {
     return { message: 'Evaluación de bonos procesada con éxito.' };
   }
   async getAuditLogs(fi?: string, ff?: string, uid?: number, mod?: string) { const where: any = {}; if (fi && ff) where.fechaHora = Between(new Date(fi + ' 00:00:00'), new Date(ff + ' 23:59:59')); if (uid) where.usuarioId = uid; if (mod && mod !== 'Todos los módulos') where.modulo = mod; return await this.auditRepository.find({ relations: ['usuario'], order: { fechaHora: 'DESC' }, take: 1000, where }); }
-  async getAdminDashboardStats() { const now = new Date(); const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000); const startOfToday = new Date(); startOfToday.setHours(0,0,0,0); const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([ this.usuarioRepository.count({ where: { estado: 'activo' } }), this.usuarioRepository.count({ where: { estado: 'bloqueado' } }), this.auditRepository.count(), this.auditRepository.count({ where: { accion: Like('%FAIL%'), fechaHora: MoreThan(startOfToday) } }), this.usuarioRepository.count({ where: { ultimoLogin: MoreThan(thirtyMinutesAgo), estado: 'activo' } }) ]); return { usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas: sesionesActivas || 1, estadoSistema: 'Óptimo' }; }
-  async getRrhhDashboardStats() { return { empleadosActivos: 0, tardiasHoy: 0, permisosPendientes: 0, vacacionesActivas: 0, empleadosEnRiesgo: 0, elegiblesBono: 0 }; }
-  async getSupervisorDashboardStats(sid: number) { return { empleadosACargo: 0, permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 }; }
+  async getAdminDashboardStats() {
+    const now = new Date();
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000);
+    const startOfToday = new Date();
+    startOfToday.setHours(0,0,0,0);
+    const [usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas] = await Promise.all([
+      this.usuarioRepository.count({ where: { estado: 'activo' } }),
+      this.usuarioRepository.count({ where: { estado: 'bloqueado' } }),
+      this.auditRepository.count(),
+      this.auditRepository.count({ where: { accion: Like('%FAIL%'), fechaHora: MoreThan(startOfToday) } }),
+      this.usuarioRepository.count({ where: { ultimoLogin: MoreThan(thirtyMinutesAgo), estado: 'activo' } })
+    ]);
+    return { usuariosActivos, usuariosBloqueados, eventosAuditoria, intentosFallidos, sesionesActivas: sesionesActivas || 0, estadoSistema: 'Óptimo' };
+  }
+
+  async getRrhhDashboardStats() {
+    const now = new Date();
+    const startOfToday = new Date();
+    startOfToday.setHours(0,0,0,0);
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+
+    const [activos, tardias, permisos, kpis] = await Promise.all([
+      this.empleadoRepository.count({ where: { activo: true } }),
+      this.registroAsistenciaRepository.count({ where: { fecha: Between(startOfToday, now) as any, minutosTardia: MoreThan(0) } }),
+      this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
+      this.kpiMensualRepository.find({ where: { mes: month, anio: year } })
+    ]);
+
+    return {
+      empleadosActivos: activos,
+      tardiasHoy: tardias,
+      permisosPendientes: permisos,
+      vacacionesActivas: 0,
+      empleadosEnRiesgo: kpis.filter(k => k.clasificacion === 'En riesgo').length,
+      elegiblesBono: 0
+    };
+  }
+
+  async getSupervisorDashboardStats(sid: number) {
+    const team = await this.empleadoRepository.find({ where: { supervisorId: sid, activo: true } });
+    const teamIds = team.map(e => e.empleadoId);
+
+    if (teamIds.length === 0) return { empleadosACargo: 0, permisosPendientes: 0, horasPendientes: 0, kpiPromedio: 0 };
+
+    const [permisos, horas, kpis] = await Promise.all([
+      this.solicitudPermisoRepository.count({ where: { empleadoId: In(teamIds), estado: 'pendiente' } }),
+      this.registroTiempoRepository.count({ where: { empleadoId: In(teamIds), estado: 'pendiente' } }),
+      this.kpiMensualRepository.find({ where: { empleadoId: In(teamIds), mes: new Date().getMonth() + 1, anio: new Date().getFullYear() } })
+    ]);
+
+    const avgCompliance = kpis.length > 0
+      ? kpis.reduce((acc, curr) => acc + Number(curr.cumplimientoPct), 0) / kpis.length
+      : 0;
+
+    return {
+      empleadosACargo: team.length,
+      permisosPendientes: permisos,
+      horasPendientes: horas,
+      kpiPromedio: Math.round(avgCompliance * 100) / 100
+    };
+  }
 
   // --- MONITOREO REAL DEL SISTEMA ---
   async getSystemHealth() {
