@@ -6,6 +6,7 @@ import { Proyecto } from '../../entities/proyecto.entity';
 import { Empleado } from '../../entities/empleado.entity';
 import { AprobacionTiempo } from '../../entities/aprobacion-tiempo.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class TimesheetsService {
@@ -20,6 +21,7 @@ export class TimesheetsService {
     private aprobacionRepository: Repository<AprobacionTiempo>,
     @InjectRepository(AuditLog)
     private auditRepository: Repository<AuditLog>,
+    private mailService: MailService,
   ) {}
 
   async getMyTimesheets(empId: number, start?: string, end?: string, proyId?: number) {
@@ -44,6 +46,27 @@ export class TimesheetsService {
     const registro = this.tiempoRepository.create({ ...dto, empleadoId, estado: 'pendiente' });
     const saved: any = await this.tiempoRepository.save(registro);
     const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+
+    // NOTIFICACIÓN AL SUPERVISOR
+    try {
+      const emp = await this.empleadoRepository.findOne({
+        where: { empleadoId },
+        relations: ['supervisor']
+      });
+      if (emp?.supervisor?.email) {
+        await this.mailService.sendTimesheetRequestNotification(
+          emp.supervisor.email,
+          `${emp.supervisor.nombres} ${emp.supervisor.apellidos}`,
+          `${emp.nombres} ${emp.apellidos}`,
+          proyecto.nombre,
+          dto.fecha,
+          dto.horas
+        );
+      }
+    } catch (e) {
+      console.error('[MAIL] Error aviso registro tiempo:', e);
+    }
+
     return { tiempoId: savedSingle.tiempoId, mensaje: 'Creado' };
   }
 
@@ -57,14 +80,52 @@ export class TimesheetsService {
   }
 
   async approve(id: number, comentario: string, usuarioId: number) {
+    const registro = await this.tiempoRepository.findOne({
+      where: { tiempoId: id },
+      relations: ['empleado', 'proyecto']
+    });
+    if (!registro) throw new NotFoundException('Registro no encontrado');
+
     await this.tiempoRepository.update(id, { estado: 'aprobado' });
     await this.aprobacionRepository.save({ tiempoId: id, usuarioId, decision: 'aprobado', comentario, fechaHora: new Date() });
+
+    // NOTIFICACIÓN AL EMPLEADO
+    if (registro.empleado?.email) {
+      await this.mailService.sendTimesheetStatusNotification(
+        registro.empleado.email,
+        `${registro.empleado.nombres} ${registro.empleado.apellidos}`,
+        'aprobado',
+        registro.proyecto?.nombre || 'Proyecto',
+        registro.fecha,
+        comentario
+      );
+    }
+
     return { message: 'Aprobado' };
   }
 
   async reject(id: number, comentario: string, usuarioId: number) {
+    const registro = await this.tiempoRepository.findOne({
+      where: { tiempoId: id },
+      relations: ['empleado', 'proyecto']
+    });
+    if (!registro) throw new NotFoundException('Registro no encontrado');
+
     await this.tiempoRepository.update(id, { estado: 'rechazado' });
     await this.aprobacionRepository.save({ tiempoId: id, usuarioId, decision: 'rechazado', comentario, fechaHora: new Date() });
+
+    // NOTIFICACIÓN AL EMPLEADO
+    if (registro.empleado?.email) {
+      await this.mailService.sendTimesheetStatusNotification(
+        registro.empleado.email,
+        `${registro.empleado.nombres} ${registro.empleado.apellidos}`,
+        'rechazado',
+        registro.proyecto?.nombre || 'Proyecto',
+        registro.fecha,
+        comentario
+      );
+    }
+
     return { message: 'Rechazado' };
   }
 

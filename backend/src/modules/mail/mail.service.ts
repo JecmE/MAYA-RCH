@@ -48,6 +48,114 @@ export class MailService {
     }
   }
 
+  async sendLeaveRequestNotification(supervisorEmail: string, supervisorNombre: string, empleadoNombre: string, tipoPermiso: string, fechaInicio: string, fechaFin: string, motivo: string) {
+    const mailOptions = {
+      from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,
+      to: supervisorEmail,
+      subject: `Nueva solicitud de permiso: ${empleadoNombre}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #004f71; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Maya RCH</h1>
+          </div>
+          <div style="padding: 30px;">
+            <h2 style="color: #004f71;">Hola, ${supervisorNombre}</h2>
+            <p>El colaborador <b>${empleadoNombre}</b> ha enviado una nueva solicitud de permiso que requiere tu revisión.</p>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>Tipo de Permiso:</strong> ${tipoPermiso}</p>
+              <p><strong>Periodo:</strong> del ${fechaInicio} al ${fechaFin}</p>
+              <p><strong>Motivo:</strong> ${motivo}</p>
+            </div>
+            <p>Por favor, ingresa al sistema para aprobar o rechazar esta solicitud.</p>
+          </div>
+        </div>
+      `,
+    };
+    return this.transporter.sendMail(mailOptions).catch(e => console.error('[MAIL] Error aviso solicitud permiso:', e));
+  }
+
+  async sendLeaveStatusNotification(empleadoEmail: string, empleadoNombre: string, estado: string, tipoPermiso: string, comentario: string) {
+    const color = estado === 'aprobado' ? '#16a34a' : '#dc2626';
+    const mailOptions = {
+      from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,
+      to: empleadoEmail,
+      subject: `Estado de tu solicitud: ${estado.toUpperCase()}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #004f71; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Maya RCH</h1>
+          </div>
+          <div style="padding: 30px;">
+            <h2 style="color: #004f71;">Hola, ${empleadoNombre}</h2>
+            <p>Se ha procesado tu solicitud de <b>${tipoPermiso}</b>.</p>
+            <div style="text-align: center; margin: 25px 0;">
+              <span style="background-color: ${color}; color: white; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.1em; text-transform: uppercase;">${estado}</span>
+            </div>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>Observaciones:</strong> ${comentario || 'Sin comentarios adicionales.'}</p>
+            </div>
+          </div>
+        </div>
+      `,
+    };
+    return this.transporter.sendMail(mailOptions).catch(e => console.error('[MAIL] Error aviso estado permiso:', e));
+  }
+
+  async sendTimesheetRequestNotification(supervisorEmail: string, supervisorNombre: string, empleadoNombre: string, proyectoNombre: string, fecha: string, horas: number) {
+    const mailOptions = {
+      from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,
+      to: supervisorEmail,
+      subject: `Nuevo registro de tiempo: ${empleadoNombre}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #004f71; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Maya RCH</h1>
+          </div>
+          <div style="padding: 30px;">
+            <h2 style="color: #004f71;">Hola, ${supervisorNombre}</h2>
+            <p>El colaborador <b>${empleadoNombre}</b> ha registrado horas en un proyecto.</p>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p><strong>Proyecto:</strong> ${proyectoNombre}</p>
+              <p><strong>Fecha:</strong> ${fecha}</p>
+              <p><strong>Horas:</strong> ${horas}h</p>
+            </div>
+            <p>Ingresa al panel de supervisor para validar este registro.</p>
+          </div>
+        </div>
+      `,
+    };
+    return this.transporter.sendMail(mailOptions).catch(e => console.error('[MAIL] Error aviso registro tiempo:', e));
+  }
+
+  async sendTimesheetStatusNotification(empleadoEmail: string, empleadoNombre: string, estado: string, proyectoNombre: string, fecha: string, comentario: string) {
+    const color = estado === 'aprobado' ? '#16a34a' : '#dc2626';
+    const mailOptions = {
+      from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,
+      to: empleadoEmail,
+      subject: `Estado de registro de tiempo: ${estado.toUpperCase()}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #004f71; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Maya RCH</h1>
+          </div>
+          <div style="padding: 30px;">
+            <h2 style="color: #004f71;">Hola, ${empleadoNombre}</h2>
+            <p>Se ha revisado tu registro de tiempo del día <b>${fecha}</b> en el proyecto <b>${proyectoNombre}</b>.</p>
+            <div style="text-align: center; margin: 25px 0;">
+              <span style="background-color: ${color}; color: white; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.1em; text-transform: uppercase;">${estado}</span>
+            </div>
+            ${comentario ? `
+              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <p><strong>Comentarios:</strong> ${comentario}</p>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `,
+    };
+    return this.transporter.sendMail(mailOptions).catch(e => console.error('[MAIL] Error aviso estado tiempo:', e));
+  }
+
   async sendWelcomeEmail(to: string, nombre: string, usuario: string, clave: string) {
     const mailOptions = {
       from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,

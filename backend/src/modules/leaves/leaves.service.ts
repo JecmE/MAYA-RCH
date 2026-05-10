@@ -10,6 +10,7 @@ import { Empleado } from '../../entities/empleado.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { AdjuntoSolicitud } from '../../entities/adjunto-solicitud.entity';
 import { NoticesService } from '../notices/notices.service';
+import { MailService } from '../mail/mail.service';
 import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -34,6 +35,7 @@ export class LeavesService {
     @InjectRepository(AdjuntoSolicitud)
     private adjuntoRepository: Repository<AdjuntoSolicitud>,
     private noticesService: NoticesService,
+    private mailService: MailService,
     private dataSource: DataSource,
   ) {}
 
@@ -139,15 +141,43 @@ export class LeavesService {
     solicitud.estado = SolicitudPermiso.ESTADO_APROBADO;
     await this.solicitudRepository.save(solicitud);
     await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'aprobado', comentario, fechaHora: new Date() });
+
+    // NOTIFICACIÓN POR CORREO
+    if (solicitud.empleado?.email) {
+      await this.mailService.sendLeaveStatusNotification(
+        solicitud.empleado.email,
+        `${solicitud.empleado.nombres} ${solicitud.empleado.apellidos}`,
+        'aprobado',
+        solicitud.tipoPermiso?.nombre || 'Permiso',
+        comentario
+      );
+    }
+
     return { message: 'Solicitud aprobada' };
   }
 
   async rejectRequest(solicitudId: number, comentario: string, usuarioId: number) {
-    const solicitud = await this.solicitudRepository.findOne({ where: { solicitudId } });
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { solicitudId },
+      relations: ['empleado', 'tipoPermiso']
+    });
     if (!solicitud || solicitud.estado !== SolicitudPermiso.ESTADO_PENDIENTE) throw new BadRequestException('Solicitud no válida');
+
     solicitud.estado = SolicitudPermiso.ESTADO_RECHAZADO;
     await this.solicitudRepository.save(solicitud);
     await this.decisionRepository.save({ solicitudId, usuarioId, decision: 'rechazado', comentario, fechaHora: new Date() });
+
+    // NOTIFICACIÓN POR CORREO
+    if (solicitud.empleado?.email) {
+      await this.mailService.sendLeaveStatusNotification(
+        solicitud.empleado.email,
+        `${solicitud.empleado.nombres} ${solicitud.empleado.apellidos}`,
+        'rechazado',
+        solicitud.tipoPermiso?.nombre || 'Permiso',
+        comentario
+      );
+    }
+
     return { message: 'Solicitud rechazada' };
   }
 
@@ -219,6 +249,29 @@ export class LeavesService {
 
     const saved = await this.solicitudRepository.save(solicitud);
     const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+
+    // NOTIFICACIÓN AL SUPERVISOR
+    try {
+      const emp = await this.empleadoRepository.findOne({
+        where: { empleadoId },
+        relations: ['supervisor']
+      });
+      const tipo = await this.tipoPermisoRepository.findOne({ where: { tipoPermisoId: datosSolicitud.tipoPermisoId } });
+
+      if (emp?.supervisor?.email) {
+        await this.mailService.sendLeaveRequestNotification(
+          emp.supervisor.email,
+          `${emp.supervisor.nombres} ${emp.supervisor.apellidos}`,
+          `${emp.nombres} ${emp.apellidos}`,
+          tipo?.nombre || 'Permiso',
+          new Date(datosSolicitud.fechaInicio).toLocaleDateString(),
+          new Date(datosSolicitud.fechaFin).toLocaleDateString(),
+          datosSolicitud.motivo
+        );
+      }
+    } catch (e) {
+      console.error('[MAIL] Error enviando aviso a supervisor:', e);
+    }
 
     // SI HAY ARCHIVO, PROCESARLO
     if (archivo && nombreArchivo) {
