@@ -434,20 +434,27 @@ export class AdminService implements OnModuleInit {
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
 
-    const [activos, tardias, permisos, kpis] = await Promise.all([
+    const [activos, tardias, permisos, kpis, vacaciones, elegiblesBono] = await Promise.all([
       this.empleadoRepository.count({ where: { activo: true } }),
       this.registroAsistenciaRepository.count({ where: { fecha: Between(startOfToday, now) as any, minutosTardia: MoreThan(0) } }),
       this.solicitudPermisoRepository.count({ where: { estado: 'pendiente' } }),
-      this.kpiMensualRepository.find({ where: { mes: month, anio: year } })
+      this.kpiMensualRepository.find({ where: { mes: month, anio: year } }),
+      this.solicitudPermisoRepository.createQueryBuilder('sp')
+        .innerJoin('sp.tipoPermiso', 'tp')
+        .where('sp.estado = :estado', { estado: 'aprobado' })
+        .andWhere('tp.nombre LIKE :vac', { vac: '%Vacación%' })
+        .andWhere(':hoy BETWEEN sp.fecha_inicio AND sp.fecha_fin', { hoy: startOfToday.toISOString().split('T')[0] })
+        .getCount(),
+      this.bonoResultadoRepository.count({ where: { mes: month, anio: year, elegible: true } })
     ]);
 
     return {
       empleadosActivos: activos,
       tardiasHoy: tardias,
       permisosPendientes: permisos,
-      vacacionesActivas: 0,
+      vacacionesActivas: vacaciones,
       empleadosEnRiesgo: kpis.filter(k => k.clasificacion === 'En riesgo').length,
-      elegiblesBono: 0
+      elegiblesBono: elegiblesBono
     };
   }
 

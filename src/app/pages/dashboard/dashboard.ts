@@ -352,12 +352,23 @@ export class Dashboard implements OnInit, OnDestroy {
     if (!this.horaSalidaTurno) { this.checkOutDisabledReason = 'Sin turno asignado.'; return; }
 
     const [hSal, mSal] = this.horaSalidaTurno.split(':').map(Number);
-    let expectedSal = new Date(now); expectedSal.setHours(hSal, mSal, 0, 0);
+    let expectedSal = new Date(now);
+    expectedSal.setHours(hSal, mSal, 0, 0);
 
-    if (this.isNocturnalShift() && now.getHours() >= Number(this.horaEntradaTurno.split(':')[0])) expectedSal.setDate(expectedSal.getDate() + 1);
+    // Permitir marcar salida desde 5 minutos antes de la hora oficial
+    const earlyAccess = new Date(expectedSal);
+    earlyAccess.setMinutes(earlyAccess.getMinutes() - 5);
 
-    if (now < expectedSal) this.checkOutDisabledReason = `Salida disponible desde las ${this.formatShiftTime(this.horaSalidaTurno)}`;
-    else this.canCheckOut = true;
+    if (this.isNocturnalShift() && now.getHours() >= Number(this.horaEntradaTurno.split(':')[0])) {
+      expectedSal.setDate(expectedSal.getDate() + 1);
+      earlyAccess.setDate(earlyAccess.getDate() + 1);
+    }
+
+    if (now < earlyAccess) {
+      this.checkOutDisabledReason = `Salida disponible desde las ${this.formatShiftTime(this.horaSalidaTurno)}`;
+    } else {
+      this.canCheckOut = true;
+    }
   }
 
   private getFormattedTime(date: Date): string { return date.toTimeString().substring(0, 8); }
