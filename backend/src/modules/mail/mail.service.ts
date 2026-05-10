@@ -102,6 +102,7 @@ export class MailService {
   }
 
   async sendTimesheetRequestNotification(supervisorEmail: string, supervisorNombre: string, empleadoNombre: string, proyectoNombre: string, fecha: string, horas: number) {
+    const fechaFormateada = this.formatMailDate(fecha);
     const mailOptions = {
       from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,
       to: supervisorEmail,
@@ -116,7 +117,7 @@ export class MailService {
             <p>El colaborador <b>${empleadoNombre}</b> ha registrado horas en un proyecto.</p>
             <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <p><strong>Proyecto:</strong> ${proyectoNombre}</p>
-              <p><strong>Fecha:</strong> ${fecha}</p>
+              <p><strong>Fecha:</strong> ${fechaFormateada}</p>
               <p><strong>Horas:</strong> ${horas}h</p>
             </div>
             <p>Ingresa al panel de supervisor para validar este registro.</p>
@@ -129,6 +130,8 @@ export class MailService {
 
   async sendTimesheetStatusNotification(empleadoEmail: string, empleadoNombre: string, estado: string, proyectoNombre: string, fecha: string, comentario: string) {
     const color = estado === 'aprobado' ? '#16a34a' : '#dc2626';
+    const fechaFormateada = this.formatMailDate(fecha);
+
     const mailOptions = {
       from: `"Maya RCH - Notificaciones" <${this.configService.get('MAIL_USER')}>`,
       to: empleadoEmail,
@@ -140,7 +143,7 @@ export class MailService {
           </div>
           <div style="padding: 30px;">
             <h2 style="color: #004f71;">Hola, ${empleadoNombre}</h2>
-            <p>Se ha revisado tu registro de tiempo del día <b>${fecha}</b> en el proyecto <b>${proyectoNombre}</b>.</p>
+            <p>Se ha revisado tu registro de tiempo del día <b>${fechaFormateada}</b> en el proyecto <b>${proyectoNombre}</b>.</p>
             <div style="text-align: center; margin: 25px 0;">
               <span style="background-color: ${color}; color: white; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.1em; text-transform: uppercase;">${estado}</span>
             </div>
@@ -154,6 +157,21 @@ export class MailService {
       `,
     };
     return this.transporter.sendMail(mailOptions).catch(e => console.error('[MAIL] Error aviso estado tiempo:', e));
+  }
+
+  private formatMailDate(dateInput: any): string {
+    if (!dateInput) return '---';
+    try {
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return dateInput;
+      // Usamos UTC para evitar desfases si solo es fecha sin hora
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const year = d.getUTCFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (e) {
+      return dateInput;
+    }
   }
 
   async sendWelcomeEmail(to: string, nombre: string, usuario: string, clave: string) {
