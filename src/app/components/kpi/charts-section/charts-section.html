@@ -13,7 +13,7 @@
                 [style.height.%]="item.cumplimientoPct"
               >
                 <div class="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded">
-                  {{ item.cumplimientoPct }}%
+                  {{ item.cumplimientoPct | number:'1.2-2' }}%
                 </div>
               </div>
             </div>
@@ -36,7 +36,7 @@
           <div class="flex flex-col gap-1">
             <div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase">
               <span>{{ getMonthShortName(item.mes!) }} {{ item.anio }}</span>
-              <span>{{ item.horasTrabajadas }}h / {{ item.horasEsperadas }}h</span>
+              <span>{{ item.horasTrabajadas | number:'1.2-2' }}h / {{ item.horasEsperadas | number:'1.2-2' }}h</span>
             </div>
             <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
               <div
@@ -73,7 +73,7 @@
       </svg>
       <div class="absolute flex flex-col items-center">
         <span class="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1">Puntuación</span>
-        <span class="text-5xl font-light text-slate-800">{{ currentKpi?.cumplimientoPct || '0.0' }}</span>
+        <span class="text-5xl font-light text-slate-800">{{ currentKpi?.cumplimientoPct | number:'1.2-2' }}</span>
         <span class="text-xs font-bold mt-2 px-2 py-0.5 rounded text-white bg-slate-800 uppercase tracking-tighter">
           {{ currentKpi?.clasificacion || 'N/A' }}
         </span>

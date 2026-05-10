@@ -36,13 +36,13 @@ export class TopCards implements OnInit {
           { label: 'Faltas', value: kpi.faltas?.toString() || '0' },
           {
             label: 'Horas esperadas',
-            value: kpi.horasEsperadas ? `${kpi.horasEsperadas} h` : '0 h',
+            value: kpi.horasEsperadas ? `${Number(kpi.horasEsperadas).toFixed(2)} h` : '0.00 h',
           },
           {
             label: 'Horas trabajadas',
-            value: kpi.horasTrabajadas ? `${kpi.horasTrabajadas} h` : '0 h',
+            value: kpi.horasTrabajadas ? `${Number(kpi.horasTrabajadas).toFixed(2)} h` : '0.00 h',
           },
-          { label: 'Cumplimiento', value: kpi.cumplimientoPct ? `${kpi.cumplimientoPct}%` : '0%' },
+          { label: 'Cumplimiento', value: kpi.cumplimientoPct ? `${Number(kpi.cumplimientoPct).toFixed(2)}%` : '0.00%' },
           { label: 'Clasificación', value: kpi.clasificacion || 'N/A' },
         ];
         this.cdr.detectChanges();
