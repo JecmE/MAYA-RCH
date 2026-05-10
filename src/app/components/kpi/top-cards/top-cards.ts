@@ -1,11 +1,11 @@
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { KpiService, KpiDashboard } from '../../../services/kpi.service';
 
 @Component({
   selector: 'app-top-cards',
   standalone: true,
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './top-cards.html',
   styleUrl: './top-cards.css',
 })
