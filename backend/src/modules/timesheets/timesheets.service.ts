@@ -76,7 +76,24 @@ export class TimesheetsService {
     if (ids.length === 0) return [];
     const where: any = { empleadoId: In(ids) };
     if (start && end) where.fecha = Between(start, end);
-    return await this.tiempoRepository.find({ where, relations: ['empleado', 'proyecto'] });
+
+    const regs = await this.tiempoRepository.find({
+      where,
+      relations: ['empleado', 'proyecto'],
+      order: { fecha: 'DESC', tiempoId: 'DESC' }
+    });
+
+    return regs.map(r => ({
+      tiempoId: r.tiempoId,
+      empleadoId: r.empleadoId,
+      nombreCompleto: r.empleado ? `${r.empleado.nombres} ${r.empleado.apellidos}` : 'N/A',
+      proyectoId: r.proyectoId,
+      nombreProyecto: r.proyecto?.nombre || 'N/A',
+      fecha: r.fecha,
+      horas: Number(r.horas),
+      actividadDescripcion: r.actividadDescripcion,
+      estado: r.estado
+    }));
   }
 
   async approve(id: number, comentario: string, usuarioId: number) {
