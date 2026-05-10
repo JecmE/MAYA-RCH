@@ -451,13 +451,15 @@ export class AdminService implements OnModuleInit {
         .getRawOne()
     ]);
 
+    const finalBonoCount = bonoRes && bonoRes.cnt ? parseInt(bonoRes.cnt) : 0;
+
     return {
       empleadosActivos: activos,
       tardiasHoy: tardias,
       permisosPendientes: permisos,
       vacacionesActivas: vacaciones,
-      empleadosEnRiesgo: kpis.filter(k => k.clasificacion === 'En riesgo' || k.clasificacion === 'Riesgo').length,
-      elegiblesBono: Number(bonoRes?.cnt || 0)
+      empleadosEnRiesgo: kpis.filter(k => k.clasificacion === 'En riesgo' || k.clasificacion === 'En Riesgo' || k.clasificacion === 'Riesgo').length,
+      elegiblesBono: finalBonoCount
     };
   }
 
