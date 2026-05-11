@@ -81,9 +81,21 @@ export class App implements OnInit, OnDestroy {
             if (now >= expMillis) {
                 console.warn('EXPULSIÓN: Llave JWT caducada.');
                 this.handleSessionTimeout();
+                return;
             }
         } catch (e) {}
     }
+
+    // 3. VALIDACIÓN DE SESIÓN EN TIEMPO REAL (REVISIÓN CONTRA BASE DE DATOS)
+    // Esto detecta inmediatamente si el Admin invalidó la sesión o bloqueó al usuario
+    this.authService.getCurrentUser().subscribe({
+      error: (error) => {
+        if (error.status === 401) {
+          console.warn('EXPULSIÓN: Sesión invalidada por administrador.');
+          this.handleSessionTimeout();
+        }
+      }
+    });
   }
 
   private handleSessionTimeout(): void {
