@@ -28,7 +28,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { usuarioId: payload.usuarioId },
     });
 
-    if (!user || user.estado !== 'activo' || user.sessionVersion !== payload.sessionVersion) {
+    // Validamos:
+    // 1. Que el usuario exista
+    // 2. Que esté activo
+    // 3. Que la versión de sesión del token coincida con la de la BD
+    // (Usamos 0 por defecto si la versión es null para que la comparación sea válida)
+    const dbVersion = user?.sessionVersion ?? 0;
+    const tokenVersion = payload.sessionVersion ?? 0;
+
+    if (!user || user.estado !== 'activo' || dbVersion !== tokenVersion) {
+      console.log(`[AUTH] Bloqueando acceso a @${payload.username}: Sesión invalidada o cuenta bloqueada.`);
       throw new UnauthorizedException('La sesión ha expirado o la cuenta fue invalidada.');
     }
 

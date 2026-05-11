@@ -228,7 +228,10 @@ export class AdminService implements OnModuleInit {
     const dbStatus = status === 'inactivo' ? 'bloqueado' : 'activo';
     // Si se bloquea, incrementamos sessionVersion para invalidar JWTs existentes
     if (dbStatus === 'bloqueado') {
-        await this.usuarioRepository.update(id, { estado: dbStatus, sessionVersion: () => 'session_version + 1' });
+        await this.usuarioRepository.update(id, {
+          estado: dbStatus,
+          sessionVersion: () => 'ISNULL(session_version, 0) + 1'
+        });
     } else {
         await this.usuarioRepository.update(id, { estado: dbStatus });
     }
@@ -237,7 +240,9 @@ export class AdminService implements OnModuleInit {
   }
 
   async invalidateUserSession(id: number, uid: number) {
-    await this.usuarioRepository.update(id, { sessionVersion: () => 'session_version + 1' });
+    await this.usuarioRepository.update(id, {
+      sessionVersion: () => 'ISNULL(session_version, 0) + 1'
+    });
     const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
     await this.logAction({ modulo: 'ADMIN', accion: 'INVALIDATE_SESSION', entidad: 'USUARIO', entidadId: id, detalle: `Sesión de @${user?.username} invalidada.` }, uid);
     return { message: 'OK' };
