@@ -43,9 +43,11 @@ export class SettingsService {
   }
 
   refreshSettings(): void {
-    // No pedir nada si no estamos en navegador, si no hay sesión o si estamos en login/recuperación
+    if (!this.isBrowser || !this.authService.isAuthenticated()) return;
+
+    // No pedir nada si estamos en login/recuperación (aunque isAuthenticated debería ser falso)
     const isAuthPage = this.router.url.includes('/login') || this.router.url.includes('/forgot-password');
-    if (!this.isBrowser || !this.authService.isAuthenticated() || isAuthPage) return;
+    if (isAuthPage) return;
 
     this.adminService.getKpiParameters().subscribe({
       next: (params) => {
@@ -60,9 +62,10 @@ export class SettingsService {
           sessionInactivityMinutes: params['tiempo_sesion'] ? parseInt(params['tiempo_sesion']) : 480
         };
         this.settingsSubject.next(settings);
+        console.log('[SETTINGS] Parámetros cargados:', settings);
       },
       error: () => {
-        // Fallback silencioso si falla la petición inicial
+        console.error('[SETTINGS] Error al cargar parámetros globales.');
       }
     });
   }

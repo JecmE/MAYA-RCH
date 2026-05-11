@@ -16,6 +16,9 @@ export class App implements OnInit, OnDestroy {
   private isBrowser: boolean;
   private lastActivityTimestamp: number = Date.now();
 
+  private isLoggingOut = false;
+  private isChecking = false;
+
   constructor(
     private authService: AuthService,
     private settingsService: SettingsService,
@@ -29,7 +32,7 @@ export class App implements OnInit, OnDestroy {
     if (this.isBrowser) {
         // GUARDIÁN UNIFICADO (REVISIÓN CADA 2 SEGUNDOS)
         this.checkIntervalSub = interval(2000).subscribe(() => {
-            if (this.authService.isAuthenticated()) {
+            if (this.authService.isAuthenticated() && !this.isLoggingOut && !this.isChecking) {
                 this.checkSecurityPolicies();
             }
         });
@@ -58,8 +61,9 @@ export class App implements OnInit, OnDestroy {
   }
 
   private checkSecurityPolicies(): void {
-    if (!this.isBrowser) return;
+    if (!this.isBrowser || this.isLoggingOut || this.isChecking) return;
 
+    this.isChecking = true;
     const now = Date.now();
 
     // 1. VALIDAR INACTIVIDAD (TIEMPO DE SESIÓN ACTIVA)
@@ -67,8 +71,9 @@ export class App implements OnInit, OnDestroy {
     const inactivityLimitMillis = inactivityLimitMinutes * 60 * 1000;
 
     if (now - this.lastActivityTimestamp >= inactivityLimitMillis) {
-        console.warn('EXPULSIÓN: Sesión cerrada por inactividad prolongada.');
-        this.handleSessionTimeout();
+        console.warn(`EXPULSIÓN: Inactividad detectada (${inactivityLimitMinutes} min).`);
+        this.handleSessionTimeout('inactivity');
+        this.isChecking = false;
         return;
     }
 
@@ -80,29 +85,34 @@ export class App implements OnInit, OnDestroy {
             const expMillis = payload.exp * 1000;
             if (now >= expMillis) {
                 console.warn('EXPULSIÓN: Llave JWT caducada.');
-                this.handleSessionTimeout();
+                this.handleSessionTimeout('expired');
+                this.isChecking = false;
                 return;
             }
         } catch (e) {}
     }
 
     // 3. VALIDACIÓN DE SESIÓN EN TIEMPO REAL (REVISIÓN CONTRA BASE DE DATOS)
-    // Esto detecta inmediatamente si el Admin invalidó la sesión o bloqueó al usuario
     this.authService.getCurrentUser().subscribe({
+      next: () => {
+        this.isChecking = false;
+      },
       error: (error) => {
-        if (error.status === 401) {
-          console.warn('EXPULSIÓN: Sesión invalidada por administrador.');
-          this.handleSessionTimeout();
+        this.isChecking = false;
+        if (error.status === 401 && !this.isLoggingOut) {
+          console.warn('EXPULSIÓN: Sesión invalidada por servidor.');
+          this.handleSessionTimeout('invalid');
         }
       }
     });
   }
 
-  private handleSessionTimeout(): void {
-    if (this.isBrowser) {
+  private handleSessionTimeout(reason: string): void {
+    if (this.isBrowser && !this.isLoggingOut) {
+        this.isLoggingOut = true;
         localStorage.clear();
         this.authService.logout();
-        this.router.navigate(['/login'], { queryParams: { expired: 'true' } });
+        this.router.navigate(['/login'], { queryParams: { expired: 'true', reason } });
     }
   }
 }
