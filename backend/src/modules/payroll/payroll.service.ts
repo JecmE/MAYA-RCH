@@ -36,13 +36,14 @@ export class PayrollService {
 
   private async getPayrollParameters() {
     const params = await this.parametroRepository.find({
-      where: { clave: In(['igss_laboral', 'igss_patronal', 'bono_decreto']), activo: true }
+      where: { clave: In(['igss_laboral', 'igss_patronal', 'bono_decreto', 'tarifa_hora_general']), activo: true }
     });
     const map = new Map(params.map(p => [p.clave, p.valor]));
     return {
       igssLaboral: Number(map.get('igss_laboral') || 4.83) / 100,
       igssPatronal: Number(map.get('igss_patronal') || 12.67) / 100,
-      bonoDecreto: Number(map.get('bono_decreto') || 250)
+      bonoDecreto: Number(map.get('bono_decreto') || 250),
+      tarifaHoraGeneral: Number(map.get('tarifa_hora_general') || 50)
     };
   }
 
@@ -88,7 +89,8 @@ export class PayrollService {
       });
 
       const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
-      const montoSalario = horas * (Number(emp.tarifaHora) || 45.5);
+      // USAR TARIFA GENERAL CONFIGURADA
+      const montoSalario = horas * config.tarifaHoraGeneral;
 
       const bonoReal = await this.bonoRepository.findOne({
         where: { empleadoId: emp.empleadoId, mes: month, anio: year },
@@ -153,7 +155,8 @@ export class PayrollService {
     });
 
     const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
-    const montoSalario = horas * (Number(emp?.tarifaHora) || 45.5);
+    // USAR TARIFA GENERAL CONFIGURADA
+    const montoSalario = horas * config.tarifaHoraGeneral;
 
     const bonoReal = await this.bonoRepository.findOne({
       where: { empleadoId, mes: month, anio: year },
@@ -207,7 +210,7 @@ export class PayrollService {
 
     const seenYearMonths = new Set<string>();
     const periodsToDelete = [];
-    
+
     // 1. Close past periods and detect duplicates
     for (const p of allPeriods) {
       let pYearMonth = '';
@@ -231,7 +234,7 @@ export class PayrollService {
           }
         }
       }
-      
+
       if (p.estado === PeriodoPlanilla.ESTADO_ABIERTO && pYearMonth < currentYearMonth) {
         p.estado = PeriodoPlanilla.ESTADO_CERRADO;
         await this.periodoRepository.save(p);
@@ -250,7 +253,7 @@ export class PayrollService {
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const endOfCurrentMonth = new Date(Date.UTC(currentYear, currentMonth + 1, 0));
       const startOfCurrentMonth = new Date(Date.UTC(currentYear, currentMonth, 1));
-      
+
       const newPeriod = this.periodoRepository.create({
         nombre: `${meses[currentMonth]} ${currentYear}`,
         fechaInicio: startOfCurrentMonth,

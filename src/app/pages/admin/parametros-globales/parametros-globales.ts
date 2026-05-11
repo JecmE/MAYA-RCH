@@ -58,6 +58,7 @@ export class ParametrosGlobales implements OnInit {
   igssLaboral = 4.83;
   igssPatronal = 12.67;
   bonificacionDecreto = 250;
+  tarifaHoraGeneral = 50;
 
   // Generales
   monedaSistema = 'GTQ - Quetzal Guatemalteco';
@@ -106,6 +107,7 @@ export class ParametrosGlobales implements OnInit {
         if (params['igss_laboral']) this.igssLaboral = Number(params['igss_laboral']);
         if (params['igss_patronal']) this.igssPatronal = Number(params['igss_patronal']);
         if (params['bono_decreto']) this.bonificacionDecreto = Number(params['bono_decreto']);
+        if (params['tarifa_hora_general']) this.tarifaHoraGeneral = Number(params['tarifa_hora_general']);
 
         // Generales
         if (params['moneda_sistema']) this.monedaSistema = params['moneda_sistema'];
@@ -207,6 +209,7 @@ export class ParametrosGlobales implements OnInit {
         payload.igss_laboral = this.igssLaboral.toString();
         payload.igss_patronal = this.igssPatronal.toString();
         payload.bono_decreto = this.bonificacionDecreto.toString();
+        payload.tarifa_hora_general = this.tarifaHoraGeneral.toString();
     } else if (this.activeTab === 'generales') {
         payload.moneda_sistema = this.monedaSistema;
         payload.zona_horaria = this.zonaHoraria;

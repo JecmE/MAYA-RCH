@@ -165,7 +165,7 @@ export class Seguridad implements OnInit {
     if (confirm(`¿Restablecer la contraseña de @${sesion.usuario}?`)) {
         this.adminService.resetPassword(sesion.usuarioId).subscribe({
             next: () => {
-                this.mostrarNotificacion(`🔑 ÉXITO: Contraseña de @${sesion.usuario} restablecida a: Test1234`);
+                this.mostrarNotificacion(`ÉXITO: Contraseña generada y enviada al correo de @${sesion.usuario}`);
             }
         });
     }
