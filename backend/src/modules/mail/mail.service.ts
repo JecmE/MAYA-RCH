@@ -164,7 +164,6 @@ export class MailService {
     try {
       const d = new Date(dateInput);
       if (isNaN(d.getTime())) return dateInput;
-      // Usamos UTC para evitar desfases si solo es fecha sin hora
       const day = String(d.getUTCDate()).padStart(2, '0');
       const month = String(d.getUTCMonth() + 1).padStart(2, '0');
       const year = d.getUTCFullYear();

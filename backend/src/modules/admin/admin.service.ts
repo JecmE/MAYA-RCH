@@ -65,106 +65,9 @@ export class AdminService implements OnModuleInit {
   async onModuleInit() {
     try {
       await this.ensureCorrectTableStructures();
-
-      // 1. LIMPIEZA DRÁSTICA: Borrar registros generados automáticamente que quedaron con horas negativas
-      console.log('[CLEANUP] Eliminando registros de asistencia negativos previos...');
-      // Eliminamos primero los ajustes relacionados para evitar error de llave foránea
-      await this.dataSource.query(`
-        DELETE FROM AJUSTE_ASISTENCIA
-        WHERE asistencia_id IN (SELECT asistencia_id FROM REGISTRO_ASISTENCIA WHERE horas_trabajadas < 0)
-      `);
-      await this.dataSource.query(`DELETE FROM REGISTRO_ASISTENCIA WHERE horas_trabajadas < 0`);
-
-      // 2. SEED DATA: Generar registros de prueba del 1 al 18 de mayo 2026 (Corregido para nocturnos)
-      await this.seedAttendanceData();
     } catch (e) {
       console.error('[ADMIN] Error en inicialización:', e);
     }
-  }
-
-  private async seedAttendanceData() {
-    const activeEmployees = await this.empleadoRepository.find({ where: { activo: true } });
-    const startDate = '2026-05-01';
-    const endDate = '2026-05-18';
-
-    const [sy, sm, sd] = startDate.split('-').map(Number);
-    const [ey, em, ed] = endDate.split('-').map(Number);
-    const startObj = new Date(Date.UTC(sy, sm - 1, sd));
-    const endObj = new Date(Date.UTC(ey, em - 1, ed));
-
-    console.log(`[SEED] Iniciando generación de asistencia para ${activeEmployees.length} empleados...`);
-
-    for (const emp of activeEmployees) {
-      const assignment = await this.empleadoTurnoRepository.findOne({
-        where: { empleadoId: emp.empleadoId, activo: true },
-        relations: ['turno']
-      });
-
-      if (!assignment || !assignment.turno) continue;
-
-      const turno = assignment.turno;
-      const workDays = turno.dias ? turno.dias.split(',') : ['Lun','Mar','Mie','Jue','Vie'];
-      const dayMap = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab' };
-
-      let current = new Date(startObj);
-      while (current <= endObj) {
-        const dayName = dayMap[current.getUTCDay()];
-        if (workDays.includes(dayName)) {
-           const dateStr = current.toISOString().split('T')[0];
-
-           // Verificación proactiva para evitar duplicados (UQ_ASISTENCIA_EMPLEADO_FECHA)
-           const existing = await this.registroAsistenciaRepository.findOne({
-             where: {
-               empleadoId: emp.empleadoId,
-               fecha: dateStr as any
-             }
-           });
-
-           if (!existing) {
-             try {
-               const record = new RegistroAsistencia();
-               record.empleadoId = emp.empleadoId;
-               record.empleadoTurnoId = assignment.empleadoTurnoId;
-               record.fecha = new Date(current);
-
-               // 15% de probabilidad de falta (Simulada no insertando registro)
-               if (Math.random() >= 0.15) {
-                  const [hIn, mIn] = turno.horaEntrada.split(':').map(Number);
-                  const [hOut, mOut] = turno.horaSalida.split(':').map(Number);
-
-                  let lateMins = 0;
-                  if (Math.random() < 0.30) { lateMins = Math.floor(Math.random() * 25) + 1; }
-
-                  const finalEntrance = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hIn + 6, mIn + lateMins, 0));
-
-                  // DETECCIÓN DE TURNO NOCTURNO: Si la hora de salida es menor a la de entrada, es el día siguiente
-                  let exitDay = current.getUTCDate();
-                  if (hOut < hIn) {
-                    exitDay += 1;
-                  }
-
-                  const finalExit = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), exitDay, hOut + 6, mOut + (Math.random() * 10 - 5), 0));
-
-                  record.horaEntradaReal = finalEntrance;
-                  record.horaSalidaReal = finalExit;
-                  record.minutosTardia = Math.max(0, lateMins - (turno.toleranciaMinutos || 0));
-
-                  const diffMs = finalExit.getTime() - finalEntrance.getTime();
-                  record.horasTrabajadas = Math.round((diffMs / 3600000) * 100) / 100;
-                  record.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-                  record.observacion = 'Generado automáticamente (Test)';
-                  await this.registroAsistenciaRepository.save(record);
-               }
-             } catch (e) {
-               console.warn(`[SEED] Registro omitido para evitar duplicados en ${dateStr}`);
-             }
-           }
-        }
-        current.setUTCDate(current.getUTCDate() + 1);
-      }
-      await this.kpiService.refreshEmployeeKpi(emp.empleadoId);
-    }
-    console.log(`[SEED] Finalizada generación de asistencia.`);
   }
 
   private async ensureCorrectTableStructures() {
@@ -183,8 +86,6 @@ export class AdminService implements OnModuleInit {
       fechaHora: new Date()
     });
   }
-
-  // --- PARAMETROS GLOBALES ---
 
   async getKpiParameters() {
     const p = await this.parametroRepository.find({ where: { activo: true } });
@@ -205,7 +106,6 @@ export class AdminService implements OnModuleInit {
                 saldo = this.vacacionSaldoRepository.create({ empleadoId: emp.empleadoId, diasDisponibles: newVal, diasUsados: 0, fechaCorte: new Date() });
             } else {
                 saldo.diasDisponibles = newVal;
-                // No reseteamos diasUsados para mantener el historial de consumo
             }
             await this.vacacionSaldoRepository.save(saldo);
             await this.vacacionMovimientoRepository.save({
@@ -232,7 +132,6 @@ export class AdminService implements OnModuleInit {
     return this.getKpiParameters();
   }
 
-  // --- CONFIGURACIÓN DE CORREO ---
   async testMailConnection() {
     return await this.mailService.testConnection();
   }
@@ -245,7 +144,6 @@ export class AdminService implements OnModuleInit {
     return res;
   }
 
-  // --- USUARIOS ---
   async getUsers() {
     const users = await this.usuarioRepository.find({
       relations: ['empleado', 'roles', 'empleado.supervisor'],
@@ -261,7 +159,7 @@ export class AdminService implements OnModuleInit {
       empleadoCodigo: u.empleado?.codigoEmpleado,
       empleadoId: u.empleadoId,
       supervisorId: u.empleado?.supervisorId,
-      supervisorNombre: u.empleado?.supervisor ? `${u.empleado.supervisor.nombres} ${u.empleado.supervisor.apellidos}` : 'No asignado',
+      supervisorNombre: u.empleado?.supervisor ? `${u.empleado.nombres} ${u.empleado.apellidos}` : 'No asignado',
       ultimoIp: u.ultimoIp || 'N/A'
     }));
   }
@@ -270,7 +168,6 @@ export class AdminService implements OnModuleInit {
     const existing = await this.usuarioRepository.findOne({ where: { username: dto.username } });
     if (existing) throw new BadRequestException('El identificador ya está en uso.');
 
-    // GENERAR CONTRASEÑA ALEATORIA
     const randomPassword = this.generateRandomPassword(10);
     const passwordHash = await bcrypt.hash(randomPassword, 10);
 
@@ -284,7 +181,6 @@ export class AdminService implements OnModuleInit {
     if (dto.bossId) await this.empleadoRepository.update(dto.empleadoId, { supervisorId: dto.bossId });
     if (dto.roleId) await this.dataSource.query(`INSERT INTO USUARIO_ROL (usuario_id, rol_id) VALUES (@0, @1)`, [user.usuarioId, dto.roleId]);
 
-    // ENVIAR CORREO DE BIENVENIDA
     const empleado = await this.empleadoRepository.findOne({ where: { empleadoId: dto.empleadoId } });
     if (empleado && empleado.email) {
       await this.mailService.sendWelcomeEmail(
@@ -327,7 +223,6 @@ export class AdminService implements OnModuleInit {
 
   async updateUserStatus(id: number, status: string, uid: number) {
     const dbStatus = status === 'inactivo' ? 'bloqueado' : 'activo';
-    // Si se bloquea, incrementamos sessionVersion para invalidar JWTs existentes
     if (dbStatus === 'bloqueado') {
         await this.usuarioRepository.update(id, {
           estado: dbStatus,
@@ -353,11 +248,9 @@ export class AdminService implements OnModuleInit {
     const user = await this.usuarioRepository.findOne({ where: { usuarioId: id } });
     if (!user) throw new NotFoundException('Cuenta no encontrada');
 
-    // LIMPIEZA MANUAL DE RELACIONES (CASCADA)
     await this.dataSource.query(`DELETE FROM USUARIO_ROL WHERE usuario_id = @0`, [id]);
     await this.dataSource.query(`DELETE FROM RESET_PASSWORD_TOKEN WHERE usuario_id = @0`, [id]);
 
-    // Desvincular de la bitácora para permitir el borrado (Manteniendo el rastro pero sin dueño)
     await this.dataSource.query(`UPDATE AUDIT_LOG SET usuario_id = NULL WHERE usuario_id = @0`, [id]);
 
     await this.usuarioRepository.delete(id);
@@ -374,10 +267,9 @@ export class AdminService implements OnModuleInit {
 
     await this.usuarioRepository.update(id, {
       passwordHash: hash,
-      cambioPasswordObligatorio: true // Forzar cambio al resetear
+      cambioPasswordObligatorio: true
     });
 
-    // ENVIAR CORREO CON LA NUEVA CLAVE (Plantilla de Reset)
     if (user.empleado && user.empleado.email) {
       await this.mailService.sendCredentialsResetEmail(
         user.empleado.email,
@@ -391,7 +283,6 @@ export class AdminService implements OnModuleInit {
     return { message: 'OK' };
   }
 
-  // --- SEGURIDAD (SOPORTE BACKEND) ---
   async getActiveSessions() {
     const users = await this.usuarioRepository.find({
       where: { ultimoLogin: MoreThan(new Date(Date.now() - 24 * 60 * 60 * 1000)) },
@@ -407,7 +298,6 @@ export class AdminService implements OnModuleInit {
     }));
   }
 
-  // --- OTROS MÓDULOS ---
   async getRoles() { return await this.rolRepository.find({ order: { nombre: 'ASC' } }); }
   async getRolePermissions(rolId: number) { const rol = await this.rolRepository.findOne({ where: { rolId } }); if (!rol) throw new NotFoundException('Rol no encontrado'); const dbPerms = await this.rolPermisoRepository.find({ where: { rolId } }); const finalPerms: RolPermiso[] = []; for (const modName of this.DEFAULT_MODULES) { let p = dbPerms.find(x => x.modulo.toLowerCase() === modName.toLowerCase()); if (!p) { p = new RolPermiso(); p.rolId = rolId; p.modulo = modName; p = await this.rolPermisoRepository.save(p); } finalPerms.push(p); } return finalPerms.sort((a, b) => a.modulo.localeCompare(b.modulo)); }
   async updateRolePermissions(rolId: number, perms: any[], uid: number) {
@@ -427,7 +317,6 @@ export class AdminService implements OnModuleInit {
   async assignShift(dto: any, uid: number) {
     const id = dto.empleadoTurnoId || dto.id;
 
-    // Limpieza de fechas para evitar error "Invalid date" en SQL Server
     const fechaInicio = dto.fechaInicio === '' ? null : dto.fechaInicio;
     const fechaFin = dto.fechaFin === '' ? null : dto.fechaFin;
 
@@ -437,7 +326,6 @@ export class AdminService implements OnModuleInit {
         ...(fechaFin && { fechaFin })
       });
     } else {
-      // DESACTIVAR TURNOS ANTERIORES PARA QUE SOLO QUEDE EL NUEVO
       if (dto.empleadoId) {
         await this.empleadoTurnoRepository.update({ empleadoId: dto.empleadoId, activo: true }, { activo: false });
       }
@@ -470,7 +358,6 @@ export class AdminService implements OnModuleInit {
             let elegible = true;
             let motivo = 'Cumple con todos los criterios';
 
-            // Validar contra límites de la regla
             if (rule.maxTardias !== null && kpi.tardias > rule.maxTardias) {
                 elegible = false;
                 motivo = `Excede límite de tardías (${kpi.tardias} > ${rule.maxTardias})`;
@@ -481,7 +368,6 @@ export class AdminService implements OnModuleInit {
                 elegible = false;
                 motivo = `No alcanza horas mínimas (${kpi.horasTrabajadas} < ${rule.minHoras})`;
             } else if (rule.minDiasTrabajados !== null && kpi.cumplimientoPct < rule.minDiasTrabajados) {
-                // AQUÍ LA CORRECCIÓN: Usar cumplimientoPct para el % de asistencia
                 elegible = false;
                 motivo = `Cumplimiento insuficiente (${kpi.cumplimientoPct}% < ${rule.minDiasTrabajados}%)`;
             }
@@ -591,7 +477,6 @@ export class AdminService implements OnModuleInit {
     };
   }
 
-  // --- MONITOREO REAL DEL SISTEMA ---
   async getSystemHealth() {
     const start = Date.now();
     let dbStatus = 'Conectado';
@@ -602,7 +487,6 @@ export class AdminService implements OnModuleInit {
         await this.dataSource.query('SELECT 1');
         dbLatency = Date.now() - start;
 
-        // Consultar tamaño real en Azure SQL
         const sizeQuery = await this.dataSource.query(`
             SELECT SUM(reserved_page_count) * 8.0 / 1024 as size_mb
             FROM sys.dm_db_partition_stats
@@ -612,13 +496,11 @@ export class AdminService implements OnModuleInit {
         dbStatus = 'Error de conexión';
     }
 
-    // Métricas del Proceso y Hardware Real
     const memory = process.memoryUsage();
     const cpu = process.cpuUsage();
     const totalMemBytes = os.totalmem();
     const cpuCores = os.cpus().length;
 
-    // Buscar incidencias críticas del día actual
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
@@ -630,7 +512,6 @@ export class AdminService implements OnModuleInit {
         order: { fechaHora: 'DESC' }
     });
 
-    // Contar correos enviados hoy
     const mailSentToday = await this.auditRepository.count({
         where: [
             { accion: Like('%MAIL%'), fechaHora: MoreThan(startOfToday) },
@@ -644,7 +525,7 @@ export class AdminService implements OnModuleInit {
             latency: dbLatency,
             type: 'Azure SQL Database',
             sizeMB: dbSizeMB,
-            maxSizeMB: 2048 // Supuesto para el plan básico de Azure
+            maxSizeMB: 2048
         },
         mailSentToday,
         server: {
@@ -687,14 +568,11 @@ export class AdminService implements OnModuleInit {
   }
 
   async forceSync(uid: number) {
-    // 1. Ejecutar Sincronización de Asistencia (Lógica real)
     await this.logAction({ modulo: 'SISTEMA', accion: 'SYNC_ATTENDANCE', entidad: 'ASISTENCIA', detalle: 'Sincronización manual de marcajes ejecutada.' }, uid);
 
-    // 2. Ejecutar Recálculo de KPIs
     await this.kpiService.globalRecalculateCurrentMonth();
     await this.logAction({ modulo: 'SISTEMA', accion: 'UPDATE_KPI_PARAMETERS', entidad: 'KPI', detalle: 'Robot de KPIs: Recálculo masivo completado.' }, uid);
 
-    // 3. Ejecutar Evaluación de Bonos
     const now = new Date();
     await this.runBonusEvaluation(now.getMonth() + 1, now.getFullYear(), uid);
 

@@ -23,16 +23,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token inválido');
     }
 
-    // VERIFICACIÓN DE SESIÓN ACTIVA (session_version)
     const user = await this.usuarioRepository.findOne({
       where: { usuarioId: payload.usuarioId },
     });
 
-    // Validamos:
-    // 1. Que el usuario exista
-    // 2. Que esté activo
-    // 3. Que la versión de sesión del token coincida con la de la BD
-    // (Usamos 0 por defecto si la versión es null para que la comparación sea válida)
     const dbVersion = user?.sessionVersion ?? 0;
     const tokenVersion = payload.sessionVersion ?? 0;
 

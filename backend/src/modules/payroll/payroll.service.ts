@@ -48,12 +48,10 @@ export class PayrollService {
   }
 
   private calculateIsr(montoGravable: number): number {
-    // Escalas de ISR Mensual (Guatemala)
     if (montoGravable <= 5000) return 0;
     if (montoGravable <= 15000) {
         return (montoGravable - 5000) * 0.05;
     }
-    // Para más de 15,000: El excedente de 15k paga 7%, y el tramo entre 5k y 15k paga 5%
     const isrTramo2 = (15000 - 5000) * 0.05;
     const isrTramo3 = (montoGravable - 15000) * 0.07;
     return isrTramo2 + isrTramo3;
@@ -89,7 +87,6 @@ export class PayrollService {
       });
 
       const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
-      // USAR TARIFA GENERAL CONFIGURADA
       const montoSalario = horas * config.tarifaHoraGeneral;
 
       const bonoReal = await this.bonoRepository.findOne({
@@ -101,13 +98,10 @@ export class PayrollService {
       const montoBonoDesempeno = bonoReal && bonoReal.elegible ? Number(bonoReal.reglaBono?.monto || 0) : 0;
       const montoBonoDecreto = config.bonoDecreto;
 
-      // Deducción IGSS
       const igss = Math.round(montoSalario * config.igssLaboral * 100) / 100;
 
-      // Cálculo de ISR (Simplificado: Salario - IGSS)
       const isr = Math.round(this.calculateIsr(montoSalario - igss) * 100) / 100;
 
-      // Salario Neto
       const neto = (montoSalario + montoBonoDesempeno + montoBonoDecreto) - (igss + isr);
 
       resultados.push({
@@ -155,7 +149,6 @@ export class PayrollService {
     });
 
     const horas = asistencias.reduce((sum, a) => sum + Number(a.horasTrabajadas || 0), 0);
-    // USAR TARIFA GENERAL CONFIGURADA
     const montoSalario = horas * config.tarifaHoraGeneral;
 
     const bonoReal = await this.bonoRepository.findOne({
@@ -211,7 +204,6 @@ export class PayrollService {
     const seenYearMonths = new Set<string>();
     const periodsToDelete = [];
 
-    // 1. Close past periods and detect duplicates
     for (const p of allPeriods) {
       let pYearMonth = '';
       if (p.fechaInicio instanceof Date) {
@@ -222,12 +214,10 @@ export class PayrollService {
 
       if (pYearMonth === currentYearMonth) {
         if (seenYearMonths.has(pYearMonth)) {
-          // It's a duplicate current month period (due to previous bug), delete it
           periodsToDelete.push(p);
           continue;
         } else {
           seenYearMonths.add(pYearMonth);
-          // If it was erroneously closed by the previous bug, re-open it
           if (p.estado === PeriodoPlanilla.ESTADO_CERRADO) {
             p.estado = PeriodoPlanilla.ESTADO_ABIERTO;
             await this.periodoRepository.save(p);
@@ -246,7 +236,6 @@ export class PayrollService {
       allPeriods = allPeriods.filter(p => !periodsToDelete.includes(p));
     }
 
-    // 2. Check if current month's period exists
     const currentPeriodExists = seenYearMonths.has(currentYearMonth);
 
     if (!currentPeriodExists) {

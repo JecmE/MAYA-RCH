@@ -42,7 +42,6 @@ export class KpiService {
 
     let kpi = await this.kpiRepository.findOne({ where: { empleadoId, mes: month, anio: year } });
 
-    // Si es el mes actual, siempre recalculamos para que los cambios de Admin se vean al instante
     if (!kpi || (month === now.getMonth() + 1 && year === now.getFullYear())) {
       kpi = await this.calculateKpi(empleadoId, month, year);
     }
@@ -103,7 +102,6 @@ export class KpiService {
 
     let clasificacion = 'En riesgo';
 
-    // Regla de Oro: Faltas o tardías excesivas bajan a riesgo inmediatamente
     const faltas = Math.max(0, diasEsperados - diasTrabajados);
 
     if (faltas > thresholds.maxFaltas || tardias > thresholds.maxTardias) {
@@ -131,7 +129,6 @@ export class KpiService {
     return this.kpiRepository.save(kpi);
   }
 
-  // MÉTODO PARA RECALCULAR TODO EL MES (LLAMADO DESDE ADMIN)
   async globalRecalculateCurrentMonth() {
     const now = new Date();
     const month = now.getMonth() + 1;

@@ -355,7 +355,6 @@ export class Dashboard implements OnInit, OnDestroy {
     let expectedSal = new Date(now);
     expectedSal.setHours(hSal, mSal, 0, 0);
 
-    // Permitir marcar salida desde 5 minutos antes de la hora oficial
     const earlyAccess = new Date(expectedSal);
     earlyAccess.setMinutes(earlyAccess.getMinutes() - 5);
 

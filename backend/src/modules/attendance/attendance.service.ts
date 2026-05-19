@@ -43,7 +43,6 @@ export class AttendanceService {
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const nowGT = new Date(utc - (3600000 * 6));
 
-    // Convert to Guatemala time components
     const h = nowGT.getHours();
     const m = nowGT.getMinutes();
     const today = new Date(nowGT.getFullYear(), nowGT.getMonth(), nowGT.getDate());
@@ -156,14 +155,11 @@ export class AttendanceService {
   async getAllAttendance(s?: string, e?: string) {
     const empleados = await this.empleadoRepository.find({ where: { activo: true } });
 
-    // Fechas por defecto si no vienen filtros
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const startStr = s || todayStr;
     const endStr = e || startStr;
 
-    // Usamos QueryBuilder para obtener la fecha formateada desde SQL Server
-    // Esto evita cualquier problema de zona horaria al comparar
     const regs = await this.asistenciaRepository.createQueryBuilder('asis')
       .select([
         'asis.asistenciaId as asistenciaId',
@@ -225,15 +221,12 @@ export class AttendanceService {
   async adjustAttendance(id: number, dto: any, user: number) {
     let asis: RegistroAsistencia;
 
-    // 1. Intentar encontrar el registro usando comparacion de texto para evitar desfases de zona horaria
     asis = await this.asistenciaRepository.createQueryBuilder('asis')
       .where('asis.empleadoId = :empId', { empId: dto.empleadoId })
       .andWhere("FORMAT(asis.fecha, 'yyyy-MM-dd') = :fecha", { fecha: dto.fecha })
       .getOne();
 
-    // 2. Si no existe (estaba Ausente), lo creamos forzando la fecha como string
     if (!asis) {
-      // Creamos el registro base
       const query = `
         INSERT INTO REGISTRO_ASISTENCIA (empleado_id, fecha, estado_jornada)
         VALUES (@0, @1, @2);
@@ -246,12 +239,10 @@ export class AttendanceService {
 
     if (!asis) throw new NotFoundException('No se pudo crear o encontrar el registro de asistencia');
 
-    const campo = dto.campo; // 'horaEntradaReal' o 'horaSalidaReal'
-    const valor = dto.valorNuevo; // 'HH:MM'
+    const campo = dto.campo;
+    const valor = dto.valorNuevo;
     const [hour, minute] = valor.split(':').map(Number);
 
-    // 3. Establecer la hora exacta con compensacion GT (UTC+6 para que el front vea la hora local)
-    // Usamos el string de la fecha para evitar que Date() se desfase
     const [y, m, d] = dto.fecha.split('-').map(Number);
     const finalDate = new Date(Date.UTC(y, m - 1, d, hour + 6, minute, 0));
 
@@ -264,7 +255,6 @@ export class AttendanceService {
 
     const asisGuardada = await this.asistenciaRepository.save(asis);
 
-    // 4. Registrar auditoria
     await this.ajusteRepository.save({
       asistenciaId: asisGuardada.asistenciaId,
       usuarioId: user,
@@ -275,7 +265,6 @@ export class AttendanceService {
       fechaHora: new Date()
     });
 
-    // 5. Recalcular KPIs
     try { await this.kpiService.refreshEmployeeKpi(asisGuardada.empleadoId); } catch (e) {}
 
     return asisGuardada;
