@@ -68,6 +68,11 @@ export class AdminService implements OnModuleInit {
 
       // 1. LIMPIEZA DRÁSTICA: Borrar registros generados automáticamente que quedaron con horas negativas
       console.log('[CLEANUP] Eliminando registros de asistencia negativos previos...');
+      // Eliminamos primero los ajustes relacionados para evitar error de llave foránea
+      await this.dataSource.query(`
+        DELETE FROM AJUSTE_ASISTENCIA
+        WHERE asistencia_id IN (SELECT asistencia_id FROM REGISTRO_ASISTENCIA WHERE horas_trabajadas < 0)
+      `);
       await this.dataSource.query(`DELETE FROM REGISTRO_ASISTENCIA WHERE horas_trabajadas < 0`);
 
       // 2. SEED DATA: Generar registros de prueba del 1 al 18 de mayo 2026 (Corregido para nocturnos)
