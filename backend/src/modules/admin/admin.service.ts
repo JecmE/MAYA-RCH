@@ -126,7 +126,14 @@ export class AdminService implements OnModuleInit {
                   if (Math.random() < 0.30) { lateMins = Math.floor(Math.random() * 25) + 1; }
 
                   const finalEntrance = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hIn + 6, mIn + lateMins, 0));
-                  const finalExit = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hOut + 6, mOut + (Math.random() * 10 - 5), 0));
+
+                  // DETECCIÓN DE TURNO NOCTURNO: Si la hora de salida es menor a la de entrada, es el día siguiente
+                  let exitDay = current.getUTCDate();
+                  if (hOut < hIn) {
+                    exitDay += 1;
+                  }
+
+                  const finalExit = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), exitDay, hOut + 6, mOut + (Math.random() * 10 - 5), 0));
 
                   record.horaEntradaReal = finalEntrance;
                   record.horaSalidaReal = finalExit;
