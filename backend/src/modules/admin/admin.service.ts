@@ -10,6 +10,7 @@ import {
   MoreThan,
   Not,
   In,
+  Raw,
 } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
