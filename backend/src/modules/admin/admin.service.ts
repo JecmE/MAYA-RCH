@@ -10,7 +10,6 @@ import {
   MoreThan,
   Not,
   In,
-  Raw,
 } from 'typeorm';
 import { Turno } from '../../entities/turno.entity';
 import { EmpleadoTurno } from '../../entities/empleado-turno.entity';
@@ -107,7 +106,7 @@ export class AdminService implements OnModuleInit {
            const existing = await this.registroAsistenciaRepository.findOne({
              where: {
                empleadoId: emp.empleadoId,
-               fecha: Raw(alias => `CAST(${alias} AS DATE) = :fecha`, { fecha: dateStr })
+               fecha: dateStr as any
              }
            });
 
