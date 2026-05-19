@@ -63,7 +63,91 @@ export class AdminService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    try { await this.ensureCorrectTableStructures(); } catch (e) {}
+    try {
+      await this.ensureCorrectTableStructures();
+      // SEED DATA: Generar registros de prueba del 1 al 8 de mayo 2026
+      await this.seedAttendanceData();
+    } catch (e) {
+      console.error('[ADMIN] Error en inicialización:', e);
+    }
+  }
+
+  private async seedAttendanceData() {
+    const activeEmployees = await this.empleadoRepository.find({ where: { activo: true } });
+    const startDate = '2026-05-01';
+    const endDate = '2026-05-18';
+
+    const [sy, sm, sd] = startDate.split('-').map(Number);
+    const [ey, em, ed] = endDate.split('-').map(Number);
+    const startObj = new Date(Date.UTC(sy, sm - 1, sd));
+    const endObj = new Date(Date.UTC(ey, em - 1, ed));
+
+    console.log(`[SEED] Iniciando generación de asistencia para ${activeEmployees.length} empleados...`);
+
+    for (const emp of activeEmployees) {
+      const assignment = await this.empleadoTurnoRepository.findOne({
+        where: { empleadoId: emp.empleadoId, activo: true },
+        relations: ['turno']
+      });
+
+      if (!assignment || !assignment.turno) continue;
+
+      const turno = assignment.turno;
+      const workDays = turno.dias ? turno.dias.split(',') : ['Lun','Mar','Mie','Jue','Vie'];
+      const dayMap = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mie', 4: 'Jue', 5: 'Vie', 6: 'Sab' };
+
+      let current = new Date(startObj);
+      while (current <= endObj) {
+        const dayName = dayMap[current.getUTCDay()];
+        if (workDays.includes(dayName)) {
+           const dateStr = current.toISOString().split('T')[0];
+
+           const existing = await this.registroAsistenciaRepository.createQueryBuilder('asis')
+             .where('asis.empleadoId = :empId', { empId: emp.empleadoId })
+             .andWhere("FORMAT(asis.fecha, 'yyyy-MM-dd') = :fecha", { fecha: dateStr })
+             .getOne();
+
+           if (!existing) {
+             const record = new RegistroAsistencia();
+             record.empleadoId = emp.empleadoId;
+             record.empleadoTurnoId = assignment.empleadoTurnoId;
+             record.fecha = new Date(current);
+
+             // 15% de probabilidad de falta
+             if (Math.random() < 0.15) {
+                record.estadoJornada = 'falta';
+                record.observacion = 'Ausencia (Seeded)';
+             } else {
+                const [hIn, mIn] = turno.horaEntrada.split(':').map(Number);
+                const [hOut, mOut] = turno.horaSalida.split(':').map(Number);
+
+                // 30% de probabilidad de llegar tarde (entre 1 y 25 mins)
+                let lateMins = 0;
+                if (Math.random() < 0.30) {
+                   lateMins = Math.floor(Math.random() * 25) + 1;
+                }
+
+                // Ajuste de 6 horas para GT (UTC-6)
+                const finalEntrance = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hIn + 6, mIn + lateMins, 0));
+                const finalExit = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hOut + 6, mOut + (Math.random() * 10 - 5), 0));
+
+                record.horaEntradaReal = finalEntrance;
+                record.horaSalidaReal = finalExit;
+                record.minutosTardia = Math.max(0, lateMins - (turno.toleranciaMinutos || 0));
+
+                const diffMs = finalExit.getTime() - finalEntrance.getTime();
+                record.horasTrabajadas = Math.round((diffMs / 3600000) * 100) / 100;
+                record.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
+                record.observacion = 'Generado automáticamente (Test)';
+             }
+             await this.registroAsistenciaRepository.save(record);
+           }
+        }
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+      await this.kpiService.refreshEmployeeKpi(emp.empleadoId);
+    }
+    console.log(`[SEED] Finalizada generación de asistencia.`);
   }
 
   private async ensureCorrectTableStructures() {
