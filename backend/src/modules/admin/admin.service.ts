@@ -102,43 +102,44 @@ export class AdminService implements OnModuleInit {
         if (workDays.includes(dayName)) {
            const dateStr = current.toISOString().split('T')[0];
 
-           const existing = await this.registroAsistenciaRepository.createQueryBuilder('asis')
-             .where('asis.empleadoId = :empId', { empId: emp.empleadoId })
-             .andWhere("FORMAT(asis.fecha, 'yyyy-MM-dd') = :fecha", { fecha: dateStr })
-             .getOne();
+           // Verificación proactiva para evitar duplicados (UQ_ASISTENCIA_EMPLEADO_FECHA)
+           const existing = await this.registroAsistenciaRepository.findOne({
+             where: {
+               empleadoId: emp.empleadoId,
+               fecha: Raw(alias => `CAST(${alias} AS DATE) = :fecha`, { fecha: dateStr })
+             }
+           });
 
            if (!existing) {
-             const record = new RegistroAsistencia();
-             record.empleadoId = emp.empleadoId;
-             record.empleadoTurnoId = assignment.empleadoTurnoId;
-             record.fecha = new Date(current);
+             try {
+               const record = new RegistroAsistencia();
+               record.empleadoId = emp.empleadoId;
+               record.empleadoTurnoId = assignment.empleadoTurnoId;
+               record.fecha = new Date(current);
 
-             // 15% de probabilidad de falta (No creamos registro para que el sistema lo cuente como Falta)
-             if (Math.random() < 0.15) {
-                // Simplemente no insertamos nada, el KPI lo detectará como falta
-             } else {
-                const [hIn, mIn] = turno.horaEntrada.split(':').map(Number);
-                const [hOut, mOut] = turno.horaSalida.split(':').map(Number);
+               // 15% de probabilidad de falta (Simulada no insertando registro)
+               if (Math.random() >= 0.15) {
+                  const [hIn, mIn] = turno.horaEntrada.split(':').map(Number);
+                  const [hOut, mOut] = turno.horaSalida.split(':').map(Number);
 
-                // 30% de probabilidad de llegar tarde (entre 1 y 25 mins)
-                let lateMins = 0;
-                if (Math.random() < 0.30) {
-                   lateMins = Math.floor(Math.random() * 25) + 1;
-                }
+                  let lateMins = 0;
+                  if (Math.random() < 0.30) { lateMins = Math.floor(Math.random() * 25) + 1; }
 
-                // Ajuste de 6 horas para GT (UTC-6)
-                const finalEntrance = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hIn + 6, mIn + lateMins, 0));
-                const finalExit = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hOut + 6, mOut + (Math.random() * 10 - 5), 0));
+                  const finalEntrance = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hIn + 6, mIn + lateMins, 0));
+                  const finalExit = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate(), hOut + 6, mOut + (Math.random() * 10 - 5), 0));
 
-                record.horaEntradaReal = finalEntrance;
-                record.horaSalidaReal = finalExit;
-                record.minutosTardia = Math.max(0, lateMins - (turno.toleranciaMinutos || 0));
+                  record.horaEntradaReal = finalEntrance;
+                  record.horaSalidaReal = finalExit;
+                  record.minutosTardia = Math.max(0, lateMins - (turno.toleranciaMinutos || 0));
 
-                const diffMs = finalExit.getTime() - finalEntrance.getTime();
-                record.horasTrabajadas = Math.round((diffMs / 3600000) * 100) / 100;
-                record.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
-                record.observacion = 'Generado automáticamente (Test)';
-                await this.registroAsistenciaRepository.save(record);
+                  const diffMs = finalExit.getTime() - finalEntrance.getTime();
+                  record.horasTrabajadas = Math.round((diffMs / 3600000) * 100) / 100;
+                  record.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
+                  record.observacion = 'Generado automáticamente (Test)';
+                  await this.registroAsistenciaRepository.save(record);
+               }
+             } catch (e) {
+               console.warn(`[SEED] Registro omitido para evitar duplicados en ${dateStr}`);
              }
            }
         }
