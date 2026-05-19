@@ -22,11 +22,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(request).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Evitamos redirección infinita o errónea si ya estamos en login
+      const isAuthRequest = req.url.includes('/auth/login') || req.url.includes('/auth/register');
+
       // Si el servidor responde 401 (No autorizado) es porque el token ya no es válido
       // o la sesión fue invalidada desde el panel de administración.
-      if (error.status === 401) {
+      // IMPORTANTE: Solo redirigir si NO es una petición de autenticación fallida.
+      if (error.status === 401 && !isAuthRequest) {
         if (isBrowser()) {
-          localStorage.clear(); // Limpiamos todo el rastro de la sesión
+          localStorage.clear();
           router.navigate(['/login'], { queryParams: { expired: 'true' } });
         }
       }

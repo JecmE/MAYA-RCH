@@ -38,7 +38,14 @@ export class Login implements OnInit {
     this.route.queryParams.subscribe(params => {
       if (params['expired'] === 'true') {
         this.error = true;
-        this.errorMessage = 'Su sesión ha expirado por inactividad o vencimiento de token.';
+        const reason = params['reason'];
+        if (reason === 'inactivity') {
+          this.errorMessage = 'Su sesión ha sido cerrada por inactividad.';
+        } else if (reason === 'invalid') {
+          this.errorMessage = 'Su sesión ha sido invalidada por el administrador.';
+        } else {
+          this.errorMessage = 'Su sesión ha expirado o el token ha vencido.';
+        }
         this.cdr.detectChanges();
       }
     });

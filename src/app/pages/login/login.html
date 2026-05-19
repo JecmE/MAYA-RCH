@@ -46,6 +46,7 @@
               type="password"
               name="password"
               [(ngModel)]="password"
+              (ngModelChange)="error = false"
               class="form-control form-control--with-icon"
               required
             />
