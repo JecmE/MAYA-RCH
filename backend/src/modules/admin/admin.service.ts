@@ -113,10 +113,9 @@ export class AdminService implements OnModuleInit {
              record.empleadoTurnoId = assignment.empleadoTurnoId;
              record.fecha = new Date(current);
 
-             // 15% de probabilidad de falta
+             // 15% de probabilidad de falta (No creamos registro para que el sistema lo cuente como Falta)
              if (Math.random() < 0.15) {
-                record.estadoJornada = 'falta';
-                record.observacion = 'Ausencia (Seeded)';
+                // Simplemente no insertamos nada, el KPI lo detectará como falta
              } else {
                 const [hIn, mIn] = turno.horaEntrada.split(':').map(Number);
                 const [hOut, mOut] = turno.horaSalida.split(':').map(Number);
@@ -139,8 +138,8 @@ export class AdminService implements OnModuleInit {
                 record.horasTrabajadas = Math.round((diffMs / 3600000) * 100) / 100;
                 record.estadoJornada = RegistroAsistencia.ESTADO_COMPLETADA;
                 record.observacion = 'Generado automáticamente (Test)';
+                await this.registroAsistenciaRepository.save(record);
              }
-             await this.registroAsistenciaRepository.save(record);
            }
         }
         current.setUTCDate(current.getUTCDate() + 1);
