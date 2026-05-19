@@ -65,7 +65,12 @@ export class AdminService implements OnModuleInit {
   async onModuleInit() {
     try {
       await this.ensureCorrectTableStructures();
-      // SEED DATA: Generar registros de prueba del 1 al 8 de mayo 2026
+
+      // 1. LIMPIEZA DRÁSTICA: Borrar registros generados automáticamente que quedaron con horas negativas
+      console.log('[CLEANUP] Eliminando registros de asistencia negativos previos...');
+      await this.dataSource.query(`DELETE FROM REGISTRO_ASISTENCIA WHERE horas_trabajadas < 0`);
+
+      // 2. SEED DATA: Generar registros de prueba del 1 al 18 de mayo 2026 (Corregido para nocturnos)
       await this.seedAttendanceData();
     } catch (e) {
       console.error('[ADMIN] Error en inicialización:', e);
